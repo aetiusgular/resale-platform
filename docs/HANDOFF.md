@@ -107,6 +107,7 @@ tests/
 - **[LOW] B3 carry-forward**: Near-duplicate scan `.limit(5000)` cap. DB nearest-neighbour function needed before beta. Track for B8.
 - **[LOW] B2 carry-forward**: `images[]` URL validation incomplete (host-locked but no path prefix check). Full validation in B8.
 - **[LOW] B2 carry-forward**: `listings_seller_update` WITH CHECK allows `status='removed'` — tighten in B5 when `sold` status arrives.
+- **[LOW → CONFIRMED SAFE] code-reviewer B4**: `profiles.role` self-promotion risk — `GRANT UPDATE` on `profiles` to `authenticated` is column-level and explicitly excludes `role` (migrations 000000:66 + 000001:28). Users cannot escalate their own role via the API.
 - `@live` e2e specs require `RUN_LIVE_TESTS=1`, `TEST_SELLER_EMAIL`, `TEST_SELLER_PASSWORD`, `TEST_ADMIN_EMAIL`, `TEST_ADMIN_PASSWORD`, `TEST_NEW_SELLER_EMAIL`. Run locally before B8.
 - Seller tier hardcoded `Bronze` stub — B7.
 - BUY/OFFER buttons disabled — B5.

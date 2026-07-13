@@ -249,18 +249,26 @@ export default async function ListingDetailPage({ params }: PageProps) {
               ))}
             </div>
 
-            {/* BUY / OFFER buttons — disabled until B5 */}
+            {/* BUY / OFFER buttons */}
             <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {listing.status === 'active' && user && !isSeller ? (
+                <Link
+                  href={`/checkout/${id}`}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
+                >
+                  Buy now — {formatCents(total)}
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
+                >
+                  {listing.status === 'sold' ? 'SOLD' : listing.status === 'pending_escrow' ? 'PENDING' : 'Buy now'}
+                </button>
+              )}
               <button
                 disabled
-                title="checkout arrives in B5"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
-              >
-                Buy now
-              </button>
-              <button
-                disabled
-                title="checkout arrives in B5"
+                title="offers arrive in B6"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
               >
                 Make offer

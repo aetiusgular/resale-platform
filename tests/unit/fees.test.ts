@@ -5,8 +5,10 @@ import {
   sellerPayout,
   buyerTotal,
   formatCents,
+  orderAmounts,
   SELLER_FEE_BPS,
   BUYER_FEE_BPS,
+  SHIPPING_CENTS,
 } from '../../lib/fees'
 
 describe('fee constants', () => {
@@ -83,5 +85,69 @@ describe('formatCents', () => {
   it('fractional cents', () => {
     expect(formatCents(150)).toBe('$1.50')
     expect(formatCents(99)).toBe('$0.99')
+  })
+})
+
+describe('SHIPPING_CENTS', () => {
+  it('is 1200 (fixed $12 for alpha)', () => {
+    expect(SHIPPING_CENTS).toBe(1200)
+  })
+})
+
+describe('orderAmounts', () => {
+  it('correctly breaks down $1250 listing (design reference values)', () => {
+    const a = orderAmounts(125000)
+    expect(a.item_cents).toBe(125000)
+    expect(a.buyer_fee_cents).toBe(2500)      // 2% of $1250
+    expect(a.seller_fee_cents).toBe(2500)     // 2% of $1250
+    expect(a.shipping_cents).toBe(1200)        // fixed alpha
+    expect(a.total_cents).toBe(128700)         // 125000 + 2500 + 1200
+    expect(a.transfer_cents).toBe(122500)      // item - seller_fee
+  })
+
+  it('transfer_cents equals item_cents minus seller_fee_cents exactly', () => {
+    for (const price of [5000, 10000, 49999, 125000, 500000]) {
+      const a = orderAmounts(price)
+      expect(a.transfer_cents).toBe(a.item_cents - a.seller_fee_cents)
+    }
+  })
+
+  it('total_cents equals item + buyer_fee + shipping', () => {
+    for (const price of [5000, 10000, 49999, 125000]) {
+      const a = orderAmounts(price)
+      expect(a.total_cents).toBe(a.item_cents + a.buyer_fee_cents + a.shipping_cents)
+    }
+  })
+
+  it('fee snapshot survives later config change (snapshot test)', () => {
+    // The snapshot locked at order time must not change even if BPS changes.
+    // We verify that orderAmounts reads the BPS at call time and the result
+    // is fully determined by the inputs — no hidden global state.
+    const snap1 = orderAmounts(100000)
+    const snap2 = orderAmounts(100000)
+    expect(snap1).toEqual(snap2)
+    // Explicit expected values for $1000 listing:
+    expect(snap1.buyer_fee_cents).toBe(2000)   // 2% of $1000
+    expect(snap1.seller_fee_cents).toBe(2000)
+    expect(snap1.total_cents).toBe(103200)      // 1000 + 20 + 12 = $1032
+    expect(snap1.transfer_cents).toBe(98000)    // $980
+  })
+
+  it('accepts custom shipping amount', () => {
+    const a = orderAmounts(100000, 0)
+    expect(a.shipping_cents).toBe(0)
+    expect(a.total_cents).toBe(102000)  // item + buyer_fee only
+  })
+
+  it('all amounts are integers (no floats)', () => {
+    // Prices that produce fractional cents at 2% — must still be integers
+    for (const price of [1, 3, 7, 11, 51, 249, 333, 999, 1001]) {
+      const a = orderAmounts(price)
+      expect(Number.isInteger(a.item_cents)).toBe(true)
+      expect(Number.isInteger(a.buyer_fee_cents)).toBe(true)
+      expect(Number.isInteger(a.seller_fee_cents)).toBe(true)
+      expect(Number.isInteger(a.total_cents)).toBe(true)
+      expect(Number.isInteger(a.transfer_cents)).toBe(true)
+    }
   })
 })

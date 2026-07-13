@@ -35,3 +35,37 @@ export function formatCents(cents: number): string {
     maximumFractionDigits: 2,
   })
 }
+
+/** Fixed shipping cost for alpha (buyer-paid, $12). */
+export const SHIPPING_CENTS = 1200
+
+/**
+ * Compute the full fee breakdown for an order.
+ * Call this server-side at PaymentIntent creation — NEVER trust client totals.
+ * The returned object maps 1:1 to the orders table column names.
+ *
+ * transfer_cents = item_cents - seller_fee_cents
+ * (shipping is buyer-paid; platform holds it in alpha)
+ */
+export function orderAmounts(
+  priceCents: number,
+  shippingCents: number = SHIPPING_CENTS,
+): {
+  item_cents:       number
+  buyer_fee_cents:  number
+  seller_fee_cents: number
+  shipping_cents:   number
+  total_cents:      number
+  transfer_cents:   number
+} {
+  const buyer_fee_cents  = buyerFee(priceCents)
+  const seller_fee_cents = sellerFee(priceCents)
+  return {
+    item_cents:       priceCents,
+    buyer_fee_cents,
+    seller_fee_cents,
+    shipping_cents:   shippingCents,
+    total_cents:      priceCents + buyer_fee_cents + shippingCents,
+    transfer_cents:   priceCents - seller_fee_cents,
+  }
+}

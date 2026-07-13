@@ -26,6 +26,32 @@ export async function POST(
 
   // Use service client to bypass RLS for the status→active transition
   const service = await createServiceClient()
+
+  // Gate: seller must have payouts_enabled before listing can go active.
+  const { data: listing } = await service
+    .from('listings')
+    .select('seller_id')
+    .eq('id', id)
+    .eq('status', 'pending_review')
+    .single()
+
+  if (!listing) {
+    return NextResponse.json({ error: 'Listing not found or not pending review' }, { status: 404 })
+  }
+
+  const { data: sellerProfile } = await service
+    .from('profiles')
+    .select('payouts_enabled')
+    .eq('id', listing.seller_id)
+    .single()
+
+  if (!sellerProfile?.payouts_enabled) {
+    return NextResponse.json(
+      { error: 'Seller has not completed Stripe Connect onboarding. Listing cannot be activated until payouts are enabled.' },
+      { status: 422 },
+    )
+  }
+
   const { error } = await service
     .from('listings')
     .update({ status: 'active' })
