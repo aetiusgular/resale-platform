@@ -14,8 +14,13 @@ interface RouteContext {
   params: Promise<{ id: string; offerId: string }>
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function POST(_req: NextRequest, { params }: RouteContext) {
   const { id: conversationId, offerId } = await params
+  if (!UUID_RE.test(conversationId) || !UUID_RE.test(offerId)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -41,6 +46,22 @@ export async function POST(_req: NextRequest, { params }: RouteContext) {
 
   if (!canRespond(offer as Offer, conv as Conversation, user.id)) {
     return NextResponse.json({ error: 'Cannot accept this offer' }, { status: 422 })
+  }
+
+  // Double-lock guard: reject if another accepted offer already exists for this listing.
+  // Prevents a seller from accepting two offers and both buyers racing to checkout.
+  const { count: priorAccepted } = await service
+    .from('offers')
+    .select('id', { count: 'exact', head: true })
+    .eq('listing_id', conv.listing_id)
+    .eq('state', 'accepted')
+    .neq('id', offerId)
+
+  if ((priorAccepted ?? 0) > 0) {
+    return NextResponse.json(
+      { error: 'Another offer has already been accepted for this listing' },
+      { status: 409 },
+    )
   }
 
   const { data: updated, error } = await service

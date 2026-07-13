@@ -15,10 +15,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'query must be a JSON object' }, { status: 400 })
   }
 
+  // Size cap: max 20 keys, max 200 chars per value
+  const entries = Object.entries(query)
+  if (entries.length > 20) {
+    return NextResponse.json({ error: 'query may not have more than 20 keys' }, { status: 400 })
+  }
+
   // Validate only string values (no PII, no nested objects)
-  for (const [k, v] of Object.entries(query)) {
+  for (const [k, v] of entries) {
     if (typeof v !== 'string') {
       return NextResponse.json({ error: `query.${k} must be a string` }, { status: 400 })
+    }
+    if (v.length > 200) {
+      return NextResponse.json({ error: `query.${k} exceeds max length (200 chars)` }, { status: 400 })
     }
   }
 

@@ -80,9 +80,18 @@ async function makeImage(idx: number, label: string): Promise<Buffer> {
     .toBuffer()
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'Seed endpoint is development-only' }, { status: 403 })
+  }
+
+  // Secondary guard: require SEED_SECRET header to prevent accidental triggers
+  const seedSecret = process.env.SEED_SECRET
+  if (seedSecret) {
+    const provided = req.headers.get('x-seed-secret')
+    if (provided !== seedSecret) {
+      return NextResponse.json({ error: 'Missing or invalid x-seed-secret header' }, { status: 403 })
+    }
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

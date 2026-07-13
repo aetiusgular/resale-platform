@@ -20,6 +20,7 @@ const MESSAGE_EXTRA_PATTERNS: RegExp[] = [
   /\bwww\.\S+\.\S+/i,
   // Payment-app handles and shortlinks not in listing patterns
   /paypal\.me\//i,
+  /paypal\.com\/send/i,  // paypal.com/send/... shortlinks
   /cash\.app\//i,
   /\bzelle\b/i,
   /venmo\.com\//i,

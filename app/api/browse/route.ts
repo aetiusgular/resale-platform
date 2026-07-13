@@ -19,9 +19,10 @@ export async function GET(request: NextRequest) {
   const minPrice = sp.get('min_price') ? Math.round(parseFloat(sp.get('min_price')!) * 100) : null
   const maxPrice = sp.get('max_price') ? Math.round(parseFloat(sp.get('max_price')!) * 100) : null
   const condMin  = sp.get('cond') ? parseInt(sp.get('cond')!, 10) : null
-  const dropped  = sp.get('dropped') === '1'
-  const sort     = sp.get('sort') ?? 'newest'
-  const offset   = sp.get('offset') ? parseInt(sp.get('offset')!, 10) : 0
+  const dropped      = sp.get('dropped') === '1'
+  const verifiedOnly = sp.get('verified') === '1'
+  const sort         = sp.get('sort') ?? 'newest'
+  const offset       = sp.get('offset') ? parseInt(sp.get('offset')!, 10) : 0
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
@@ -56,8 +57,13 @@ export async function GET(request: NextRequest) {
     profiles: { username: string; id_verification_status: string } | null
   }>
 
-  const hasMore = listings.length > PAGE_SIZE
-  const pageListings = hasMore ? listings.slice(0, PAGE_SIZE) : listings
+  // Apply verified-seller filter in app layer (PostgREST nested-table eq is unreliable)
+  const filtered = verifiedOnly
+    ? listings.filter(l => l.profiles?.id_verification_status === 'verified')
+    : listings
+
+  const hasMore = filtered.length > PAGE_SIZE
+  const pageListings = hasMore ? filtered.slice(0, PAGE_SIZE) : filtered
 
   // Fetch price history for dropped listings
   const droppedIds = pageListings.filter(l => l.is_price_dropped).map(l => l.id)

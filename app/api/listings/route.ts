@@ -4,6 +4,7 @@ import { lintListing } from '@/lib/antislop-lint'
 import { ANTISLOP } from '@/lib/antislop-config'
 import { hashAllSlots } from '@/lib/image-hash'
 import { hammingDistance } from '@/lib/phash'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 // Explicitly use Node.js runtime — sharp requires native bindings not on Edge
 export const runtime = 'nodejs'
@@ -14,6 +15,15 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── Rate limit: 30 listing uploads per user per hour ─────────────────────
+  const rl = checkRateLimit(`listing_upload:${user.id}`, 30, 60 * 60 * 1000)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many listing uploads. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+    )
   }
 
   const body = await request.json()

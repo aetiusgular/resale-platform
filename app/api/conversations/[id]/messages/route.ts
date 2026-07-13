@@ -14,11 +14,16 @@ interface RouteContext {
   params: Promise<{ id: string }>
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function GET(_req: NextRequest, { params }: RouteContext) {
-  const { id: conversationId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id: conversationId } = await params
+  if (!UUID_RE.test(conversationId)) {
+    return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+  }
 
   // Verify participant access (RLS enforces this but we also guard at route level)
   const { data: conv } = await supabase
@@ -51,10 +56,13 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  const { id: conversationId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id: conversationId } = await params
+  if (!UUID_RE.test(conversationId)) {
+    return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
+  }
 
   let body: { body?: unknown }
   try { body = await request.json() } catch {

@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { orderAmounts } from '@/lib/fees'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   // ── 1. Auth ───────────────────────────────────────────────────────────────
@@ -24,6 +25,15 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── Rate limit: 10 checkout attempts per user per hour ───────────────────
+  const rl = checkRateLimit(`checkout:${user.id}`, 10, 60 * 60 * 1000)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many checkout attempts. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+    )
   }
 
   // ── 2. Parse and minimally validate body ─────────────────────────────────
@@ -59,9 +69,10 @@ export async function POST(request: NextRequest) {
   if (!listing || listing.status === 'sold' || listing.status === 'removed') {
     return NextResponse.json({ error: 'Listing not available for purchase' }, { status: 409 })
   }
-  // For non-offer checkout, listing must be active (not locked)
-  if (!offerId && listing.status !== 'active') {
-    return NextResponse.json({ error: 'Listing not available for purchase' }, { status: 409 })
+  // All checkouts require an active listing — offer-based included.
+  // If listing is pending_escrow it means another buyer's checkout is in progress.
+  if (listing.status !== 'active') {
+    return NextResponse.json({ error: 'Listing is already being purchased by another buyer' }, { status: 409 })
   }
 
   // Prevent buyer from purchasing their own listing
@@ -162,6 +173,13 @@ export async function POST(request: NextRequest) {
         total_cents:      String(amounts.total_cents),
         transfer_cents:   String(amounts.transfer_cents),
         ...(verifiedOfferId ? { offer_id: verifiedOfferId } : {}),
+        // Shipping address stored for fulfillment reference (no name/email — no PII)
+        ...(shippingAddress && typeof shippingAddress === 'object' ? {
+          shipping_city:    String((shippingAddress as Record<string,unknown>).city ?? '').slice(0, 100),
+          shipping_state:   String((shippingAddress as Record<string,unknown>).state ?? '').slice(0, 50),
+          shipping_zip:     String((shippingAddress as Record<string,unknown>).zip ?? '').slice(0, 20),
+          shipping_country: String((shippingAddress as Record<string,unknown>).country ?? 'US').slice(0, 10),
+        } : {}),
       },
       description: `${listing.title} — ${listing.brand}`,
     })

@@ -1,5 +1,6 @@
 # pnpm 11 build script approvals (written by pnpm approve-builds)
 allowBuilds:
+  '@sentry/cli': true
   esbuild: true
   sharp: true
   unrs-resolver: true

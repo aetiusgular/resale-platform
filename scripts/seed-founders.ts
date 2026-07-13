@@ -1,13 +1,15 @@
 /**
- * Seed script: creates a system profile, 30 founder invite codes,
- * marks founder fixture accounts id-verified, seeds 2 verified checkers,
- * and creates a demo legit-check thread on the first active listing.
+ * Seed script: creates a system profile, founder invite codes,
+ * marks 24 founder accounts id-verified with 3 invite codes each,
+ * seeds 2 verified checkers (per B7 design), and creates a demo
+ * legit-check thread on the first active listing.
  *
- * Idempotent — safe to run multiple times.
+ * Idempotent — safe to run multiple times (upserts everywhere).
  *
- * Usage:
- *   export SUPABASE_DB_PASSWORD=...
- *   pnpm tsx scripts/seed-founders.ts
+ * PRODUCTION GUARD:
+ *   - Refuses to run if NODE_ENV === 'production'.
+ *   - Requires --confirm flag explicitly.
+ *   - Usage: pnpm tsx scripts/seed-founders.ts --confirm
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env.
  */
@@ -15,15 +17,58 @@
 import { createClient } from '@supabase/supabase-js'
 import { generateCode } from '../lib/invite-codes'
 
+// ─── Production guard ──────────────────────────────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  console.error('[seed] ERROR: refusing to run in production (NODE_ENV=production)')
+  process.exit(1)
+}
+if (!process.argv.includes('--confirm')) {
+  console.error('[seed] ERROR: must pass --confirm flag to run seed script')
+  console.error('  Usage: pnpm tsx scripts/seed-founders.ts --confirm')
+  process.exit(1)
+}
+
 const SYSTEM_USER_EMAIL  = 'system@resale-platform.internal'
 const FOUNDER_CODE_COUNT = 30
 
-// Fixture accounts: id-verified, optional verified_checker
-const FOUNDER_FIXTURES = [
-  { email: 'founder1@resale-platform.internal', username: 'formcheck',   verified_checker: true,  checker_category: 'outerwear' },
-  { email: 'founder2@resale-platform.internal', username: 'archivehound', verified_checker: true, checker_category: 'denim' },
-  { email: 'founder3@resale-platform.internal', username: 'tabiwalker',  verified_checker: false, checker_category: null },
-] as const
+// 24 alpha seed contacts from docs/USER_FEEDBACK.md §6.
+// Two designated verified checkers (per B7 design) keep checker fields.
+// All others: id_verified=true, 3 invite codes each, bronze tier.
+const FOUNDER_ACCOUNTS: Array<{
+  username: string
+  verified_checker?: boolean
+  checker_category?: string
+}> = [
+  // Verified checkers (designated in B7)
+  { username: 'formcheck',              verified_checker: true, checker_category: 'outerwear' },
+  { username: 'archivehound',           verified_checker: true, checker_category: 'denim' },
+  // Alpha seed list (docs/USER_FEEDBACK.md §6)
+  { username: 'tumuhclothes' },
+  { username: 'buyselldm' },
+  { username: 'marcosqrd' },
+  { username: 'blindate' },
+  { username: 'refffined' },
+  { username: 'brokeclasps' },
+  { username: 'shoprokuz' },
+  { username: 'hedivietnam' },
+  { username: 'fauhlen' },
+  { username: 'secondstreetemployee' },
+  { username: 'banreps' },
+  { username: 'sznny' },
+  { username: 'jadedarchivee' },
+  { username: 'stevzn' },
+  { username: 'cowboipunk' },
+  { username: 'ummmmmm_j_i' },
+  { username: 'fate_archive_' },
+  { username: 'thrashhh' },
+  { username: 'zizekcel' },
+  { username: 'sparo_stocks' },
+  { username: 'maximilian_marco' },
+  { username: 'j_pierre' },
+  { username: 'crownfoil' },
+  // Extra fixture for demo LC thread
+  { username: 'tabiwalker' },
+]
 
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -39,7 +84,7 @@ async function main() {
 
   // ── 1. System user ────────────────────────────────────────────────────────
   let systemUserId: string | null = null
-  const { data: existingUsers } = await supabase.auth.admin.listUsers()
+  const { data: existingUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 })
   const existingSystem = existingUsers?.users?.find((u) => u.email === SYSTEM_USER_EMAIL)
 
   if (existingSystem) {
@@ -98,46 +143,72 @@ async function main() {
     console.log(`[seed] already have ${existingCount} founder codes — skipping`)
   }
 
-  // ── 4. Founder fixtures: id-verified + verified_checker ───────────────────
+  // ── 4. Founder accounts: id-verified + invite codes ───────────────────────
   const fixtureIds: Record<string, string> = {}
 
-  for (const fixture of FOUNDER_FIXTURES) {
-    let userId: string | null = null
-    const existing = existingUsers?.users?.find((u) => u.email === fixture.email)
+  // Snapshot all codes before the loop to avoid repeated fetches
+  const { data: allCodesNow } = await supabase.from('invite_codes').select('code')
+  const globalSeen = new Set<string>((allCodesNow ?? []).map(r => r.code))
 
+  for (const founder of FOUNDER_ACCOUNTS) {
+    const email = `founder+${founder.username}@example.com`
+    let userId: string | null = null
+
+    const existing = existingUsers?.users?.find((u) => u.email === email)
     if (existing) {
       userId = existing.id
-      console.log(`[seed] fixture exists: ${fixture.username}`)
+      console.log(`[seed] founder exists: ${founder.username}`)
     } else {
       const { data: newUser, error } = await supabase.auth.admin.createUser({
-        email: fixture.email,
+        email,
         password: crypto.randomUUID(),
         email_confirm: true,
       })
       if (error || !newUser.user) {
-        console.warn(`[seed] could not create fixture ${fixture.username}: ${error?.message}`)
+        console.warn(`[seed] could not create ${founder.username}: ${error?.message}`)
         continue
       }
       userId = newUser.user.id
-      console.log(`[seed] created fixture: ${fixture.username}`)
+      console.log(`[seed] created: ${founder.username}`)
     }
 
-    fixtureIds[fixture.username] = userId
+    fixtureIds[founder.username] = userId
 
     const { error: upsertErr } = await supabase.from('profiles').upsert({
       id: userId,
-      username: fixture.username,
+      username: founder.username,
       role: 'member',
       id_verification_status: 'verified',
-      verified_checker: fixture.verified_checker,
-      checker_category: fixture.checker_category ?? null,
-      tier: fixture.verified_checker ? 'gold' : 'bronze',
+      verified_checker: founder.verified_checker ?? false,
+      checker_category: founder.checker_category ?? null,
+      tier: founder.verified_checker ? 'gold' : 'bronze',
     }, { onConflict: 'id' })
 
     if (upsertErr) {
-      console.warn(`[seed] upsert profile ${fixture.username}: ${upsertErr.message}`)
+      console.warn(`[seed] upsert ${founder.username}: ${upsertErr.message}`)
+    }
+
+    // Give each founder exactly 3 invite codes
+    const { count: founderCodeCount } = await supabase
+      .from('invite_codes')
+      .select('code', { count: 'exact', head: true })
+      .eq('generated_by', userId)
+
+    const toCreate = 3 - (founderCodeCount ?? 0)
+    if (toCreate > 0) {
+      const newCodes: { code: string; generated_by: string }[] = []
+      while (newCodes.length < toCreate) {
+        const code = generateCode()
+        if (!globalSeen.has(code)) {
+          globalSeen.add(code)
+          newCodes.push({ code, generated_by: userId })
+        }
+      }
+      const { error: codeErr } = await supabase.from('invite_codes').insert(newCodes)
+      if (codeErr) console.warn(`[seed] codes for ${founder.username}: ${codeErr.message}`)
+      else console.log(`[seed] ${founder.username} → ${newCodes.length} invite codes`)
     } else {
-      console.log(`[seed] upserted profile ${fixture.username} (verified=${fixture.verified_checker ? 'checker' : 'member'})`)
+      console.log(`[seed] ${founder.username} already has ${founderCodeCount} codes`)
     }
   }
 
@@ -148,6 +219,7 @@ async function main() {
 
   if (!activeListing) {
     console.log('[seed] no active listings — skipping demo LC thread')
+    console.log('[seed] done.')
     return
   }
 
@@ -158,10 +230,10 @@ async function main() {
 
   if (existingComments && existingComments.length > 0) {
     console.log('[seed] demo LC thread exists — skipping')
+    console.log('[seed] done.')
     return
   }
 
-  // Pinned verdict from formcheck
   const formcheckId = fixtureIds['formcheck']
   if (formcheckId) {
     const { data: verdict, error: vErr } = await supabase.from('comments').insert({
@@ -169,12 +241,10 @@ async function main() {
       body: 'hardware, stitching, and tag are consistent with authentic.',
       pinned: true, status: 'visible', redacted: false,
     }).select('id').single()
-
-    if (vErr) console.warn(`[seed] pinned verdict error: ${vErr.message}`)
-    else console.log(`[seed] inserted pinned verdict: ${verdict.id}`)
+    if (vErr) console.warn(`[seed] pinned verdict: ${vErr.message}`)
+    else console.log(`[seed] pinned verdict: ${verdict.id}`)
   }
 
-  // Two LC comments from tabiwalker
   const tabiId = fixtureIds['tabiwalker']
   if (tabiId) {
     for (const body of [
@@ -185,8 +255,8 @@ async function main() {
         listing_id: activeListing.id, author_id: tabiId, thread_type: 'lc',
         body, pinned: false, status: 'visible', redacted: false,
       })
-      if (lcErr) console.warn(`[seed] LC comment error: ${lcErr.message}`)
-      else console.log(`[seed] inserted LC comment by tabiwalker`)
+      if (lcErr) console.warn(`[seed] LC comment: ${lcErr.message}`)
+      else console.log('[seed] inserted LC comment by tabiwalker')
     }
   }
 

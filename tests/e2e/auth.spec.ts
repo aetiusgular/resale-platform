@@ -35,10 +35,13 @@ test.describe('Gate — unauthenticated', () => {
   })
 
   test('waitlist form submits email', async ({ page }) => {
+    // Stub the API so the test doesn't hit the real DB
+    await page.route('/api/waitlist', route =>
+      route.fulfill({ status: 200, body: JSON.stringify({ ok: true }) })
+    )
     await page.goto('/enter/waitlist')
     await page.getByRole('textbox').fill('test@example.com')
     await page.getByRole('button', { name: 'Join waitlist' }).click()
-    // API stub returns 200; UI shows success message
     await expect(page.getByText("You're on the list.")).toBeVisible({ timeout: 5000 })
   })
 

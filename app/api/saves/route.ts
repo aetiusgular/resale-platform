@@ -14,6 +14,9 @@ export async function POST(request: NextRequest) {
   if (typeof listing_id !== 'string' || !listing_id.trim()) {
     return NextResponse.json({ error: 'listing_id required' }, { status: 400 })
   }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listing_id)) {
+    return NextResponse.json({ error: 'Invalid listing_id' }, { status: 400 })
+  }
 
   const { error } = await supabase
     .from('saves')
@@ -39,6 +42,9 @@ export async function DELETE(request: NextRequest) {
   const { listing_id } = body
   if (typeof listing_id !== 'string' || !listing_id.trim()) {
     return NextResponse.json({ error: 'listing_id required' }, { status: 400 })
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listing_id)) {
+    return NextResponse.json({ error: 'Invalid listing_id' }, { status: 400 })
   }
 
   const { error } = await supabase
