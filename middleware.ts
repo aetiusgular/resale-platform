@@ -1,11 +1,14 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Routes accessible without a session
-const PUBLIC_PATHS = ['/enter', '/enter/waitlist', '/onboarding/account', '/styleguide']
+// Routes accessible without a session (listing detail is public read for active listings)
+const PUBLIC_PATHS = ['/enter', '/enter/waitlist', '/onboarding/account', '/styleguide', '/listings']
 
 // Routes only accessible without a session (redirect to / if logged in)
 const AUTH_ONLY_PATHS = ['/enter', '/enter/waitlist']
+
+// Routes requiring role='admin'
+const ADMIN_PATHS = ['/admin']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -85,6 +88,13 @@ export async function middleware(request: NextRequest) {
   if (!profile.invited_by && profile.role !== 'admin') {
     if (!isPublicPath) {
       return NextResponse.redirect(new URL('/enter', request.url))
+    }
+  }
+
+  // Admin gate: /admin/* requires role='admin'
+  if (ADMIN_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+    if (profile.role !== 'admin') {
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 

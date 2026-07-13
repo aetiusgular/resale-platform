@@ -1,56 +1,58 @@
 # HANDOFF.md
-## Current state: B1 COMPLETE
+## Current state: B2 COMPLETE
 
 **Last updated:** 2026-07-12
-**Next prompt:** B2 — Listings + curation queue
+**Next prompt:** B3 — Anti-slop layer (M3)
 
 ---
 
-## What was done in B1
+## What was done in B2
 
-1. **Supabase email auth** — `@supabase/ssr` signup/login/logout. Middleware uses `getUser()` exclusively (never `getSession()`). Logout via `POST /api/auth/logout`.
+1. **Listings migration** (`20240101000004_listings.sql`) — `listing_status` enum (draft/pending_review/active/removed), `listings` table with all required columns (id, seller_id, title, brand, category, size, condition_score 1–10, condition_notes JSONB, price_cents INT, images TEXT[] 6 slots, possession_photo_url, status, rejection_reason, timestamps). Full RLS: anon/auth read active only; seller CRUD own (status→active blocked by WITH CHECK); admin all via service role. Indexes on seller_id, status, created_at. `set_updated_at` trigger.
 
-2. **Migrations** — Three migrations applied to remote:
-   - `20240101000000_profiles.sql` — profiles table + RLS (B0, already applied)
-   - `20240101000001_profiles_b1.sql` — adds `id_verification_status` enum, `invited_by` FK, `quick_setup` JSONB
-   - `20240101000002_invite_codes.sql` — invite_codes table, RLS, `claim_invite_code` RPC (FOR UPDATE), `generate_member_codes` RPC (pgcrypto)
-   - `20240101000003_fix_rpc_security.sql` — security fixup: `claim_invite_code` now uses `auth.uid()` (no `p_user_id` param); `generate_member_codes` locks profile row (FOR UPDATE) to serialize concurrent calls
+2. **Storage migration** (`20240101000005_storage.sql`) — `product-images` bucket (public read, 10MB, jpeg/png/webp). Storage RLS: public SELECT, authenticated INSERT/UPDATE/DELETE restricted to `listings/{auth.uid()}/` path prefix.
 
-3. **Middleware gate** — `/enter` for unauthenticated; `/enter` for authenticated users with no claimed code; onboarding bypass; admin bypass.
+3. **`lib/fees.ts`** — `SELLER_FEE_BPS=200`, `BUYER_FEE_BPS=200`, `sellerFee`, `buyerFee`, `sellerPayout`, `buyerTotal`, `formatCents`. All math in integer cents with `Math.round()`.
 
-4. **Onboarding flow** — `/enter` (code input, Space Mono, error states) → `/onboarding/account` (email/username/password) → `/onboarding/verify` (ID verification placeholder, `VERIFICATION_ENABLED=false`) → `/onboarding/setup` (sizes/address, skippable) → `/onboarding/codes` (3 generated codes with COPY, Space Mono).
+4. **`lib/condition.ts`** — `CONDITION_DEFINITIONS` (1–10 rubric), `PHOTO_SLOTS` (FRONT/BACK/TAG/DETAIL/FLAW/POSSESSION), `DAMAGE_FLAGS`.
 
-5. **Waitlist** — `/enter/waitlist` with email capture; `POST /api/waitlist` stubs (TODO B8: persist to DB).
+5. **API routes**:
+   - `POST /api/listings` — auth required, inserts with `status=pending_review`
+   - `POST /api/admin/listings/[id]/approve` — admin gate + service role client → `status=active`
+   - `POST /api/admin/listings/[id]/reject` — admin gate + service role client → `status=removed` + `rejection_reason`
 
-6. **`lib/invite-codes.ts`** — `generateCode()`, `normalizeCode()`, `isValidCodeFormat()` (unambiguous alphabet, no 0/O/1/I).
+6. **`middleware.ts`** — Added `/listings` to PUBLIC_PATHS; added admin gate (ADMIN_PATHS=['/admin'], checks `profile.role='admin'`, redirects to `/`).
 
-7. **`lib/flags.ts`** — `VERIFICATION_ENABLED` feature flag (false).
+7. **Sell flow** (`/sell`) — Server component (auth gate) + `sell-form.tsx` (client): 4 sections PHOTOS→DETAILS→CONDITION→PRICE. Client-side canvas resize to 2000px JPEG. Upload path `listings/{userId}/{draftId}/{slot}.jpg`. Live fee math. Submitted state with "In the queue" + SELLER PROTECTION card.
 
-8. **`scripts/seed-founders.ts`** — 30 founder codes owned by a system profile; idempotent.
+8. **Admin queue** (`/admin/queue`) — Server component (admin gate). Pending listings with 6-photo grid + seller username. `AdminActions` client component (approve/reject with reason input).
 
-9. **Tests** — 12 unit tests (vitest), 11 Playwright e2e tests (non-@live). `@live` specs in `tests/e2e/auth-live.spec.ts` (RLS/double-claim tests — run locally with `RUN_LIVE_TESTS=1`).
+9. **Listing detail** (`/listings/[id]`) — SSR with `generateMetadata` for SEO. 3fr/2fr grid: gallery (main + 6 thumbnails with labels + possession badge) / purchase panel (h1 title, brand/size, condition + popover, price + fee line, TRUST STRIP placeholder, disabled buy/offer/message buttons, seller block with tier badge stub). Seller pending/rejection banners. Admin view banner. Community section B7 placeholder.
 
-10. **Code reviewer** — Full pass on auth/RLS/RPC. Two HIGHs found and fixed (see migration 000003). One HIGH acknowledged (profile insert before email verification — deferred: email verification is the verify step in flow; enforcing at DB level is B8 hardening).
+10. **Tests** — 10 fee unit tests (vitest). 4 non-@live Playwright specs (`tests/e2e/listings.spec.ts`). Full @live spec (`tests/e2e/listings-live.spec.ts`) covering seller create → RLS → admin approve → visible → reject path → storage isolation.
+
+---
+
+## Verify state (as of B2 close)
+
+```
+pnpm verify      ✓  22 tests (1 placeholder + 11 invite-codes + 10 fees; tsc clean; eslint clean)
+pnpm build       ✓  17 routes, 0 errors
+pnpm verify:ui   ✓  16 Playwright tests (non-@live)
+Migrations       ✓  000004 + 000005 pushed to remote
+db-guard         ✓  SAFE TO PUSH
+code-reviewer    ✓  run on B2 diff (RLS + storage + auth)
+```
 
 ---
 
 ## Blockers
 
-None. All migrations applied. All checks green.
+None.
 
 ---
 
-## Verify state (as of B1 close)
-
-```
-pnpm verify      ✓  12 tests (tsc + eslint + vitest)
-pnpm build       ✓  14 routes, 0 warnings
-pnpm verify:ui   ✓  11 Playwright tests (non-@live)
-```
-
----
-
-## Session start ritual for B2
+## Session start ritual for B3
 
 ```
 Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your plan for it.
@@ -58,50 +60,45 @@ Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your p
 
 ---
 
-## File inventory (key files added/modified in B1)
+## File inventory (key files added/modified in B2)
 
 ```
-middleware.ts                                       Auth gate (getUser, invite check)
+supabase/migrations/
+  20240101000004_listings.sql           listings table + RLS + trigger + indexes
+  20240101000005_storage.sql            product-images bucket + storage RLS
 lib/
-  flags.ts                                          VERIFICATION_ENABLED feature flag
-  invite-codes.ts                                   Code format utils
-  supabase/
-    browser.ts                                      Browser Supabase client
-    server.ts                                       Server + service role clients
-    types.ts                                        DB type helpers
+  fees.ts                               Fee math (SELLER_FEE_BPS=200, BUYER_FEE_BPS=200)
+  condition.ts                          Condition rubric (1–10), photo slots, damage flags
+middleware.ts                           Added /listings public + admin gate
 app/
-  page.tsx                                          Landing stub (redirects via middleware)
-  enter/
-    page.tsx                                        Invite code entry UI
-    waitlist/page.tsx                               Waitlist email capture
-  onboarding/
-    account/page.tsx                                Signup form (email/username/password)
-    verify/page.tsx                                 ID verification placeholder
-    setup/page.tsx                                  Quick setup (sizes, address, skippable)
-    codes/
-      page.tsx                                      Server component (fetches codes)
-      codes-client.tsx                              Client component (COPY buttons)
+  sell/
+    page.tsx                            Sell flow server component (auth gate)
+    sell-form.tsx                       4-section sell form (client, canvas resize, upload)
+  admin/queue/
+    page.tsx                            Admin queue server component
+    admin-actions.tsx                   Approve/reject client component
+  listings/[id]/
+    page.tsx                            Listing detail (SSR, generateMetadata, RLS-aware)
+    condition-popover.tsx               "What N means" popover (client)
   api/
-    auth/logout/route.ts                            POST → signOut + redirect /enter
-    onboarding/generate-codes/route.ts              POST → generate_member_codes RPC
-    waitlist/route.ts                               POST → log + ack (TODO B8: persist)
-supabase/
-  migrations/
-    20240101000001_profiles_b1.sql                  id_verification_status, invited_by, quick_setup
-    20240101000002_invite_codes.sql                 invite_codes table + RPCs
-    20240101000003_fix_rpc_security.sql             auth.uid() fix + FOR UPDATE in generate_member_codes
-scripts/
-  seed-founders.ts                                  30 founder codes (idempotent)
+    listings/route.ts                   POST → create listing (pending_review)
+    admin/listings/[id]/approve/route.ts POST → approve (service role)
+    admin/listings/[id]/reject/route.ts  POST → reject + reason (service role)
 tests/
-  unit/invite-codes.test.ts                         11 unit tests (code format utils)
-  e2e/auth.spec.ts                                  8 non-@live Playwright specs
-  e2e/auth-live.spec.ts                             @live RLS + double-claim specs
+  unit/fees.test.ts                     10 fee unit tests
+  e2e/listings.spec.ts                  4 non-@live Playwright specs
+  e2e/listings-live.spec.ts             @live full flow specs (RLS + storage isolation)
 ```
 
 ---
 
 ## Known issues / deferred
 
-- Email verification not enforced before profile creation — profile is inserted immediately after `signUp`. Deferred to B8 hardening.
-- Waitlist emails not persisted — `POST /api/waitlist` logs only. TODO B8.
-- `@live` e2e specs (RLS isolation, concurrent double-claim) require `RUN_LIVE_TESTS=1` and live Supabase credentials. Run locally before B8.
+- Storage cross-reference: `images[]` stores public URLs. URL→path extraction not hardened — deferred to B8 (storage cleanup on listing delete).
+- Seller tier is hardcoded `Bronze` stub — real tier logic arrives in B4/B7.
+- BUY/OFFER buttons disabled — checkout arrives in B5.
+- Message seller disabled — arrives in B6.
+- Community section placeholder — arrives in B7.
+- `@live` e2e specs require `RUN_LIVE_TESTS=1` and live Supabase credentials. Run locally before B8.
+- Email verification not enforced before profile creation — deferred to B8 (carried from B1).
+- Waitlist emails not persisted — `POST /api/waitlist` logs only. TODO B8 (carried from B1).
