@@ -1,0 +1,12 @@
+# env — never commit
+.env.local
+.env*.local
+
+# deps / build (B0 will extend)
+node_modules/
+.next/
+dist/
+
+# misc
+.DS_Store
+*.log
