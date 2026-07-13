@@ -94,6 +94,10 @@ tests/
 
 ## Known issues / deferred
 
+- **[MEDIUM] code-reviewer**: `listings_seller_update` WITH CHECK allows seller to set `status='removed'` on their own active listing. Intentional for now (delist) but tighten to `status IN ('draft', 'pending_review')` before B5 when `sold` status arrives on the orders table.
+- **[LOW] code-reviewer**: `images[]` array in `POST /api/listings` not validated against storage bucket prefix — a client could store arbitrary URLs. Add bucket-prefix validation in B3/B8 hardening.
+- **[LOW] code-reviewer**: `condition_notes` JSONB not schema-validated in API route — deferred to B8 hardening.
+- **[LOW] code-reviewer**: Admin approve/reject return 200 even if zero rows updated (listing already active/removed). Deferred to B5 when order state machine needs reliable status transitions.
 - Storage cross-reference: `images[]` stores public URLs. URL→path extraction not hardened — deferred to B8 (storage cleanup on listing delete).
 - Seller tier is hardcoded `Bronze` stub — real tier logic arrives in B4/B7.
 - BUY/OFFER buttons disabled — checkout arrives in B5.
