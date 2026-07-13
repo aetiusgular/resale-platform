@@ -6,8 +6,11 @@
  * The checkout_sessions row acts as the atomic lock: UNIQUE on listing_id
  * prevents two buyers from simultaneously locking the same listing.
  *
- * Request body: { listingId: string, shippingAddress: object }
- * Response:     { clientSecret: string, orderSummary: {...} }
+ * Request body: { listingId: string, offerId?: string, shippingAddress?: object }
+ *   offerId: if provided, price is sourced from the accepted offer (server-verified).
+ *            Offer must be state='accepted' and belong to this buyer+listing.
+ *            Offer-based checkout: item + 2% buyer fee, no shipping line.
+ * Response: { clientSecret: string, orderSummary: {...} }
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -24,14 +27,14 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 2. Parse and minimally validate body ─────────────────────────────────
-  let body: { listingId?: unknown; shippingAddress?: unknown }
+  let body: { listingId?: unknown; offerId?: unknown; shippingAddress?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { listingId, shippingAddress } = body
+  const { listingId, offerId, shippingAddress } = body
   if (typeof listingId !== 'string' || !listingId) {
     return NextResponse.json({ error: 'listingId required' }, { status: 400 })
   }
@@ -39,17 +42,25 @@ export async function POST(request: NextRequest) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listingId)) {
     return NextResponse.json({ error: 'Invalid listingId' }, { status: 400 })
   }
+  if (offerId !== undefined && (typeof offerId !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(offerId as string))) {
+    return NextResponse.json({ error: 'Invalid offerId' }, { status: 400 })
+  }
 
   const service = createServiceClientRaw()
 
-  // ── 3. Fetch listing (must be active) ────────────────────────────────────
+  // ── 3. Fetch listing (must be active or pending_escrow if offer-based) ───
   const { data: listing } = await service
     .from('listings')
     .select('id, title, brand, price_cents, seller_id, status, images')
     .eq('id', listingId)
     .single()
 
-  if (!listing || listing.status !== 'active') {
+  if (!listing || listing.status === 'sold' || listing.status === 'removed') {
+    return NextResponse.json({ error: 'Listing not available for purchase' }, { status: 409 })
+  }
+  // For non-offer checkout, listing must be active (not locked)
+  if (!offerId && listing.status !== 'active') {
     return NextResponse.json({ error: 'Listing not available for purchase' }, { status: 409 })
   }
 
@@ -73,7 +84,47 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 5. Server-compute fees (NEVER trust client) ───────────────────────────
-  const amounts = orderAmounts(listing.price_cents)
+  // Offer-based checkout: verify accepted offer + use its amount (no shipping).
+  // Regular checkout: use listing price + standard shipping.
+  let priceCents = listing.price_cents
+  let verifiedOfferId: string | undefined
+
+  if (offerId) {
+    const { data: offerRow } = await service
+      .from('offers')
+      .select('id, listing_id, conversation_id, amount_cents, state, accepted_at')
+      .eq('id', offerId as string)
+      .single()
+
+    if (!offerRow || offerRow.listing_id !== listingId) {
+      return NextResponse.json({ error: 'Offer not found for this listing' }, { status: 404 })
+    }
+    if (offerRow.state !== 'accepted') {
+      return NextResponse.json({ error: 'Offer is not in accepted state' }, { status: 422 })
+    }
+    // Verify the buyer is the conversation buyer
+    const { data: conv } = await service
+      .from('conversations')
+      .select('buyer_id')
+      .eq('id', offerRow.conversation_id)
+      .single()
+
+    if (!conv || conv.buyer_id !== user.id) {
+      return NextResponse.json({ error: 'Offer does not belong to this buyer' }, { status: 422 })
+    }
+    // Verify payment window hasn't lapsed (24h from accepted_at)
+    if (offerRow.accepted_at) {
+      const deadline = new Date(offerRow.accepted_at).getTime() + 24 * 60 * 60 * 1000
+      if (Date.now() > deadline) {
+        return NextResponse.json({ error: 'Payment window has expired' }, { status: 422 })
+      }
+    }
+
+    priceCents = offerRow.amount_cents
+    verifiedOfferId = offerRow.id
+  }
+
+  const amounts = orderAmounts(priceCents, offerId ? 0 : undefined)
 
   // ── 6. Atomically lock listing + create checkout_session ─────────────────
   // UPDATE ... WHERE status = 'active' is atomic — if two requests race, only
@@ -110,6 +161,7 @@ export async function POST(request: NextRequest) {
         shipping_cents:   String(amounts.shipping_cents),
         total_cents:      String(amounts.total_cents),
         transfer_cents:   String(amounts.transfer_cents),
+        ...(verifiedOfferId ? { offer_id: verifiedOfferId } : {}),
       },
       description: `${listing.title} — ${listing.brand}`,
     })

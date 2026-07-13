@@ -7,6 +7,6 @@
 - [x] **B3** — Anti-slop layer (M3): perceptual hashing, brand-stuffing lint, possession-photo enforcement, velocity limits
 - [x] **B4** — Browse + search (M4): filter rail, full-text search, pagination, favorites, price-drop badges, PostHog
 - [x] **B5** — Checkout + escrow + seller protection (M5 + M5b): Stripe Connect, order state machine, dispute flow, pg_cron
-- [ ] **B6** — Chat + offers (M6): Realtime messaging, offer state machine, link blocking, accepted offer → checkout
+- [x] **B6** — Chat + offers (M6): Realtime messaging, offer state machine, link blocking, accepted offer → checkout
 - [ ] **B7** — Community layer (M7): comments with RLS, LC thread, vouch/flag, verified_checker gate
 - [ ] **B8** — Analytics, hardening, alpha polish (M8): PostHog dashboards, Sentry, rate limiting, security review, seed script, LAUNCH.md

@@ -6,6 +6,7 @@ import { buyerFee, buyerTotal, formatCents } from '@/lib/fees'
 import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
 import SaveButton from './save-button'
+import MessageSellerButton from './message-seller-button'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -266,20 +267,31 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   {listing.status === 'sold' ? 'SOLD' : listing.status === 'pending_escrow' ? 'PENDING' : 'Buy now'}
                 </button>
               )}
-              <button
-                disabled
-                title="offers arrive in B6"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
-              >
-                Make offer
-              </button>
-              <button
-                disabled
-                title="messaging arrives in B6"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid transparent', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
-              >
-                Message seller
-              </button>
+              {listing.status === 'active' && user && !isSeller ? (
+                <a
+                  href={`/messages?listing=${id}`}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
+                >
+                  Make offer
+                </a>
+              ) : (
+                <button
+                  disabled
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
+                >
+                  Make offer
+                </button>
+              )}
+              {listing.status === 'active' && user && !isSeller ? (
+                <MessageSellerButton listingId={id} />
+              ) : (
+                <button
+                  disabled
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid transparent', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
+                >
+                  Message seller
+                </button>
+              )}
             </div>
 
             {/* Seller block */}

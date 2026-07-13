@@ -1,58 +1,63 @@
 # HANDOFF.md
-## Current state: B5 COMPLETE
+## Current state: B6 COMPLETE
 
 **Last updated:** 2026-07-13
-**Next prompt:** B6 — Chat + offers (M6)
+**Next prompt:** B7 — Community layer (M7)
 
 ---
 
-## What was done in B5
+## What was done in B6
 
-B5 was completed across two sessions (wip commit b8d2b64 + this session). The wip commit did the heavy lifting; this session fixed all db-guard and code-reviewer findings before commit.
+B6 added the full chat + offers system including Realtime messaging, offer negotiation, link blocking, and accepted-offer checkout integration.
 
-### Migration: `20240101000009_orders.sql`
+### Migration: `20240101000010_messages.sql`
 
-- `profiles`: added `payouts_enabled BOOL`, `stripe_connect_account_id TEXT`, `shipping_address JSONB`
-- `listing_status` enum: added `pending_escrow`
-- Tightened `listings_seller_update` policy: sellers can only edit `draft`/`pending_review` rows
-- New enums: `order_state`, `event_source`
-- New tables: `checkout_sessions`, `orders`, `order_events`, `disputes`
-- View: `buyer_stats` (service_role only — restricted from authenticated to prevent history enumeration)
-- SECURITY DEFINER RPCs: `transition_order()`, `auto_release_delivered_orders()`, `release_expired_checkouts()`
-- pg_cron: auto-release hourly, expired-checkout cleanup every 5 min (idempotent via unschedule-first)
+- New enum: `offer_state` (open/countered/accepted/declined/expired/voided)
+- New tables: `conversations`, `messages`, `offers`, `buyer_strikes`
+- `buyer_stats` view replaced: adds `strike_count` + `pays_fast` columns
+- SECURITY DEFINER RPCs: `send_message()`, `expire_and_void_offers()`
+- Realtime: `messages` table added to `supabase_realtime` publication
+- pg_cron: `expire-and-void-offers` hourly job
 
 ### Key files added
 
 ```
-lib/fees.ts, lib/orders.ts, lib/stripe.ts, lib/supabase/service.ts
-app/api/checkout/route.ts
-app/api/webhooks/stripe/route.ts
-app/api/orders/[id]/{confirm,ship,deliver,dispute}/route.ts
-app/api/admin/listings/[id]/approve/route.ts
-app/api/admin/orders/[id]/resolve/route.ts
-app/api/cron/process-transfers/route.ts
-app/api/stripe/connect/route.ts, return/route.ts
-app/api/orders/by-intent/route.ts
-app/checkout/[listingId]/page.tsx, checkout-client.tsx
-app/checkout/success/page.tsx, checkout-success-content.tsx
-app/orders/[id]/page.tsx, order-buyer.tsx, order-seller.tsx, dispute/page.tsx
-app/settings/page.tsx, settings/payouts/page.tsx
-tests/e2e/checkout.spec.ts
-tests/unit/fees.test.ts, tests/unit/orders.test.ts
-docs/STRIPE_TESTING.md
+lib/message-filter.ts             — URL + payment-app blocking for chat
+lib/offers.ts                     — Offer state machine helpers + types
+app/api/conversations/route.ts    — POST (create/find), GET (inbox list)
+app/api/conversations/[id]/messages/route.ts   — GET thread, POST via RPC
+app/api/conversations/[id]/offers/route.ts     — POST create offer
+app/api/conversations/[id]/offers/[offerId]/accept/route.ts
+app/api/conversations/[id]/offers/[offerId]/decline/route.ts
+app/api/conversations/[id]/offers/[offerId]/counter/route.ts
+app/api/conversations/[id]/consent/route.ts    — PATCH consent toggle
+app/messages/page.tsx             — Inbox (two-pane desktop)
+app/messages/[id]/page.tsx        — Thread page (server component)
+app/messages/[id]/thread-client.tsx — Realtime + offer UI (client)
+app/listings/[id]/message-seller-button.tsx    — Client button
+tests/unit/message-filter.test.ts
+tests/unit/offers.test.ts
+tests/e2e/messages.spec.ts
+```
+
+### Key files modified
+
+```
+app/api/checkout/route.ts         — Extended: offerId param, verified offer price
+app/listings/[id]/page.tsx        — Message seller + Make offer buttons live
 ```
 
 ---
 
-## Verify state (as of B5 close)
+## Verify state (as of B6 close)
 
 ```
-pnpm verify      ✓  85 tests, 0 errors
-pnpm build       ✓  29 routes, 0 errors
-pnpm verify:ui   ✓  31 passed, 1 skipped
-Migration 000009 ✓  pushed to remote
-db-guard         ✓  APPROVED after fixes (F2/J2/D8/D9/H6/K4)
-code-reviewer    ✓  APPROVED after fixes (H1-H4, M1-M4)
+pnpm verify      ✓  112 tests, 0 errors (0 type errors, 0 lint errors)
+pnpm build       ✓  49 routes, 0 errors
+pnpm verify:ui   ✓  36 passed, 1 skipped (pre-existing SSR test skip)
+Migration 000010 ✓  pushed to remote
+db-guard         ✓  APPROVED (no blocking FAILs)
+code-reviewer    ✓  APPROVED after fixes (M1 non-atomic void+create compensated)
 ```
 
 ---
@@ -63,7 +68,19 @@ None.
 
 ---
 
-## Session start ritual for B6
+## B6 architecture notes (for B7 reuse)
+
+- `send_message()` RPC is SECURITY DEFINER + participant-checked. All message inserts must go through it.
+- Offer state machine is in `lib/offers.ts`. Transitions enforced server-side (no client UPDATE on offers table).
+- `expire_and_void_offers()` cron handles: open→expired (24h), accepted→voided+strike (24h after accepted_at).
+- Offer-based checkout: `POST /api/checkout` with `{ listingId, offerId }`. Server verifies offer.state='accepted', conv.buyer_id=user.id, uses offer.amount_cents (0 shipping).
+- `buyer_stats` view now includes strike_count + pays_fast. Still service_role only.
+- Realtime: subscribe to `messages:${conversationId}` channel on postgres_changes INSERT.
+- Message filter: `lib/message-filter.ts` → `filterMessage(body)` returns `{ redacted, body }`.
+
+---
+
+## Session start ritual for B7
 
 ```
 Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your plan for it.
@@ -71,23 +88,18 @@ Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your p
 
 ---
 
-## Payment flow notes for B6 (accepted-offer checkout reuse)
-
-- Reuse `POST /api/checkout` — accepts any `listingId`; offer can supply it
-- Webhook handler routes on `payment_intent.succeeded` — no changes needed for offer-sourced PIs
-- Fee math centralized in `lib/fees.ts` → import `orderAmounts()`, no duplication
-- Add `offer_id` to PI metadata if needed for offer state tracking post-payment
-- The checkout client already prefills address from `profiles.shipping_address`
-
----
-
 ## Known issues / deferred
 
-### B5 LOW findings (address before B8)
+### B6 LOW findings (address before B8)
 
-- **[LOW] FAIL-L1**: Shipping address entered at checkout is discarded; saved profile address used. Fix: pass address through PI metadata in B8.
-- **[LOW] FAIL-L3**: E2E `serviceClient()` has no guard against pointing at production. Fix: assert non-prod URL in B8.
-- **[TODO(PA)]**: Carrier-scan webhook for auto-delivery stubbed. Doc: orders move `shipped→delivered` only via buyer manual confirm or admin override.
+- `shippingAddress` is destructured in checkout route but not passed to PI metadata (FAIL-L1 from B5 still applies).
+- `Make offer` button on listing page links to `/messages?listing=id` which opens the inbox — in the thread, users must manually click "Make offer". Future: link directly to the thread with offer composer open.
+
+### B5 LOW findings (carry-forward, address before B8)
+
+- **[LOW] FAIL-L1**: Shipping address entered at checkout is discarded. Fix: pass through PI metadata in B8.
+- **[LOW] FAIL-L3**: E2E `serviceClient()` has no guard against pointing at production. Fix B8.
+- **[TODO(PA)]**: Carrier-scan webhook for auto-delivery stubbed.
 
 ### Carry-forward from B4
 
@@ -100,5 +112,4 @@ Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your p
 - **[LOW] B3**: Dedup uses exact hash — slight re-encode bypasses. Tighten B8.
 - **[LOW] B2**: `images[]` URL validation incomplete. Fix B8.
 - Seller tier hardcoded Bronze stub — B7.
-- Message seller disabled — B6.
 - Community section placeholder — B7.
