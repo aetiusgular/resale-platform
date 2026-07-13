@@ -242,6 +242,17 @@ export default function EnterPage() {
         >
           no code? join the waitlist
         </Link>
+
+        <Link
+          href="/enter/login"
+          style={{
+            marginTop: '12px',
+            fontSize: '13px',
+            color: 'var(--color-ink-soft)',
+          }}
+        >
+          already a member? log in
+        </Link>
       </div>
 
       {/* Footer */}
