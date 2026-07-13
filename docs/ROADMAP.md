@@ -2,7 +2,7 @@
 ## Build milestones — B0 through B8
 
 - [x] **B0** — Bootstrap: Next.js 15, Tailwind, design tokens, CLAUDE.md, agents, harness, Supabase migration, CI
-- [ ] **B1** — Auth + invite gate (M1): Supabase email auth, invite_codes table, onboarding flow
+- [x] **B1** — Auth + invite gate (M1): Supabase email auth, invite_codes table, onboarding flow
 - [ ] **B2** — Listings + curation queue (M2): listings schema, image upload, 4-step sell flow, admin queue, listing detail
 - [ ] **B3** — Anti-slop layer (M3): perceptual hashing, brand-stuffing lint, possession-photo enforcement, velocity limits
 - [ ] **B4** — Browse + search (M4): filter rail, full-text search, pagination, favorites, price-drop badges, PostHog

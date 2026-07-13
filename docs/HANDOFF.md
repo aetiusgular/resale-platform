@@ -1,106 +1,107 @@
 # HANDOFF.md
-## Current state: B0 COMPLETE
+## Current state: B1 COMPLETE
 
 **Last updated:** 2026-07-12
-**Next prompt:** B1 — Auth + invite gate
+**Next prompt:** B2 — Listings + curation queue
 
 ---
 
-## What was done in B0
+## What was done in B1
 
-1. **Next.js 15 scaffold** — App Router, TypeScript strict, Tailwind CSS 4 (CSS-based `@theme` tokens), `@supabase/ssr`, `@supabase/supabase-js`. Vercel-ready (`next.config.ts` with `outputFileTracingRoot`).
+1. **Supabase email auth** — `@supabase/ssr` signup/login/logout. Middleware uses `getUser()` exclusively (never `getSession()`). Logout via `POST /api/auth/logout`.
 
-2. **Design reference** — `/Users/tonyg/Desktop/Secondhand fashion design system` copied to `design-reference/`. Never imported by app code; reference only for ui-verifier.
+2. **Migrations** — Three migrations applied to remote:
+   - `20240101000000_profiles.sql` — profiles table + RLS (B0, already applied)
+   - `20240101000001_profiles_b1.sql` — adds `id_verification_status` enum, `invited_by` FK, `quick_setup` JSONB
+   - `20240101000002_invite_codes.sql` — invite_codes table, RLS, `claim_invite_code` RPC (FOR UPDATE), `generate_member_codes` RPC (pgcrypto)
+   - `20240101000003_fix_rpc_security.sql` — security fixup: `claim_invite_code` now uses `auth.uid()` (no `p_user_id` param); `generate_member_codes` locks profile row (FOR UPDATE) to serialize concurrent calls
 
-3. **Design tokens extracted** — All 6 colors, 3 fonts, type scale, 8px grid, radius, control height from `design-reference/tokens/` → `app/globals.css @theme`. Fonts loaded via `next/font/google` in `app/layout.tsx` (Inter, EB Garamond, Space Mono). `/styleguide` route renders all tokens + listing-card skeleton.
+3. **Middleware gate** — `/enter` for unauthenticated; `/enter` for authenticated users with no claimed code; onboarding bypass; admin bypass.
 
-4. **CLAUDE.md** — Written (<150 lines). Stack versions, model routing, token/read discipline, money rules (integer cents, DB transactions, webhook-driven), auth rules (`getUser()` only), DB rules (RLS on every table, explicit grants), verify scripts, per-session epilogue.
+4. **Onboarding flow** — `/enter` (code input, Space Mono, error states) → `/onboarding/account` (email/username/password) → `/onboarding/verify` (ID verification placeholder, `VERIFICATION_ENABLED=false`) → `/onboarding/setup` (sizes/address, skippable) → `/onboarding/codes` (3 generated codes with COPY, Space Mono).
 
-5. **Subagents** — `.claude/agents/code-reviewer.md` (opus, read-only), `db-guard.md` (sonnet, read-only), `ui-verifier.md` (sonnet, playwright).
+5. **Waitlist** — `/enter/waitlist` with email capture; `POST /api/waitlist` stubs (TODO B8: persist to DB).
 
-6. **Verify harness** — `pnpm verify` (tsc + eslint + vitest) green. `pnpm verify:ui` (playwright, 3 smoke tests) green. Playwright chromium installed. Live-service specs tagged `@live` (none yet). GitHub Actions CI at `.github/workflows/ci.yml`.
+6. **`lib/invite-codes.ts`** — `generateCode()`, `normalizeCode()`, `isValidCodeFormat()` (unambiguous alphabet, no 0/O/1/I).
 
-7. **Env / permissions** — `.env.example` with all variable names (values blank). `.claude/settings.json` with allowed commands. `.gitignore` extended.
+7. **`lib/flags.ts`** — `VERIFICATION_ENABLED` feature flag (false).
 
-8. **Supabase** — `pnpm exec supabase init` run. `pnpm exec supabase link` **failed on auth** (see Blockers). Migration ready at `supabase/migrations/20240101000000_profiles.sql`.
+8. **`scripts/seed-founders.ts`** — 30 founder codes owned by a system profile; idempotent.
 
-9. **docs/DESIGN_MAP.md** — All 8 `.dc.html` exports mapped to screen → route → build prompt. Token extraction notes included.
+9. **Tests** — 12 unit tests (vitest), 11 Playwright e2e tests (non-@live). `@live` specs in `tests/e2e/auth-live.spec.ts` (RLS/double-claim tests — run locally with `RUN_LIVE_TESTS=1`).
 
-10. **docs/ROADMAP.md** — B0 checked, B1–B8 unchecked.
+10. **Code reviewer** — Full pass on auth/RLS/RPC. Two HIGHs found and fixed (see migration 000003). One HIGH acknowledged (profile insert before email verification — deferred: email verification is the verify step in flow; enforcing at DB level is B8 hardening).
 
 ---
 
 ## Blockers
 
-### Supabase CLI auth not configured
-**Error:** `Access token not provided. Supply an access token by running 'supabase login' or setting the SUPABASE_ACCESS_TOKEN environment variable.`
+None. All migrations applied. All checks green.
 
-**Remediation (manual, before B1):**
-```bash
-pnpm exec supabase login
-# Opens browser — authenticate with your Supabase account
-# Then:
-SUPABASE_URL=$(grep NEXT_PUBLIC_SUPABASE_URL .env.local | cut -d'=' -f2)
-PROJECT_REF=$(echo $SUPABASE_URL | sed 's|https://||' | cut -d'.' -f1)
-pnpm exec supabase link --project-ref "$PROJECT_REF"
-pnpm exec supabase db push
+---
+
+## Verify state (as of B1 close)
+
+```
+pnpm verify      ✓  12 tests (tsc + eslint + vitest)
+pnpm build       ✓  14 routes, 0 warnings
+pnpm verify:ui   ✓  11 Playwright tests (non-@live)
 ```
 
-Migration file: `supabase/migrations/20240101000000_profiles.sql` (profiles table + RLS + grants — ready to push once linked).
-
 ---
 
-## Known issues
-- `pnpm verify:ui` starts a dev server via `webServer` in playwright config. This is fine locally but CI uses `pnpm dev` startup which takes ~10s. Consider building first if CI is too slow.
-- `next build` warns about workspace root (multiple lockfiles). Suppressed with `outputFileTracingRoot` in `next.config.ts`.
-- pnpm 11 build script approvals: esbuild, sharp, unrs-resolver approved via `allowBuilds` in `pnpm-workspace.yaml`. `pnpm approve-builds` was run manually once — config persists.
-
----
-
-## Session start ritual for B1
+## Session start ritual for B2
 
 ```
 Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your plan for it.
 ```
-(In Plan Mode on fable/opus — then execute on sonnet.)
-
-**Before running B1:** Complete the Supabase auth blocker above.
 
 ---
 
-## File inventory (key files added in B0)
+## File inventory (key files added/modified in B1)
 
 ```
-CLAUDE.md                                   Context layer — read every session
-pnpm-workspace.yaml                         pnpm 11 build script approvals
-package.json                                Dependencies
-next.config.ts                              Next.js config (outputFileTracingRoot)
-tsconfig.json                               TypeScript strict
-eslint.config.mjs                           ESLint 9 flat config
-postcss.config.mjs                          Tailwind 4 PostCSS
-vitest.config.ts                            Vitest unit test config
-playwright.config.ts                        Playwright e2e config
+middleware.ts                                       Auth gate (getUser, invite check)
+lib/
+  flags.ts                                          VERIFICATION_ENABLED feature flag
+  invite-codes.ts                                   Code format utils
+  supabase/
+    browser.ts                                      Browser Supabase client
+    server.ts                                       Server + service role clients
+    types.ts                                        DB type helpers
 app/
-  globals.css                               Design tokens + base styles
-  layout.tsx                                next/font/google, html shell
-  page.tsx                                  Landing stub
-  styleguide/page.tsx                       Token showcase + listing-card skeleton
-tests/
-  unit/placeholder.test.ts                  Placeholder (replaced per prompt)
-  e2e/styleguide.spec.ts                    Font + token smoke test (3 specs)
-design-reference/                           Design exports (read-only reference)
-docs/
-  DESIGN_MAP.md                             .dc.html → route → build prompt map
-  ROADMAP.md                                B0–B8 milestone tracker
-  HANDOFF.md                                This file
+  page.tsx                                          Landing stub (redirects via middleware)
+  enter/
+    page.tsx                                        Invite code entry UI
+    waitlist/page.tsx                               Waitlist email capture
+  onboarding/
+    account/page.tsx                                Signup form (email/username/password)
+    verify/page.tsx                                 ID verification placeholder
+    setup/page.tsx                                  Quick setup (sizes, address, skippable)
+    codes/
+      page.tsx                                      Server component (fetches codes)
+      codes-client.tsx                              Client component (COPY buttons)
+  api/
+    auth/logout/route.ts                            POST → signOut + redirect /enter
+    onboarding/generate-codes/route.ts              POST → generate_member_codes RPC
+    waitlist/route.ts                               POST → log + ack (TODO B8: persist)
 supabase/
-  migrations/20240101000000_profiles.sql    Profiles + RLS (ready to push)
-.claude/
-  agents/code-reviewer.md                   opus, read-only, RLS+auth+payment review
-  agents/db-guard.md                        sonnet, read-only, migration review
-  agents/ui-verifier.md                     sonnet, playwright, design comparison
-  settings.json                             Allowed bash commands
-.github/
-  workflows/ci.yml                          verify + build + verify:ui (non-@live)
-.env.example                                Variable names (values blank)
+  migrations/
+    20240101000001_profiles_b1.sql                  id_verification_status, invited_by, quick_setup
+    20240101000002_invite_codes.sql                 invite_codes table + RPCs
+    20240101000003_fix_rpc_security.sql             auth.uid() fix + FOR UPDATE in generate_member_codes
+scripts/
+  seed-founders.ts                                  30 founder codes (idempotent)
+tests/
+  unit/invite-codes.test.ts                         11 unit tests (code format utils)
+  e2e/auth.spec.ts                                  8 non-@live Playwright specs
+  e2e/auth-live.spec.ts                             @live RLS + double-claim specs
 ```
+
+---
+
+## Known issues / deferred
+
+- Email verification not enforced before profile creation — profile is inserted immediately after `signUp`. Deferred to B8 hardening.
+- Waitlist emails not persisted — `POST /api/waitlist` logs only. TODO B8.
+- `@live` e2e specs (RLS isolation, concurrent double-claim) require `RUN_LIVE_TESTS=1` and live Supabase credentials. Run locally before B8.
