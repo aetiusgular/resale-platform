@@ -1,47 +1,57 @@
 # HANDOFF.md
-## Current state: B2 COMPLETE
+## Current state: B3 COMPLETE
 
 **Last updated:** 2026-07-12
-**Next prompt:** B3 — Anti-slop layer (M3)
+**Next prompt:** B4 — Browse + search (M4)
 
 ---
 
-## What was done in B2
+## What was done in B3
 
-1. **Listings migration** (`20240101000004_listings.sql`) — `listing_status` enum (draft/pending_review/active/removed), `listings` table with all required columns (id, seller_id, title, brand, category, size, condition_score 1–10, condition_notes JSONB, price_cents INT, images TEXT[] 6 slots, possession_photo_url, status, rejection_reason, timestamps). Full RLS: anon/auth read active only; seller CRUD own (status→active blocked by WITH CHECK); admin all via service role. Indexes on seller_id, status, created_at. `set_updated_at` trigger.
+1. **`lib/phash.ts`** — Pure-JS 16×16 blockhash: `blockhash16(pixels: Uint8Array) → string` (64-char hex, 256-bit), `hammingDistance(a, b) → number`. No external deps. Unit tested for determinism, near-duplicate detection (perturbation ≤ 8 bits), distinct-image separation.
 
-2. **Storage migration** (`20240101000005_storage.sql`) — `product-images` bucket (public read, 10MB, jpeg/png/webp). Storage RLS: public SELECT, authenticated INSERT/UPDATE/DELETE restricted to `listings/{auth.uid()}/` path prefix.
+2. **`lib/antislop-config.ts`** — Centralised thresholds: `DUPLICATE_DISTANCE_THRESHOLD=8`, `DUPLICATE_MIN_SLOT_MATCHES=2`, `BRAND_TITLE_MAX=2`, `BRAND_DESC_MAX=4`, `VELOCITY_WINDOW_DAYS=30`, `VELOCITY_DAILY_LIMIT=5`. ~43 brand names. 10 blocked-pattern regexes. TODO(B8/PA) stub for stock-photo detection.
 
-3. **`lib/fees.ts`** — `SELLER_FEE_BPS=200`, `BUYER_FEE_BPS=200`, `sellerFee`, `buyerFee`, `sellerPayout`, `buyerTotal`, `formatCents`. All math in integer cents with `Math.round()`.
+3. **`lib/antislop-lint.ts`** — `lintListing(title, description) → LintViolation[]`. Blocked patterns → severity='reject'. Brand stuffing → severity='warn'. 17 unit tests covering pass/warn/reject cases.
 
-4. **`lib/condition.ts`** — `CONDITION_DEFINITIONS` (1–10 rubric), `PHOTO_SLOTS` (FRONT/BACK/TAG/DETAIL/FLAW/POSSESSION), `DAMAGE_FLAGS`.
+4. **`lib/image-hash.ts`** — Server-side sharp-based hash computation. `hashImageUrl(url)` with SSRF guard (HTTPS-only + Supabase host-lock). `hashAllSlots(images, possessionUrl)` returns per-slot hash map.
 
-5. **API routes**:
-   - `POST /api/listings` — auth required, inserts with `status=pending_review`
-   - `POST /api/admin/listings/[id]/approve` — admin gate + service role client → `status=active`
-   - `POST /api/admin/listings/[id]/reject` — admin gate + service role client → `status=removed` + `rejection_reason`
+5. **`supabase/migrations/20240101000006_image_hashes.sql`** — `image_hashes` table (listing_id FK, slot TEXT, hash TEXT, unique constraint). RLS ON, **zero policies** → deny all client access. Indexes on listing_id and (slot, hash). Service role only.
 
-6. **`middleware.ts`** — Added `/listings` to PUBLIC_PATHS; added admin gate (ADMIN_PATHS=['/admin'], checks `profile.role='admin'`, redirects to `/`).
+6. **`supabase/migrations/20240101000007_listing_flags.sql`** — `listing_flags` table (listing_id FK, type CHECK('duplicate'|'keyword_stuffing'), evidence JSONB). RLS ON, admin SELECT policy. No client write policies — service role only for INSERT.
 
-7. **Sell flow** (`/sell`) — Server component (auth gate) + `sell-form.tsx` (client): 4 sections PHOTOS→DETAILS→CONDITION→PRICE. Client-side canvas resize to 2000px JPEG. Upload path `listings/{userId}/{draftId}/{slot}.jpg`. Live fee math. Submitted state with "In the queue" + SELLER PROTECTION card.
+7. **Updated `app/api/listings/route.ts`** — Enhanced POST handler:
+   - `export const runtime = 'nodejs'` (sharp requires Node runtime)
+   - Lint check → blocked patterns hard-reject (400) before any DB ops
+   - Velocity check: accounts < 30 days limited to 5 listings/day (429). Missing profile → 500.
+   - `hashAllSlots()` computed server-side (SSRF-safe URLs only)
+   - Possession-photo dedup: exact-hash match from different seller → 400 hard-reject
+   - Insert listing (unchanged flow)
+   - Store `image_hashes` via service client
+   - Near-duplicate scan: Hamming ≤ 8 on ≥ 2 slots from another seller → `listing_flags` row type='duplicate', evidence contains matched_listing_ids + per_slot_distances. Row cap: .limit(5000)
+   - Keyword-stuffing lint warns → `listing_flags` row type='keyword_stuffing', evidence contains violations array
 
-8. **Admin queue** (`/admin/queue`) — Server component (admin gate). Pending listings with 6-photo grid + seller username. `AdminActions` client component (approve/reject with reason input).
+8. **Updated `app/admin/queue/page.tsx`** — Fetches `listing_flags` via join. Displays DUPLICATE SUSPECT and KEYWORD STUFFING badges (design-token colours only). Lint violation detail strip. For duplicate flags: side-by-side photo comparison grid with `data-testid="duplicate-comparison"`. Fetches matched listing images via service client. Per-slot distance chips.
 
-9. **Listing detail** (`/listings/[id]`) — SSR with `generateMetadata` for SEO. 3fr/2fr grid: gallery (main + 6 thumbnails with labels + possession badge) / purchase panel (h1 title, brand/size, condition + popover, price + fee line, TRUST STRIP placeholder, disabled buy/offer/message buttons, seller block with tier badge stub). Seller pending/rejection banners. Admin view banner. Community section B7 placeholder.
+9. **`tests/unit/phash.test.ts`** — 15 tests: blockhash correctness, determinism, near-duplicate tolerance, large-distance discrimination.
 
-10. **Tests** — 10 fee unit tests (vitest). 4 non-@live Playwright specs (`tests/e2e/listings.spec.ts`). Full @live spec (`tests/e2e/listings-live.spec.ts`) covering seller create → RLS → admin approve → visible → reject path → storage isolation.
+10. **`tests/unit/antislop-lint.test.ts`** — 17 tests: all blocked patterns, brand stuffing, clean listings.
+
+11. **`tests/e2e/antislop.spec.ts`** — 3 non-@live tests: admin queue redirect, sell redirect, 401 on unauthenticated POST.
+
+12. **`tests/e2e/antislop-live.spec.ts`** — @live tests: blocked-pattern reject, duplicate detection + queue flag, velocity limit, RLS (image_hashes and listing_flags not client-readable).
 
 ---
 
-## Verify state (as of B2 close)
+## Verify state (as of B3 close)
 
 ```
-pnpm verify      ✓  22 tests (1 placeholder + 11 invite-codes + 10 fees; tsc clean; eslint clean)
+pnpm verify      ✓  54 tests (15 phash + 17 antislop-lint + 11 invite-codes + 10 fees + 1 placeholder)
 pnpm build       ✓  17 routes, 0 errors
-pnpm verify:ui   ✓  16 Playwright tests (non-@live)
-Migrations       ✓  000004 + 000005 pushed to remote
-db-guard         ✓  SAFE TO PUSH
-code-reviewer    ✓  run on B2 diff (RLS + storage + auth)
+pnpm verify:ui   ✓  19 Playwright tests (non-@live)
+Migrations       ✓  000006 + 000007 pushed to remote
+db-guard         ✓  via code-reviewer review (image_hashes no-policy deny-all; listing_flags admin-read-only; service role bypasses RLS for writes)
+code-reviewer    ✓  SAFE TO COMMIT — HIGH (SSRF) fixed; LOW fixes applied
 ```
 
 ---
@@ -52,7 +62,7 @@ None.
 
 ---
 
-## Session start ritual for B3
+## Session start ritual for B4
 
 ```
 Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your plan for it.
@@ -60,49 +70,39 @@ Read CLAUDE.md and docs/HANDOFF.md, then tell me which prompt is next and your p
 
 ---
 
-## File inventory (key files added/modified in B2)
+## File inventory (key files added/modified in B3)
 
 ```
-supabase/migrations/
-  20240101000004_listings.sql           listings table + RLS + trigger + indexes
-  20240101000005_storage.sql            product-images bucket + storage RLS
 lib/
-  fees.ts                               Fee math (SELLER_FEE_BPS=200, BUYER_FEE_BPS=200)
-  condition.ts                          Condition rubric (1–10), photo slots, damage flags
-middleware.ts                           Added /listings public + admin gate
+  phash.ts                              16x16 blockhash + hammingDistance (pure JS)
+  antislop-config.ts                    Thresholds, brand list, blocked patterns, stock-photo TODO
+  antislop-lint.ts                      Brand-stuffing + blocked-pattern lint
+  image-hash.ts                         Server-side sharp hash (SSRF-guarded)
+supabase/migrations/
+  20240101000006_image_hashes.sql       image_hashes table + RLS (deny-all)
+  20240101000007_listing_flags.sql      listing_flags table + admin SELECT policy
 app/
-  sell/
-    page.tsx                            Sell flow server component (auth gate)
-    sell-form.tsx                       4-section sell form (client, canvas resize, upload)
-  admin/queue/
-    page.tsx                            Admin queue server component
-    admin-actions.tsx                   Approve/reject client component
-  listings/[id]/
-    page.tsx                            Listing detail (SSR, generateMetadata, RLS-aware)
-    condition-popover.tsx               "What N means" popover (client)
-  api/
-    listings/route.ts                   POST → create listing (pending_review)
-    admin/listings/[id]/approve/route.ts POST → approve (service role)
-    admin/listings/[id]/reject/route.ts  POST → reject + reason (service role)
+  api/listings/route.ts                 Updated: velocity + dedup + lint + hash store + flags
+  admin/queue/page.tsx                  Updated: flag badges + duplicate comparison view
 tests/
-  unit/fees.test.ts                     10 fee unit tests
-  e2e/listings.spec.ts                  4 non-@live Playwright specs
-  e2e/listings-live.spec.ts             @live full flow specs (RLS + storage isolation)
+  unit/phash.test.ts                    15 phash unit tests
+  unit/antislop-lint.test.ts            17 lint unit tests
+  e2e/antislop.spec.ts                  3 non-@live structural tests
+  e2e/antislop-live.spec.ts             @live: dedup, velocity, blocked-pattern, RLS
 ```
 
 ---
 
 ## Known issues / deferred
 
-- **[MEDIUM] code-reviewer**: `listings_seller_update` WITH CHECK allows seller to set `status='removed'` on their own active listing. Intentional for now (delist) but tighten to `status IN ('draft', 'pending_review')` before B5 when `sold` status arrives on the orders table.
-- **[LOW] code-reviewer**: `images[]` array in `POST /api/listings` not validated against storage bucket prefix — a client could store arbitrary URLs. Add bucket-prefix validation in B3/B8 hardening.
-- **[LOW] code-reviewer**: `condition_notes` JSONB not schema-validated in API route — deferred to B8 hardening.
-- **[LOW] code-reviewer**: Admin approve/reject return 200 even if zero rows updated (listing already active/removed). Deferred to B5 when order state machine needs reliable status transitions.
-- Storage cross-reference: `images[]` stores public URLs. URL→path extraction not hardened — deferred to B8 (storage cleanup on listing delete).
-- Seller tier is hardcoded `Bronze` stub — real tier logic arrives in B4/B7.
-- BUY/OFFER buttons disabled — checkout arrives in B5.
-- Message seller disabled — arrives in B6.
-- Community section placeholder — arrives in B7.
-- `@live` e2e specs require `RUN_LIVE_TESTS=1` and live Supabase credentials. Run locally before B8.
-- Email verification not enforced before profile creation — deferred to B8 (carried from B1).
-- Waitlist emails not persisted — `POST /api/waitlist` logs only. TODO B8 (carried from B1).
+- **[HIGH → FIXED]** code-reviewer: SSRF via user-supplied image URLs — fixed with HTTPS + Supabase host-lock in `lib/image-hash.ts:isSafeImageUrl()`.
+- **[MEDIUM] code-reviewer**: `profiles` table `profiles_public_read_username` policy exposes full row (role, id_verified) to anon — pre-existing from B0. Restrict to username-only view before beta. Track for B8 hardening.
+- **[LOW] code-reviewer**: Possession dedup uses exact-hash equality (not Hamming distance) — slight crop/re-encode bypasses the hard-reject but lands in the duplicate-flag path. Documented as known limitation. Tighten in B8.
+- **[LOW] code-reviewer**: Near-duplicate scan has `.limit(5000)` cap — at >833 active listings scan is incomplete. DB-side nearest-neighbour function needed before beta. Track for B8.
+- **[LOW] B2 carry-forward**: `images[]` array in POST not validated against storage bucket prefix — partially mitigated by SSRF guard (Supabase host-lock). Full URL validation in B8.
+- **[LOW] B2 carry-forward**: `listings_seller_update` WITH CHECK allows seller to set `status='removed'` — tighten to `IN ('draft','pending_review')` in B5 when `sold` status arrives.
+- `@live` e2e specs require `RUN_LIVE_TESTS=1`, `TEST_SELLER_EMAIL`, `TEST_SELLER_PASSWORD`, `TEST_ADMIN_EMAIL`, `TEST_ADMIN_PASSWORD`, `TEST_NEW_SELLER_EMAIL`. Run locally before B8.
+- Seller tier hardcoded `Bronze` stub — B4/B7.
+- BUY/OFFER buttons disabled — B5.
+- Message seller disabled — B6.
+- Community section placeholder — B7.
