@@ -7,6 +7,7 @@ import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
 import SaveButton from './save-button'
 import MessageSellerButton from './message-seller-button'
+import CommunitySection from './community-section'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -54,14 +55,16 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   let isAdmin = false
   let isSeller = false
+  let userProfile: { role?: string; id_verification_status?: string; verified_checker?: boolean; tier?: string } | null = null
 
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, id_verification_status, verified_checker, tier')
       .eq('id', user.id)
       .single()
     isAdmin = profile?.role === 'admin'
+    userProfile = profile
   }
 
   // Fetch the listing
@@ -77,7 +80,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
       price_cents, saves_count, is_price_dropped,
       images, possession_photo_url,
       status, rejection_reason, created_at,
-      seller_id,
+      seller_id, comments_enabled,
       profiles:seller_id (username, role, id_verification_status)
     `)
     .eq('id', id)
@@ -321,15 +324,23 @@ export default async function ListingDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Community section — B7 placeholder */}
-        <div style={{ marginTop: '96px', maxWidth: '840px' }}>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: '24px', lineHeight: 1.35, color: 'var(--color-ink)', margin: 0 }}>
-            The community weighs in.
-          </h2>
-          <div style={{ marginTop: '24px', padding: '24px', border: '1px solid var(--color-line)', borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)', letterSpacing: '0.08em' }}>
-            LEGIT CHECK + COMMENTS — ARRIVES IN B7
-          </div>
-        </div>
+        {/* Community section — B7 */}
+        {listing.status === 'active' && (
+          <CommunitySection
+            listingId={id}
+            commentsEnabled={listing.comments_enabled ?? true}
+            canComment={
+              userProfile?.id_verification_status === 'verified' ||
+              userProfile?.role === 'admin'
+            }
+            canPostLc={
+              userProfile?.verified_checker === true ||
+              userProfile?.tier === 'gold' ||
+              userProfile?.role === 'admin'
+            }
+            isSeller={isSeller}
+          />
+        )}
       </div>
     </div>
   )

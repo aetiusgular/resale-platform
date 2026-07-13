@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { formatCents } from '@/lib/fees'
 import { PHOTO_SLOTS } from '@/lib/condition'
 import AdminActions from './admin-actions'
+import CommentActions from './comment-actions'
 
 export const metadata = { title: 'Admin — Review Queue' }
 
@@ -29,6 +30,18 @@ export default async function AdminQueuePage() {
     .single()
 
   if (profile?.role !== 'admin') redirect('/')
+
+  // Fetch flagged comments for admin queue (service_role to read flagged/removed)
+  const service = await createServiceClient()
+  const { data: flaggedComments } = await service
+    .from('comments')
+    .select(`
+      id, listing_id, thread_type, body, status, redacted, pinned, created_at,
+      profiles:author_id (username, tier, verified_checker),
+      comment_actions (action)
+    `)
+    .eq('status', 'flagged')
+    .order('created_at', { ascending: true })
 
   // Fetch pending_review listings with seller info and flags
   const { data: listings, error } = await supabase
@@ -240,6 +253,60 @@ export default async function AdminQueuePage() {
             })}
           </div>
         )}
+
+        {/* ── FLAGGED COMMENTS ──────────────────────────────────────────── */}
+        <div style={{ marginTop: '64px' }}>
+          <h2 style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', letterSpacing: '0.08em', color: 'var(--color-ink)', margin: '0 0 24px' }}>
+            FLAGGED COMMENTS — {(flaggedComments ?? []).length}
+          </h2>
+
+          {(flaggedComments ?? []).length === 0 ? (
+            <div style={{ padding: '24px 0', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+              NO FLAGGED COMMENTS
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {(flaggedComments ?? []).map((c) => {
+                const author = (c.profiles as unknown) as { username: string; tier: string; verified_checker: boolean } | null
+                const flagCount = (c.comment_actions as { action: string }[]).filter(a => a.action === 'flag').length
+                const agreeCount = (c.comment_actions as { action: string }[]).filter(a => a.action === 'agree').length
+                const ago = new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+                return (
+                  <div key={c.id} style={{ border: '1px solid var(--color-alert)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap', background: 'var(--color-bg)' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink)' }}>@{author?.username ?? '?'}</span>
+                      {author?.verified_checker && (
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>VERIFIED CHECKER</span>
+                      )}
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>{c.thread_type} THREAD</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>{ago}</span>
+                      <span style={{ marginLeft: 'auto', padding: '2px 8px', background: 'var(--color-alert)', color: 'var(--color-bg)', fontFamily: 'var(--font-mono)', fontSize: '10px', borderRadius: '2px', fontWeight: 700 }}>
+                        {flagCount} FLAG{flagCount !== 1 ? 'S' : ''}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>
+                        {agreeCount} AGREE
+                      </span>
+                    </div>
+                    <div style={{ padding: '12px 16px' }}>
+                      {c.redacted ? (
+                        <div>
+                          <span style={{ fontSize: '13px', textDecoration: 'line-through', color: 'var(--color-ink-soft)' }}>{c.body}</span>
+                          <div style={{ fontSize: '11px', color: 'var(--color-alert)', marginTop: '4px' }}>link removed — off-platform payment offers violate policy.</div>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.6 }}>{c.body}</span>
+                      )}
+                    </div>
+                    <div style={{ padding: '10px 16px', borderTop: '1px solid var(--color-line)' }}>
+                      <CommentActions commentId={c.id} listingId={c.listing_id} currentStatus={c.status} pinned={c.pinned} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
