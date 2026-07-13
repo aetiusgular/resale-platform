@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { buyerFee, buyerTotal, formatCents } from '@/lib/fees'
 import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
+import SaveButton from './save-button'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -15,16 +16,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const supabase = await createClient()
   const { data } = await supabase
     .from('listings')
-    .select('title, brand, price_cents')
+    .select('title, brand, price_cents, images, description')
     .eq('id', id)
     .eq('status', 'active')
     .single()
 
   if (!data) return { title: 'Listing not found' }
 
+  const title = `${data.title} — ${data.brand} — ${formatCents(data.price_cents)}`
+  const description = `${data.title} by ${data.brand}. ${formatCents(data.price_cents)} on the platform.`
+  const images = Array.isArray(data.images) ? data.images.filter(Boolean) : []
+  const ogImage = images[0] ?? null
+
   return {
-    title: `${data.title} — ${data.brand} — ${formatCents(data.price_cents)}`,
-    description: `${data.title} by ${data.brand}. ${formatCents(data.price_cents)} on the platform.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+    },
+    twitter: {
+      card: ogImage ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   }
 }
 
@@ -56,7 +73,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
     .select(`
       id, title, brand, category, size, description,
       condition_score, condition_notes,
-      price_cents, images, possession_photo_url,
+      price_cents, saves_count, is_price_dropped,
+      images, possession_photo_url,
       status, rejection_reason, created_at,
       seller_id,
       profiles:seller_id (username, role, id_verification_status)
@@ -80,6 +98,31 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const fee     = buyerFee(listing.price_cents)
   const total   = buyerTotal(listing.price_cents)
   const listedAgo = formatTimeAgo(listing.created_at)
+
+  // Check if current user has this listing saved
+  let isSaved = false
+  if (user) {
+    const { data: saveRow } = await supabase
+      .from('saves')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('listing_id', id)
+      .maybeSingle()
+    isSaved = !!saveRow
+  }
+
+  // Fetch price history for price-drop display
+  let originalPriceCents: number | null = null
+  if (listing.is_price_dropped) {
+    const { data: firstHistory } = await supabase
+      .from('price_history')
+      .select('old_price_cents')
+      .eq('listing_id', id)
+      .order('changed_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    originalPriceCents = firstHistory?.old_price_cents ?? null
+  }
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
@@ -175,7 +218,16 @@ export default async function ListingDetailPage({ params }: PageProps) {
             {/* Price block */}
             <div style={{ marginTop: '24px' }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '28px', color: 'var(--color-ink)' }}>
-                {formatCents(listing.price_cents)}
+                {listing.is_price_dropped && originalPriceCents ? (
+                  <>
+                    <span style={{ color: 'var(--color-ink-soft)', textDecoration: 'line-through', fontWeight: 400, fontSize: '20px', marginRight: '8px' }}>
+                      {formatCents(originalPriceCents)}
+                    </span>
+                    {formatCents(listing.price_cents)}
+                  </>
+                ) : (
+                  formatCents(listing.price_cents)
+                )}
               </div>
               <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
                 buyer fee 2% · {formatCents(fee)} — total {formatCents(total)} · that&apos;s it.
@@ -237,9 +289,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Meta line */}
-            <div style={{ marginTop: '20px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              LISTED {listedAgo.toUpperCase()}
+            {/* Save + meta line */}
+            <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+                LISTED {listedAgo.toUpperCase()} · {listing.saves_count ?? 0} SAVED
+              </div>
+              {user && !isSeller && (
+                <SaveButton listingId={id} initialSaved={isSaved} />
+              )}
             </div>
           </div>
         </div>
