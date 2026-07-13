@@ -31,11 +31,15 @@ export default function DisputePage() {
 
       for (const file of files) {
         const ext  = file.name.split('.').pop() ?? 'jpg'
-        const path = `disputes/${orderId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error: upErr } = await supabase.storage.from('listings').upload(path, file)
+        // Must upload to listings/{uid}/... to match existing product-images RLS policy
+        const supabaseUser = await supabase.auth.getUser()
+        const uid = supabaseUser.data.user?.id
+        if (!uid) throw new Error('Not authenticated')
+        const path = `listings/${uid}/dispute-evidence/${orderId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { error: upErr } = await supabase.storage.from('product-images').upload(path, file)
         if (upErr) throw new Error(`Upload failed: ${upErr.message}`)
 
-        const { data: { publicUrl } } = supabase.storage.from('listings').getPublicUrl(path)
+        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
         photoUrls.push(publicUrl)
       }
 

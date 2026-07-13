@@ -33,6 +33,16 @@ export async function POST(
     return NextResponse.json({ error: 'At least 1 photo URL required' }, { status: 400 })
   }
 
+  // Validate photo URLs point to our platform's Supabase storage (prevents external URL injection)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (supabaseUrl) {
+    const storagePrefix = `${supabaseUrl}/storage/v1/object/public/`
+    const allPlatformUrls = (photos as string[]).every(url => url.startsWith(storagePrefix))
+    if (!allPlatformUrls) {
+      return NextResponse.json({ error: 'Photos must be uploaded to platform storage' }, { status: 400 })
+    }
+  }
+
   const { id: orderId } = await params
   const service = createServiceClientRaw()
 

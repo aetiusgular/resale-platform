@@ -16,12 +16,15 @@ import stripe from '@/lib/stripe'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  // CRON_SECRET is mandatory — never skip auth even in development
   const secret = process.env.CRON_SECRET
-  if (secret) {
-    const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (!secret) {
+    console.error('[process-transfers] CRON_SECRET is not set — refusing to process transfers')
+    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
+  }
+  const authHeader = request.headers.get('authorization')
+  if (authHeader !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const service = createServiceClientRaw()

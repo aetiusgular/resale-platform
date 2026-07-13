@@ -42,12 +42,7 @@ export async function POST(
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (order.seller_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  // Store carrier + tracking before transitioning state
-  await service
-    .from('orders')
-    .update({ carrier: carrier.trim(), tracking_number: trackingNumber.trim() })
-    .eq('id', orderId)
-
+  // Transition state first; only write carrier/tracking on success
   const { error } = await service.rpc('transition_order', {
     p_order_id:     orderId,
     p_to_state:     'shipped',
@@ -60,6 +55,12 @@ export async function POST(
     console.error('[ship] transition error:', error)
     return NextResponse.json({ error: error.message }, { status: 422 })
   }
+
+  // Write carrier + tracking only after confirmed state transition
+  await service
+    .from('orders')
+    .update({ carrier: carrier.trim(), tracking_number: trackingNumber.trim() })
+    .eq('id', orderId)
 
   return NextResponse.json({ ok: true })
 }

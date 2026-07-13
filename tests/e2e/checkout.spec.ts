@@ -22,8 +22,8 @@ const SUPABASE_URL       = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SERVICE_ROLE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const TEST_BUYER_EMAIL   = process.env.TEST_BUYER_EMAIL    ?? ''
 const TEST_BUYER_PW      = process.env.TEST_BUYER_PASSWORD ?? ''
-const TEST_SELLER_EMAIL  = process.env.TEST_SELLER_EMAIL   ?? ''
-const TEST_SELLER_PW     = process.env.TEST_SELLER_PASSWORD ?? ''
+const _TEST_SELLER_EMAIL  = process.env.TEST_SELLER_EMAIL   ?? ''
+const _TEST_SELLER_PW     = process.env.TEST_SELLER_PASSWORD ?? ''
 const TEST_ADMIN_EMAIL   = process.env.TEST_ADMIN_EMAIL    ?? ''
 const TEST_ADMIN_PW      = process.env.TEST_ADMIN_PASSWORD ?? ''
 const TEST_LISTING_ID    = process.env.TEST_LISTING_ID     ?? ''
@@ -91,9 +91,7 @@ test('/orders/:id redirects unauthenticated to /enter', async ({ page }) => {
 test.describe('@live checkout flow', () => {
   test.skip(!isLive, 'RUN_LIVE_TESTS not set')
 
-  let orderId: string | null = null
-
-  test('fee math: server-computed total matches orderAmounts()', async ({ page }) => {
+  test('fee math: server-computed total matches orderAmounts()', async () => {
     // Fetch the listing price and compute expected amounts
     const svc = serviceClient()
     const { data: listing } = await svc
@@ -305,7 +303,7 @@ test.describe('@live dispute freezes auto-release', () => {
 test.describe('@live idempotency', () => {
   test.skip(!isLive, 'RUN_LIVE_TESTS not set')
 
-  test('duplicate webhook event produces exactly one order and one audit row', async ({ page }) => {
+  test('duplicate webhook event produces exactly one order and one audit row', async () => {
     const svc = serviceClient()
 
     // Find an existing order_event with a stripe_event_id

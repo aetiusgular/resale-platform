@@ -2,8 +2,12 @@
  * POST /api/admin/orders/[id]/resolve
  * Admin resolves a dispute: 'release' (seller wins) or 'refund' (buyer wins).
  *
- * On 'refund': issues Stripe refund, order → refunded, listing → removed.
- * On 'release': creates Stripe transfer, order → released, listing stays sold.
+ * Atomicity strategy (fail-safe direction):
+ *   release: transition DB → released FIRST, then create Stripe transfer.
+ *            If transfer fails, /api/cron/process-transfers will retry.
+ *   refund:  check Stripe for existing refund first (prevent double-refund),
+ *            then transition DB → refunded, then issue Stripe refund.
+ *            The charge.refunded webhook also calls transition_order (idempotent).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -66,30 +70,54 @@ export async function POST(
   if (!dispute) return NextResponse.json({ error: 'No active dispute found' }, { status: 404 })
 
   if (resolution === 'refund') {
-    // Issue Stripe refund on the payment intent
-    try {
-      await stripe.refunds.create({
-        payment_intent: order.stripe_payment_intent_id,
-        metadata: { order_id: orderId, resolved_by: user.id },
-      })
-    } catch (stripeError) {
-      console.error('[resolve] Stripe refund error:', stripeError)
-      return NextResponse.json({ error: 'Stripe refund failed' }, { status: 502 })
-    }
+    // Check if Stripe already has a refund for this payment_intent (prevent double-refund on retry)
+    const existingRefunds = await stripe.refunds.list({
+      payment_intent: order.stripe_payment_intent_id,
+      limit: 1,
+    })
 
-    // Transition order to refunded
-    await service.rpc('transition_order', {
+    // Transition DB state to refunded FIRST (charge.refunded webhook is also idempotent)
+    const { error: transitionError } = await service.rpc('transition_order', {
       p_order_id:     orderId,
       p_to_state:     'refunded',
       p_source:       'admin',
       p_stripe_event: null,
       p_payload:      { resolved_by: user.id, resolution: 'refund' },
     })
+    if (transitionError) {
+      return NextResponse.json({ error: transitionError.message }, { status: 422 })
+    }
 
     // Mark listing removed
     await service.from('listings').update({ status: 'removed' }).eq('id', order.listing_id)
+
+    // Issue Stripe refund only if none exists yet
+    if (existingRefunds.data.length === 0) {
+      try {
+        await stripe.refunds.create({
+          payment_intent: order.stripe_payment_intent_id,
+          metadata: { order_id: orderId, resolved_by: user.id },
+        })
+      } catch (stripeError) {
+        // DB already transitioned — log and return success; manual Stripe refund needed
+        console.error('[resolve] Stripe refund error after DB transition:', stripeError)
+        return NextResponse.json({ ok: true, refundPending: true })
+      }
+    }
   } else {
-    // Release: transfer to seller if not already done
+    // Release: transition DB state FIRST, then create transfer
+    // If transfer fails, /api/cron/process-transfers will retry
+    const { error: transitionError } = await service.rpc('transition_order', {
+      p_order_id:     orderId,
+      p_to_state:     'released',
+      p_source:       'admin',
+      p_stripe_event: null,
+      p_payload:      { resolved_by: user.id, resolution: 'release' },
+    })
+    if (transitionError) {
+      return NextResponse.json({ error: transitionError.message }, { status: 422 })
+    }
+
     if (!order.stripe_transfer_id) {
       const { data: seller } = await service
         .from('profiles')
@@ -110,19 +138,12 @@ export async function POST(
             .update({ stripe_transfer_id: transfer.id })
             .eq('id', orderId)
         } catch (stripeError) {
-          console.error('[resolve] Stripe transfer error:', stripeError)
-          return NextResponse.json({ error: 'Stripe transfer failed' }, { status: 502 })
+          // DB transitioned — cron will retry the transfer
+          console.error('[resolve] Stripe transfer error after DB transition:', stripeError)
+          return NextResponse.json({ ok: true, transferPending: true })
         }
       }
     }
-
-    await service.rpc('transition_order', {
-      p_order_id:     orderId,
-      p_to_state:     'released',
-      p_source:       'admin',
-      p_stripe_event: null,
-      p_payload:      { resolved_by: user.id, resolution: 'release' },
-    })
   }
 
   // Mark dispute as resolved

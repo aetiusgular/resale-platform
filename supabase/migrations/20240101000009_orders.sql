@@ -108,8 +108,11 @@ CREATE TABLE checkout_sessions (
   created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Index for expiry cleanup
+-- Indexes
 CREATE INDEX checkout_sessions_expires_at_idx ON checkout_sessions (expires_at);
+-- FK indexes: required for RLS policy scans (auth.uid() = buyer_id) and future joins
+CREATE INDEX checkout_sessions_buyer_id_idx   ON checkout_sessions (buyer_id);
+CREATE INDEX checkout_sessions_seller_id_idx  ON checkout_sessions (seller_id);
 
 -- RLS
 ALTER TABLE checkout_sessions ENABLE ROW LEVEL SECURITY;
@@ -266,8 +269,9 @@ CREATE TABLE disputes (
                   REFERENCES orders(id) ON DELETE CASCADE,
   buyer_id      UUID        NOT NULL
                   REFERENCES profiles(id) ON DELETE RESTRICT,
-  -- At least 1 photo required; enforced at API layer before insert
-  photos        TEXT[]      NOT NULL DEFAULT '{}',
+  -- At least 1 photo required; enforced at both API layer and DB layer
+  photos        TEXT[]      NOT NULL DEFAULT '{}'
+                              CHECK (array_length(photos, 1) >= 1),
   description   TEXT        NOT NULL,
   -- Resolution: 'release' = seller wins, 'refund' = buyer wins
   resolution    TEXT        CHECK (resolution IN ('release', 'refund')),
@@ -328,7 +332,11 @@ LEFT JOIN (
   GROUP BY buyer_id
 ) d ON d.buyer_id = p.id;
 
-GRANT SELECT ON buyer_stats TO authenticated;
+-- buyer_stats is restricted to service_role only.
+-- Exposing dispute/purchase counts to all authenticated users would be a privacy disclosure
+-- (any user could enumerate another user's dispute history by user_id).
+-- Server components that display buyer stats must use createServiceClientRaw().
+GRANT SELECT ON buyer_stats TO service_role;
 
 -- ─── 10. transition_order() — atomic state machine ─────────────────────────────
 -- Legal transitions:
@@ -446,19 +454,27 @@ BEGIN
           AND d.resolved_at IS NULL
       )
   LOOP
-    PERFORM transition_order(
-      r.id,
-      'released',
-      'cron',
-      NULL,
-      '{"reason":"auto_release_3d"}'::jsonb
-    );
+    BEGIN
+      PERFORM transition_order(
+        r.id,
+        'released',
+        'cron',
+        NULL,
+        '{"reason":"auto_release_3d"}'::jsonb
+      );
+    EXCEPTION WHEN OTHERS THEN
+      -- Log and continue: a single failing transition must not abort the entire cron run
+      RAISE WARNING 'auto_release_delivered_orders: failed to release order %: %', r.id, SQLERRM;
+    END;
   END LOOP;
 END;
 $$;
 
 REVOKE EXECUTE ON FUNCTION auto_release_delivered_orders FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION auto_release_delivered_orders TO service_role;
+-- pg_cron runs as the postgres superuser; explicit grant makes the intent clear
+-- and ensures correct behaviour if the postgres role ever loses superuser on managed Supabase
+GRANT  EXECUTE ON FUNCTION auto_release_delivered_orders TO postgres;
 
 -- ─── 12. release_expired_checkouts() ───────────────────────────────────────────
 -- Called by pg_cron every 5 minutes. Releases pending_escrow listing lock
@@ -484,11 +500,19 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION release_expired_checkouts FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION release_expired_checkouts TO service_role;
+-- pg_cron runs as the postgres superuser; explicit grant makes the intent clear
+GRANT  EXECUTE ON FUNCTION release_expired_checkouts TO postgres;
 
 -- ─── 13. pg_cron schedules ─────────────────────────────────────────────────────
 -- Fail loudly if pg_cron extension is not available.
 -- AUTO_RELEASE_INTERVAL: 3 days — defined in lib/orders.ts as the canonical constant.
 -- Change the interval there and re-migrate if policy changes.
+--
+-- Unschedule first to make this block idempotent (cron.schedule does NOT upsert —
+-- running it twice would create duplicate jobs with the same name).
+SELECT cron.unschedule(jobid)
+  FROM cron.job
+ WHERE jobname IN ('auto-release-delivered-orders', 'release-expired-checkouts');
 
 -- Auto-release delivered orders after 3 days
 SELECT cron.schedule(

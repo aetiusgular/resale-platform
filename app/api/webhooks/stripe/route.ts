@@ -81,39 +81,52 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
   const pi = event.data.object as Stripe.PaymentIntent
   const meta = pi.metadata as Record<string, string>
 
-  // Validate required metadata (set server-side at PaymentIntent creation)
-  const required = ['listing_id', 'buyer_id', 'seller_id', 'item_cents',
-    'buyer_fee_cents', 'seller_fee_cents', 'shipping_cents', 'total_cents', 'transfer_cents']
-  for (const key of required) {
+  // Validate required metadata IDs (set server-side at PI creation — immutable)
+  for (const key of ['listing_id', 'buyer_id', 'seller_id'] as const) {
     if (!meta[key]) throw new Error(`Missing PI metadata: ${key}`)
   }
 
-  const item_cents       = parseInt(meta.item_cents, 10)
-  const buyer_fee_cents  = parseInt(meta.buyer_fee_cents, 10)
-  const seller_fee_cents = parseInt(meta.seller_fee_cents, 10)
-  const shipping_cents   = parseInt(meta.shipping_cents, 10)
-  const total_cents      = parseInt(meta.total_cents, 10)
-  const transfer_cents   = parseInt(meta.transfer_cents, 10)
+  // Use checkout_session row for fee amounts — server-authored and not externally mutable.
+  // This prevents fee manipulation via Stripe Dashboard metadata edits.
+  const { data: session } = await service
+    .from('checkout_sessions')
+    .select('item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, buyer_id, seller_id, listing_id')
+    .eq('stripe_payment_intent_id', pi.id)
+    .single()
 
-  // Verify PI amount matches server-computed total (tamper check)
+  if (!session) {
+    // Session already deleted — check if order was already created (idempotent replay)
+    const { data: existing } = await service
+      .from('orders')
+      .select('id')
+      .eq('stripe_payment_intent_id', pi.id)
+      .single()
+    if (existing) return // Already processed
+    throw new Error(`No checkout_session for PI ${pi.id} and no existing order`)
+  }
+
+  const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents } = session
+  const transfer_cents = item_cents - seller_fee_cents
+
+  // Verify PI amount matches session total (tamper check)
   if (pi.amount !== total_cents) {
-    throw new Error(`PI amount mismatch: stripe=${pi.amount} expected=${total_cents}`)
+    throw new Error(`PI amount mismatch: stripe=${pi.amount} session=${total_cents}`)
   }
 
   // Fetch buyer's shipping address for order snapshot
   const { data: buyerProfile } = await service
     .from('profiles')
     .select('shipping_address')
-    .eq('id', meta.buyer_id)
+    .eq('id', session.buyer_id)
     .single()
 
   // Create the order record
   const { data: order, error: orderError } = await service
     .from('orders')
     .insert({
-      listing_id:               meta.listing_id,
-      buyer_id:                 meta.buyer_id,
-      seller_id:                meta.seller_id,
+      listing_id:               session.listing_id,
+      buyer_id:                 session.buyer_id,
+      seller_id:                session.seller_id,
       item_cents,
       buyer_fee_cents,
       seller_fee_cents,
@@ -146,7 +159,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
 
   // Mark listing sold and clean up the checkout lock
   await Promise.all([
-    service.from('listings').update({ status: 'sold' }).eq('id', meta.listing_id),
+    service.from('listings').update({ status: 'sold' }).eq('id', session.listing_id),
     service.from('checkout_sessions').delete().eq('stripe_payment_intent_id', pi.id),
   ])
 }

@@ -4,6 +4,7 @@
  */
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClientRaw } from '@/lib/supabase/service'
 import OrderBuyerView from './order-buyer'
 import OrderSellerView from './order-seller'
 
@@ -75,8 +76,10 @@ export default async function OrderPage({ params }: PageProps) {
     .single()
 
   if (isSeller) {
-    // Fetch buyer stats for the seller view
-    const { data: buyerStats } = await supabase
+    // Fetch buyer stats via service role — buyer_stats is restricted to service_role only
+    // to prevent all authenticated users from enumerating each other's dispute histories.
+    const serviceClient = createServiceClientRaw()
+    const { data: buyerStats } = await serviceClient
       .from('buyer_stats')
       .select('username, purchase_count, dispute_count, member_since')
       .eq('user_id', order.buyer_id)

@@ -72,8 +72,16 @@ export async function POST(
     return NextResponse.json({ error: releaseError.message }, { status: 422 })
   }
 
+  // Re-fetch order after release to get current stripe_transfer_id
+  // (a concurrent cron run could have issued the transfer between our two RPCs)
+  const { data: freshOrder } = await service
+    .from('orders')
+    .select('stripe_transfer_id')
+    .eq('id', orderId)
+    .single()
+
   // Skip if already transferred (idempotent)
-  if (order.stripe_transfer_id) {
+  if (freshOrder?.stripe_transfer_id) {
     return NextResponse.json({ ok: true })
   }
 
