@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Forms — Input & Dropdown" subtitle="Floating caps labels · mono data fields · error · disabled" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="../../pv-loader.js?v=3"></script>
+<style>
+  body { margin: 0; padding: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .fallback { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); padding: 24px; }
+</style>
+</head>
+<body>
+<div id="root"><div class="fallback">Component bundle not compiled yet.</div></div>
+<script type="text/babel">
+window.loadPV('../../', 'Input').then((NS) => {
+  const { Input, Dropdown } = NS;
+  const Demo = () => {
+    const [cond, setCond] = React.useState('8/10');
+    return (
+      <div className="grid">
+        <Input label="Email" type="email" />
+        <Input label="Asking price" mono defaultValue="$1,240" hint="USD. Fees deducted at sale." />
+        <Input label="Email" defaultValue="not-an-email" error="Enter a valid email address." />
+        <Input label="Username" disabled defaultValue="@objectdealer" />
+        <Dropdown
+          label="Condition"
+          value={cond}
+          onChange={setCond}
+          options={['10/10 — Deadstock', '9/10', '8/10', '7/10', '6/10 — Worn']}
+        />
+        <Dropdown label="Size" options={['EU 46', 'EU 48', 'EU 50']} error="Select a size to continue." />
+      </div>
+    );
+  };
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+}).catch((e) => console.warn(e));
+</script>
+</body>
+</html>

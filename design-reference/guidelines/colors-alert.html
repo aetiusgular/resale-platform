@@ -1,0 +1,31 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Alert" subtitle="#B3261E · errors and disputes only" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; display: flex; gap: 24px; align-items: stretch; }
+  .chip { width: 128px; border-radius: 2px; background: var(--alert); flex: none; }
+  .col { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+  .tok { font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+  .hex { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .rule { font-size: 12px; color: var(--ink-soft); max-width: 280px; }
+  .ex { margin-left: auto; align-self: center; max-width: 240px; }
+  .status { font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--alert); }
+  .msg { font-size: 12px; color: var(--ink); }
+</style>
+</head>
+<body>
+  <div class="chip"></div>
+  <div class="col">
+    <div class="tok">--alert</div>
+    <div class="hex">#B3261E</div>
+    <div class="rule">Errors and dispute states only. Never decorative, never urgency marketing.</div>
+  </div>
+  <div class="ex">
+    <div class="status">PAYMENT FAILED</div>
+    <div class="msg">Payment declined. No funds were taken.</div>
+  </div>
+</body>
+</html>

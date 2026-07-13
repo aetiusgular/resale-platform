@@ -1,0 +1,221 @@
+<!-- @dsCard group="Marketplace" viewport="1440x900" name="Browse — the archive" subtitle="Composes Button, TabBar, Tag, Dropdown, ListingCard, Modal, Toast" --><!-- @startingPoint section="Screens" subtitle="Marketplace browse screen" viewport="1440x900" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provenance — Browse</title>
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="../../pv-loader.js?v=3"></script>
+<style>
+  .shell { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--gutter); }
+
+  .hd { border-bottom: 1px solid var(--line); }
+  .hd-in { display: flex; align-items: center; gap: 40px; height: 72px; }
+  .mark { font-weight: 600; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .nav { display: flex; gap: 32px; }
+  .nav a { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear; }
+  .nav a:hover { color: var(--ink); }
+  .nav a.on { color: var(--ink); }
+  .hd-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .user { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+
+  .intro { padding-top: var(--space-8); display: flex; flex-direction: column; gap: 12px; }
+  .intro h1 { font-size: 40px; }
+  .serif { font-family: var(--font-serif); font-style: italic; font-size: 1.5rem; line-height: 1.35; color: var(--ink); }
+
+  .controls { margin-top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); }
+  .filters { display: flex; align-items: flex-start; gap: var(--gutter); justify-content: space-between; flex-wrap: wrap; }
+  .tagrow { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .grid { margin-top: var(--space-4); display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px var(--gutter); }
+  .count { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+
+  .ft { margin-top: var(--space-8); border-top: 1px solid var(--line); }
+  .ft-in { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 0; flex-wrap: wrap; }
+  .ft .mono { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft); }
+
+  .toasts { position: fixed; right: 24px; bottom: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
+  .fallback { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); padding: 48px; }
+
+  @media (max-width: 1024px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .nav { display: none; }
+    .intro h1 { font-size: 28px; }
+    .serif { font-size: 1.35rem; }
+  }
+  @media (max-width: 460px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="root"><div class="fallback">Component bundle not compiled yet.</div></div>
+<script type="text/babel">
+window.loadPV('../../', 'ListingCard').then((NS) => {
+  const { Button, Input, Dropdown, ListingCard, TierBadge, Tag, TabBar, Toast, Modal } = NS;
+
+  const ITEMS = [
+    { id: 1, title: 'Raf Simons Consumed Bomber AW03', price: 3850, size: 'EU 48', condition: '8/10', cat: 'outerwear', designer: 'Raf Simons', verified: true },
+    { id: 2, title: 'Helmut Lang Painter Jeans 1998', price: 1120, size: '31', condition: '7/10', cat: 'denim', designer: 'Helmut Lang', verified: false },
+    { id: 3, title: 'Maison Margiela GAT Replica', price: 310, size: 'EU 43', condition: '9/10', cat: 'footwear', designer: 'Margiela', verified: false },
+    { id: 4, title: 'Undercover Scab Crust Denim SS03', price: 4200, size: '30', condition: '8/10', cat: 'denim', designer: 'Undercover', verified: true },
+    { id: 5, title: 'Issey Miyake Pleats Coat 1994', price: 980, size: 'M', condition: '9/10', cat: 'outerwear', designer: 'Issey Miyake', verified: false },
+    { id: 6, title: 'Visvim FBT Shaman Folk', price: 620, size: 'US 10', condition: '8/10', cat: 'footwear', designer: 'Visvim', verified: false },
+    { id: 7, title: 'Number (N)ine Kurt Cardigan AW05', price: 2660, size: '3', condition: '7/10', cat: 'outerwear', designer: 'Number (N)ine', verified: false },
+    { id: 8, title: 'Chrome Hearts Cemetery Ring', price: 740, size: '9', condition: '9/10', cat: 'accessories', designer: 'Chrome Hearts', verified: false },
+    { id: 9, title: 'Rick Owens DRKSHDW Ramones', price: 540, size: 'EU 44', condition: '8/10', cat: 'footwear', designer: 'Rick Owens', verified: false },
+    { id: 10, title: 'Stone Island Ice Jacket AW98', price: 1875, size: 'L', condition: '7/10', cat: 'outerwear', designer: 'Stone Island', verified: false },
+    { id: 11, title: 'Yohji Yamamoto Wool Gabardine', price: 890, size: '2', condition: '9/10', cat: 'outerwear', designer: 'Yohji Yamamoto', verified: false },
+    { id: 12, title: 'CDG Homme Plus Fur Print Shirt', price: 1340, size: 'S', condition: '8/10', cat: 'accessories', designer: 'CDG', verified: false },
+  ];
+  const fmt = (n) => '$' + n.toLocaleString('en-US');
+
+  const App = () => {
+    const [cat, setCat] = React.useState('all');
+    const [designers, setDesigners] = React.useState([]);
+    const [sort, setSort] = React.useState('recent');
+    const [offerItem, setOfferItem] = React.useState(null);
+    const [offer, setOffer] = React.useState('');
+    const [toasts, setToasts] = React.useState([]);
+
+    const toggleDesigner = (d) =>
+      setDesigners((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
+
+    const pushToast = (t) => {
+      const id = Date.now();
+      setToasts((cur) => [...cur, { ...t, id }]);
+      setTimeout(() => setToasts((cur) => cur.filter((x) => x.id !== id)), 5000);
+    };
+
+    let items = ITEMS.filter((i) => (cat === 'all' || i.cat === cat) && (designers.length === 0 || designers.includes(i.designer)));
+    if (sort === 'low') items = [...items].sort((a, b) => a.price - b.price);
+    if (sort === 'high') items = [...items].sort((a, b) => b.price - a.price);
+
+    const counts = { all: ITEMS.length };
+    ['outerwear', 'denim', 'footwear', 'accessories'].forEach((c) => { counts[c] = ITEMS.filter((i) => i.cat === c).length; });
+
+    const sendOffer = () => {
+      pushToast({ status: 'Offer sent', message: offerItem.title + ' — ' + (offer || fmt(offerItem.price)) + '. The seller has 48 hours to respond.' });
+      setOfferItem(null);
+      setOffer('');
+    };
+
+    return (
+      <div>
+        <header className="hd">
+          <div className="shell hd-in">
+            <span className="mark">Provenance</span>
+            <nav className="nav" aria-label="Primary">
+              <a href="#" className="on">Shop</a>
+              <a href="#">Sell</a>
+              <a href="#">Archive</a>
+            </nav>
+            <div className="hd-right">
+              <span className="user">@objectdealer</span>
+              <TierBadge tier="gold" />
+              <Button variant="secondary">List item</Button>
+            </div>
+          </div>
+        </header>
+
+        <main className="shell" data-screen-label="Browse">
+          <section className="intro">
+            <h1>The archive</h1>
+            <p className="serif">Two hundred and twelve pieces entered the archive this week.</p>
+          </section>
+
+          <section className="controls">
+            <TabBar
+              ariaLabel="Categories"
+              activeId={cat}
+              onChange={setCat}
+              tabs={[
+                { id: 'all', label: 'All', count: counts.all },
+                { id: 'outerwear', label: 'Outerwear', count: counts.outerwear },
+                { id: 'denim', label: 'Denim', count: counts.denim },
+                { id: 'footwear', label: 'Footwear', count: counts.footwear },
+                { id: 'accessories', label: 'Accessories', count: counts.accessories },
+              ]}
+            />
+            <div className="filters">
+              <div className="tagrow">
+                {['Raf Simons', 'Helmut Lang', 'Margiela', 'Rick Owens', 'Undercover'].map((d) => (
+                  <Tag key={d} selected={designers.includes(d)} onClick={() => toggleDesigner(d)}>{d}</Tag>
+                ))}
+              </div>
+              <Dropdown
+                label="Sort"
+                style={{ width: 220 }}
+                value={sort}
+                onChange={setSort}
+                options={[
+                  { value: 'recent', label: 'Recently listed' },
+                  { value: 'low', label: 'Price — low to high' },
+                  { value: 'high', label: 'Price — high to low' },
+                ]}
+              />
+            </div>
+            <div className="count">{items.length} RECORDS</div>
+          </section>
+
+          <section className="grid">
+            {items.map((i) => (
+              <ListingCard
+                key={i.id}
+                title={i.title}
+                price={fmt(i.price)}
+                size={i.size}
+                condition={i.condition}
+                verified={i.verified}
+                onClick={() => { setOfferItem(i); setOffer(''); }}
+              />
+            ))}
+          </section>
+        </main>
+
+        <footer className="ft">
+          <div className="shell ft-in">
+            <span className="mono">MEMBERSHIP IS BY REFERRAL</span>
+            <span className="mono">© 2026 · NO. 0001</span>
+          </div>
+        </footer>
+
+        <Modal
+          open={!!offerItem}
+          title="Make an offer"
+          onClose={() => setOfferItem(null)}
+          footer={
+            <React.Fragment>
+              <Button variant="secondary" onClick={() => setOfferItem(null)}>Cancel</Button>
+              <Button onClick={sendOffer}>Send offer</Button>
+            </React.Fragment>
+          }
+        >
+          {offerItem && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>
+                <strong>{offerItem.title}</strong><br />
+                <span style={{ color: 'var(--ink-soft)', fontSize: 12 }}>{offerItem.size} · {offerItem.condition} · asking {fmt(offerItem.price)}</span>
+              </div>
+              <Input label="Your offer" mono placeholder={fmt(offerItem.price)} value={offer} onChange={(e) => setOffer(e.target.value)} hint="USD. Offers are binding for 48 hours." />
+            </div>
+          )}
+        </Modal>
+
+        <div className="toasts">
+          {toasts.map((t) => (
+            <Toast key={t.id} status={t.status} message={t.message} onDismiss={() => setToasts((cur) => cur.filter((x) => x.id !== t.id))} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+}).catch((e) => console.warn(e));
+</script>
+</body>
+</html>

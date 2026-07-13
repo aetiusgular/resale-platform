@@ -1,0 +1,29 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="Lines, radius, shadow" subtitle="1px borders · 2px radius max · one shadow" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; display: flex; gap: 24px; }
+  .demo { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .box { height: 64px; border-radius: 2px; background: var(--bg); }
+  .t { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); line-height: 1.5; }
+  .no { color: var(--alert); }
+</style>
+</head>
+<body>
+  <div class="demo">
+    <div class="box" style="border: 1px solid var(--line);"></div>
+    <div class="t">Border: 1px --line, always.<br>Emphasis = swap to --ink, never 2px</div>
+  </div>
+  <div class="demo">
+    <div class="box" style="border: 1px solid var(--ink);"></div>
+    <div class="t">Radius: 2px maximum.<br>0 on images. No pills</div>
+  </div>
+  <div class="demo">
+    <div class="box" style="border: 1px solid var(--line); box-shadow: var(--shadow-1);"></div>
+    <div class="t">--shadow-1 only, floating surfaces only.<br><span class="no">Never for card depth</span></div>
+  </div>
+</body>
+</html>

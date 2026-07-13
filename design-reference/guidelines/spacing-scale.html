@@ -1,0 +1,24 @@
+<!-- @dsCard group="Spacing" viewport="700x250" name="8px grid" subtitle="--space-1 … --space-16" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .row { display: flex; align-items: center; gap: 16px; }
+  .t { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft); width: 120px; flex: none; }
+  .bar { height: 12px; background: var(--ink); border-radius: 1px; }
+</style>
+</head>
+<body>
+  <div class="row"><span class="t">--space-1 · 8</span><div class="bar" style="width: 8px;"></div></div>
+  <div class="row"><span class="t">--space-2 · 16</span><div class="bar" style="width: 16px;"></div></div>
+  <div class="row"><span class="t">--space-3 · 24</span><div class="bar" style="width: 24px;"></div></div>
+  <div class="row"><span class="t">--space-4 · 32</span><div class="bar" style="width: 32px;"></div></div>
+  <div class="row"><span class="t">--space-6 · 48</span><div class="bar" style="width: 48px;"></div></div>
+  <div class="row"><span class="t">--space-8 · 64</span><div class="bar" style="width: 64px;"></div></div>
+  <div class="row"><span class="t">--space-12 · 96</span><div class="bar" style="width: 96px;"></div></div>
+  <div class="row"><span class="t">--space-16 · 128</span><div class="bar" style="width: 128px;"></div></div>
+</body>
+</html>

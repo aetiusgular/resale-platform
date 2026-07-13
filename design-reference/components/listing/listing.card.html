@@ -1,0 +1,58 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Listing — Card, TierBadge, Tag" subtitle="Mono records · hover-only border · contrast tier ladder" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="../../pv-loader.js?v=3"></script>
+<style>
+  body { margin: 0; padding: 24px; }
+  .wrap { display: flex; gap: 32px; }
+  .cards { display: flex; gap: 24px; }
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .t { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .stack { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .fallback { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); padding: 24px; }
+</style>
+</head>
+<body>
+<div id="root"><div class="fallback">Component bundle not compiled yet.</div></div>
+<script type="text/babel">
+window.loadPV('../../', 'ListingCard').then((NS) => {
+  const { ListingCard, TierBadge, Tag } = NS;
+  const Demo = () => {
+    const [sel, setSel] = React.useState(true);
+    return (
+      <div className="wrap">
+        <div className="cards">
+          <ListingCard style={{ width: 170 }} title="Raf Simons Consumed Bomber AW03" price="$3,850" size="EU 48" condition="8/10" verified />
+          <ListingCard style={{ width: 170 }} title="Chrome Hearts Cemetery Ring" price="$740" size="9" condition="9/10" />
+        </div>
+        <div className="side">
+          <div>
+            <div className="t" style={{ marginBottom: 8 }}>Tier ladder</div>
+            <div className="stack">
+              <TierBadge tier="bronze" /><TierBadge tier="silver" /><TierBadge tier="gold" /><TierBadge tier="platinum" />
+            </div>
+          </div>
+          <div>
+            <div className="t" style={{ marginBottom: 8 }}>Tags</div>
+            <div className="stack">
+              <Tag onClick={() => setSel(!sel)}>Outerwear</Tag>
+              <Tag selected={sel} onClick={() => setSel(!sel)}>EU 48</Tag>
+              <Tag onRemove={() => {}}>Raf Simons</Tag>
+              <Tag variant="authenticated">Authenticated</Tag>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+}).catch((e) => console.warn(e));
+</script>
+</body>
+</html>

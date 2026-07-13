@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="styles.css">
+<style>
+body{margin:0;background:#F2F2F2;font-family:var(--font-ui),sans-serif}
+.dv-turn{padding:40px 44px 32px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:700 10px var(--font-mono),monospace;padding:3px 7px;background:var(--ink);color:var(--bg);border-radius:2px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 var(--font-ui),sans-serif;color:var(--ink)}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px var(--font-mono),monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:var(--ink);border-radius:2px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-ui),sans-serif;color:var(--ink-soft)}
+.dv-card{max-width:100%;background:var(--bg);border:1px solid rgba(0,0,0,.1);overflow:hidden}
+.dv-opt:target .dv-oid{background:var(--accent);color:var(--bg)}
+.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-ui),sans-serif;color:var(--ink-soft)}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Onboarding — invite gate, signup + ID verify, quick setup, your codes</span></div>
+<div class="dv-opts">
+
+<!-- ============ 1a GATE MOBILE ============ -->
+<div class="dv-opt" id="1a">
+  <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Gate — mobile 375</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Gate mobile" style="background: var(--bg); height: 720px; box-sizing: border-box; display: flex; flex-direction: column; padding: 0 32px;">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; text-align: center;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <p style="margin: 24px 0 0; font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 28px; line-height: 1.35; color: var(--ink);">A quieter market for the things worth keeping.</p>
+        <div style="margin-top: 48px; width: 100%; display: flex; flex-direction: column; gap: 8px;">
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; justify-content: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.08em; color: var(--ink-soft);"><span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Invite code</span>····-····</div>
+          <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Enter</div>
+        </div>
+        <a href="#1a" style="margin-top: 20px; font-size: 13px; color: var(--ink);">no code? join the waitlist</a>
+      </div>
+      <div style="padding: 24px 0 28px; display: flex; justify-content: center; gap: 24px;">
+        <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">About</a>
+        <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Terms</a>
+        <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Privacy</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1b GATE DESKTOP + ERROR ============ -->
+<div class="dv-opt" id="1b">
+  <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Gate — desktop 1440, error state ("code already used")</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Gate desktop" style="background: var(--bg); height: 680px; box-sizing: border-box; display: flex; flex-direction: column;">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px;">
+        <span style="font: 600 20px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <p style="margin: 28px 0 0; font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 28px; line-height: 1.35; color: var(--ink); max-width: 560px;">A quieter market for the things worth keeping.</p>
+        <div style="margin-top: 48px; width: 360px; display: flex; flex-direction: column; gap: 8px;">
+          <div>
+            <div style="position: relative; height: 44px; border: 1px solid var(--alert); border-radius: 2px; display: flex; align-items: center; justify-content: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.08em; color: var(--ink);"><span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--alert);">Invite code</span>FORM-7Q2K</div>
+            <div style="margin-top: 6px; font-size: 12px; color: var(--alert); text-align: left;">code already used</div>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Enter</div>
+        </div>
+        <a href="#1b" style="margin-top: 20px; font-size: 13px; color: var(--ink);">no code? join the waitlist</a>
+      </div>
+      <div style="padding: 24px 0 32px; display: flex; justify-content: center; gap: 32px;">
+        <a href="#1b" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">About</a>
+        <a href="#1b" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Terms</a>
+        <a href="#1b" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Privacy</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1c SIGNUP + ID VERIFY ============ -->
+<div class="dv-opt" id="1c">
+  <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Signup + ID verification — mobile 375</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Signup" style="background: var(--bg); box-sizing: border-box; padding: 0 24px 40px;">
+      <div style="padding: 40px 0 0; text-align: center;">
+        <span style="font: 600 15px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <div style="margin-top: 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">CODE FORM-7Q2K ACCEPTED · INVITED BY @FORMSTUDIO</div>
+      </div>
+
+      <div style="margin-top: 40px; display: flex; flex-direction: column; gap: 24px;">
+        <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">dana@objects.net<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Email</span></div>
+        <div>
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">@danaokafor<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Username</span></div>
+          <div style="margin-top: 6px; font-size: 12px; color: var(--ink-soft);">permanent — usernames are part of the record.</div>
+        </div>
+        <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">••••••••••<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Password</span></div>
+      </div>
+
+      <!-- ID verification card -->
+      <div style="margin-top: 40px; border: 1px solid var(--line); border-radius: 2px;">
+        <div style="padding: 12px 16px; border-bottom: 1px solid var(--line); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Verify once, sell forever</div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px;">
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink);">1 · PHOTO ID</span>
+          <span style="margin-left: auto; display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--accent); border-radius: 2px; font-family: var(--font-mono); font-weight: 700; font-size: 9px; letter-spacing: 0.08em; color: var(--accent); white-space: nowrap;">DONE</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-top: 1px solid var(--line);">
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink);">2 · SELFIE MATCH</span>
+          <span style="margin-left: auto; display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--ink-soft); white-space: nowrap;">PENDING</span>
+        </div>
+        <div style="padding: 12px 16px 16px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.6; color: var(--ink-soft);">one-time check. no biometric storage. required to buy, sell, or comment — browsing works without it. it protects sellers as much as buyers: everyone you transact with is a real, accountable person.</div>
+      </div>
+
+      <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+        <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Verify now</div>
+        <span style="font: 500 13px var(--font-ui); color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">skip for now — browse only</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1d QUICK SETUP ============ -->
+<div class="dv-opt" id="1d">
+  <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Quick setup — mobile 375</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Quick setup" style="background: var(--bg); box-sizing: border-box; padding: 0 24px 40px;">
+      <div style="padding: 40px 0 0;">
+        <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Set up once, checkout in seconds</div>
+      </div>
+
+      <!-- 1 MY SIZES -->
+      <div style="margin-top: 24px; border: 1px solid var(--line); border-radius: 2px;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line);">
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink);">1 · MY SIZES</span>
+          <span style="margin-left: auto; display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--accent); border-radius: 2px; font-family: var(--font-mono); font-weight: 700; font-size: 9px; letter-spacing: 0.08em; color: var(--accent); white-space: nowrap;">DONE</span>
+        </div>
+        <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <div style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px;">Tops</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">S</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: var(--bg); font-family: var(--font-mono); font-size: 11px; cursor: pointer;">M</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">L</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">XL</span>
+            </div>
+          </div>
+          <div>
+            <div style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px;">Bottoms</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">28</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">30</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: var(--bg); font-family: var(--font-mono); font-size: 11px; cursor: pointer;">32</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">34</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">36</span>
+            </div>
+          </div>
+          <div>
+            <div style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px;">Shoes</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">7</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">8</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">9</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: var(--bg); font-family: var(--font-mono); font-size: 11px; cursor: pointer;">10</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">11</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">12</span>
+              <span style="display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer;">13</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 SHIPPING -->
+      <div style="margin-top: 16px; border: 1px solid var(--line); border-radius: 2px;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px;">
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink);">2 · SHIPPING ADDRESS</span>
+          <span style="margin-left: auto; display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--accent); border-radius: 2px; font-family: var(--font-mono); font-weight: 700; font-size: 9px; letter-spacing: 0.08em; color: var(--accent); white-space: nowrap;">DONE</span>
+        </div>
+        <div style="padding: 0 16px 12px; display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">414 COURT ST · BROOKLYN NY 11231</span>
+          <a href="#1d" style="margin-left: auto; flex: none; font-size: 12px; color: var(--ink);">edit</a>
+        </div>
+      </div>
+
+      <!-- 3 PAYMENT -->
+      <div style="margin-top: 16px; border: 1px solid var(--line); border-radius: 2px;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line);">
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink);">3 · PAYMENT METHOD</span>
+          <span style="margin-left: auto; display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--ink-soft); white-space: nowrap;">SKIP</span>
+        </div>
+        <div style="padding: 14px 16px 16px;">
+          <div style="display: flex; gap: 8px;">
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 13px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Add card</div>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 13px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Link PayPal</div>
+          </div>
+          <div style="margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--ink-soft);">stored securely with our payment providers — we never see your card number. you can always use a different card at checkout.</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 28px; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+        <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Continue</div>
+        <span style="font: 500 13px var(--font-ui); color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">skip all — do this later</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1e YOUR CODES ============ -->
+<div class="dv-opt" id="1e">
+  <div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Your codes — mobile 375</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Your codes" style="background: var(--bg); box-sizing: border-box; padding: 0 24px 40px;">
+      <div style="padding: 48px 0 0; text-align: center;">
+        <p style="margin: 0; font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 24px; line-height: 1.35; color: var(--ink);">Three keys. Choose carefully.</p>
+        <div style="margin-top: 8px; font-size: 13px; color: var(--ink-soft);">membership moves by referral — these are yours to give.</div>
+      </div>
+
+      <div style="margin-top: 36px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="border: 1px solid var(--ink); border-radius: 2px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: 0.04em; color: var(--ink);">DANA-3XKQ</span>
+          <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft);">UNUSED</span>
+          <span style="flex: none; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Copy</span>
+        </div>
+        <div style="border: 1px solid var(--ink); border-radius: 2px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: 0.04em; color: var(--ink);">DANA-8VWM</span>
+          <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft);">UNUSED</span>
+          <span style="flex: none; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Copy</span>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 16px; letter-spacing: 0.04em; color: var(--ink-soft); text-decoration: line-through;">DANA-1PRT</span>
+          <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft);">CLAIMED BY @COLDPRESS</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; font-size: 12px; line-height: 1.6; color: var(--ink-soft); text-align: center;">invites earn tier credit when your invitee completes a first sale.</div>
+
+      <div style="margin-top: 32px;">
+        <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Enter the archive</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "waitlist form" · "selfie-match step in progress" · "desktop variants of signup / setup / codes"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

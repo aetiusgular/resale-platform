@@ -2,11 +2,19 @@
 .env.local
 .env*.local
 
-# deps / build (B0 will extend)
+# deps / build
 node_modules/
 .next/
 dist/
+out/
+
+# test output
+playwright-report/
+test-results/
 
 # misc
 .DS_Store
 *.log
+
+# Supabase local dev (not used — we target hosted project only)
+supabase/.temp/

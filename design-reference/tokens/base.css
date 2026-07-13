@@ -1,0 +1,38 @@
+/* Base element styles */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-14);
+  font-weight: 400;
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: var(--track-tight);
+  line-height: var(--leading-tight);
+}
+
+p { margin: 0; }
+
+a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line);
+  transition: text-decoration-color 120ms linear;
+}
+a:hover { text-decoration-color: var(--ink); }
+
+::selection { background: var(--ink); color: var(--bg); }
+
+:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
+
+hr { border: none; border-top: 1px solid var(--line); margin: 0; }

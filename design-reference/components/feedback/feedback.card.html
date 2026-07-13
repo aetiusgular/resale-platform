@@ -1,0 +1,50 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Feedback — Toast & Modal" subtitle="One shadow, 1px line, white veil — click to open the modal" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="../../pv-loader.js?v=3"></script>
+<style>
+  body { margin: 0; padding: 24px; }
+  .col { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+  .fallback { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); padding: 24px; }
+</style>
+</head>
+<body>
+<div id="root"><div class="fallback">Component bundle not compiled yet.</div></div>
+<script type="text/babel">
+window.loadPV('../../', 'Toast').then((NS) => {
+  const { Toast, Modal, Button } = NS;
+  const Demo = () => {
+    const [open, setOpen] = React.useState(false);
+    return (
+      <div className="col">
+        <Toast status="Authenticated" variant="success" message="Certificate added to the listing." onDismiss={() => {}} />
+        <Toast status="Saved" message="Added to your watchlist." onDismiss={() => {}} />
+        <Toast status="Payment failed" variant="error" message="Payment declined. No funds were taken." onDismiss={() => {}} />
+        <Button variant="secondary" onClick={() => setOpen(true)}>Open modal</Button>
+        <Modal
+          open={open}
+          title="Remove listing"
+          onClose={() => setOpen(false)}
+          footer={
+            <React.Fragment>
+              <Button variant="secondary" onClick={() => setOpen(false)}>Keep</Button>
+              <Button onClick={() => setOpen(false)}>Remove</Button>
+            </React.Fragment>
+          }
+        >
+          The listing and its offer history will be removed from the archive.
+        </Modal>
+      </div>
+    );
+  };
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+}).catch((e) => console.warn(e));
+</script>
+</body>
+</html>

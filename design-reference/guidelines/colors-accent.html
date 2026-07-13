@@ -1,0 +1,31 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="Accent — budgeted" subtitle="#1B4332 · max one accent element per view" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; display: flex; gap: 24px; align-items: stretch; }
+  .chip { width: 128px; border-radius: 2px; background: var(--accent); flex: none; }
+  .col { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+  .tok { font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+  .hex { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft); }
+  .rule { font-size: 12px; color: var(--ink-soft); max-width: 300px; }
+  .uses { display: flex; flex-direction: column; gap: 8px; justify-content: center; margin-left: auto; }
+  .v { font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--accent); }
+  .auth { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="chip"></div>
+  <div class="col">
+    <div class="tok">--accent</div>
+    <div class="hex">#1B4332 · DEEP ARCHIVAL GREEN</div>
+    <div class="rule">Verified badges, active states, authenticated tags, success — only. <strong style="color: var(--ink);">Max one accent element per view.</strong></div>
+  </div>
+  <div class="uses">
+    <span class="v">VERIFIED</span>
+    <span class="auth">AUTHENTICATED</span>
+  </div>
+</body>
+</html>

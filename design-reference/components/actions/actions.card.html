@@ -1,0 +1,48 @@
+<!-- @dsCard group="Components" viewport="700x310" name="Actions — Button" subtitle="Primary · secondary · text · destructive · disabled" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script src="../../pv-loader.js?v=3"></script>
+<style>
+  body { margin: 0; padding: 20px 24px; }
+  .rows { display: flex; flex-direction: column; gap: 14px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .t { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); width: 110px; flex: none; }
+  .fallback { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); padding: 24px; }
+</style>
+</head>
+<body>
+<div id="root"><div class="fallback">Component bundle not compiled yet.</div></div>
+<script type="text/babel">
+window.loadPV('../../', 'Button').then((NS) => {
+  const { Button } = NS;
+  const Demo = () => (
+    <div className="rows">
+      <div className="row"><span className="t">Primary</span>
+        <Button>Make offer</Button>
+        <Button disabled>Make offer</Button>
+      </div>
+      <div className="row"><span className="t">Secondary</span>
+        <Button variant="secondary">Save</Button>
+        <Button variant="secondary" disabled>Save</Button>
+      </div>
+      <div className="row"><span className="t">Text</span>
+        <Button variant="text">View history</Button>
+        <Button variant="text" disabled>View history</Button>
+      </div>
+      <div className="row"><span className="t">Destructive</span>
+        <Button variant="secondary" destructive>Open dispute</Button>
+        <Button variant="text" destructive>Cancel order</Button>
+      </div>
+    </div>
+  );
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+}).catch((e) => console.warn(e));
+</script>
+</body>
+</html>

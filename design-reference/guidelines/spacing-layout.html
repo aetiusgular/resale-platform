@@ -1,0 +1,28 @@
+<!-- @dsCard group="Spacing" viewport="700x220" name="Layout" subtitle="1280 max · 24px gutters · ≥64px sections" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; }
+  .frame { border: 1px solid var(--line); padding: 12px 32px; }
+  .t { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); text-transform: uppercase; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 6px 0; }
+  .cell { height: 40px; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+  .gap { text-align: center; margin: 8px 0; }
+  .sec { height: 20px; border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="t" style="text-align: center; margin-bottom: 4px;">Content max 1280px, centered · desktop-first 1440 → 375</div>
+    <div class="grid">
+      <div class="cell t">COL</div><div class="cell t">COL</div><div class="cell t">COL</div><div class="cell t">COL</div>
+    </div>
+    <div class="t" style="text-align: center;">24px gutters · listing grid runs 4-up → 2-up → 1-up</div>
+    <div class="gap t">— minimum 64px between page sections —</div>
+    <div class="sec t">Next section</div>
+  </div>
+</body>
+</html>

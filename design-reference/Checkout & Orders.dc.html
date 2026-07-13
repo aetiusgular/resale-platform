@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="styles.css">
+<style>
+body{margin:0;background:#F2F2F2;font-family:var(--font-ui),sans-serif}
+.dv-turn{padding:40px 44px 32px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:700 10px var(--font-mono),monospace;padding:3px 7px;background:var(--ink);color:var(--bg);border-radius:2px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 var(--font-ui),sans-serif;color:var(--ink)}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px var(--font-mono),monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:var(--ink);border-radius:2px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-ui),sans-serif;color:var(--ink-soft)}
+.dv-card{max-width:100%;background:var(--bg);border:1px solid rgba(0,0,0,.1);overflow:hidden}
+.dv-opt:target .dv-oid{background:var(--accent);color:var(--bg)}
+.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-ui),sans-serif;color:var(--ink-soft)}
+@keyframes pvPulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Checkout & order status — escrow checkout, buyer + seller timelines, desktop + mobile</span></div>
+<div class="dv-opts">
+
+<!-- ============ 1a CHECKOUT DESKTOP ============ -->
+<div class="dv-opt" id="1a">
+  <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Checkout — desktop 1440, single page</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Checkout desktop" style="background: var(--bg);">
+      <header style="height: 64px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 80px;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <span style="font: 600 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">Checkout</span>
+        <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Back to listing</a>
+      </header>
+
+      <div style="max-width: 1080px; margin: 0 auto; padding: 48px 0 96px; display: grid; grid-template-columns: 400px 1fr; gap: 64px; align-items: start;">
+
+        <!-- LEFT: order summary -->
+        <div style="border: 1px solid var(--line); border-radius: 2px;">
+          <div style="padding: 12px 16px; border-bottom: 1px solid var(--line); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Order</div>
+          <div style="padding: 16px; display: flex; gap: 16px;">
+            <div style="flex: none; width: 72px; aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+            <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink);">2004 DISTRESSED BONDAGE BOMBER</span>
+              <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">MAISON ARCHIVE · M / 48</span>
+            </div>
+          </div>
+          <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 13px; color: var(--ink);"><span>PRICE</span><span>$1,250</span></div>
+            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);"><span>BUYER FEE 2%</span><span>$25</span></div>
+            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);"><span>SHIPPING</span><span>$12</span></div>
+            <div style="border-top: 1px solid var(--line); margin-top: 4px; padding-top: 12px; display: flex; justify-content: space-between; font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink);"><span>TOTAL</span><span>$1,287</span></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: address + payment -->
+        <div>
+          <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); border-bottom: 1px solid var(--line); padding-bottom: 12px;">Shipping address</div>
+          <div style="margin-top: 28px; display: flex; flex-direction: column; gap: 24px;">
+            <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">Dana Okafor<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Full name</span></div>
+            <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">414 Court St<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Street address</span></div>
+            <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink-soft);"><span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Apt, unit — optional</span></div>
+            <div style="display: flex; gap: 16px;">
+              <div style="position: relative; flex: 2; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">Brooklyn<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">City</span></div>
+              <div style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">NY 11231<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">State · ZIP</span></div>
+            </div>
+            <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink); cursor: pointer;">United States<span style="font-size: 10px; color: var(--ink-soft);">▾</span><span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Country</span></div>
+          </div>
+
+          <!-- CARD container -->
+          <div style="margin-top: 48px; border: 1px solid var(--line); border-radius: 2px;">
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--line); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Card</div>
+            <div style="padding: 28px 16px 20px; display: flex; flex-direction: column; gap: 24px;">
+              <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">4021 88•• •••• ••••<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Card number</span></div>
+              <div style="display: flex; gap: 16px;">
+                <div style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">08 / 29<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Expiry</span></div>
+                <div style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 14px; color: var(--ink-soft);">•••<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">CVC</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 32px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Pay <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">$1,287</span> — held in escrow</div>
+            <div style="margin-top: 8px; font-size: 12px; color: var(--ink-soft); text-align: center;">your payment is held until you confirm delivery. seller is paid after.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1b CHECKOUT MOBILE ============ -->
+<div class="dv-opt" id="1b">
+  <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Checkout — mobile 375 (focused flow, no tab bar)</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Checkout mobile" style="background: var(--bg);">
+      <div style="height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 16px;">
+        <span style="flex: none; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer;">‹</span>
+        <span style="flex: 1; text-align: center; font: 600 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">Checkout</span>
+        <span style="flex: none; width: 20px;"></span>
+      </div>
+
+      <div style="padding: 20px 16px 32px;">
+        <!-- summary -->
+        <div style="border: 1px solid var(--line); border-radius: 2px;">
+          <div style="padding: 12px 14px; display: flex; gap: 12px; border-bottom: 1px solid var(--line);">
+            <div style="flex: none; width: 56px; aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+            <div style="min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; line-height: 1.4; color: var(--ink);">2004 DISTRESSED BONDAGE BOMBER</span>
+              <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">MAISON ARCHIVE · M / 48</span>
+            </div>
+          </div>
+          <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 7px;">
+            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--ink);"><span>PRICE</span><span>$1,250</span></div>
+            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);"><span>BUYER FEE 2%</span><span>$25</span></div>
+            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);"><span>SHIPPING</span><span>$12</span></div>
+            <div style="border-top: 1px solid var(--line); margin-top: 3px; padding-top: 10px; display: flex; justify-content: space-between; font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);"><span>TOTAL</span><span>$1,287</span></div>
+          </div>
+        </div>
+
+        <!-- address -->
+        <div style="margin-top: 32px; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); border-bottom: 1px solid var(--line); padding-bottom: 10px;">Shipping address</div>
+        <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 22px;">
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">Dana Okafor<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Full name</span></div>
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">414 Court St<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Street address</span></div>
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink-soft);"><span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Apt, unit — optional</span></div>
+          <div style="display: flex; gap: 12px;">
+            <div style="position: relative; flex: 1.4; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">Brooklyn<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">City</span></div>
+            <div style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 13px; color: var(--ink);">NY 11231<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">State · ZIP</span></div>
+          </div>
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">United States<span style="font-size: 10px; color: var(--ink-soft);">▾</span><span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Country</span></div>
+        </div>
+
+        <!-- card -->
+        <div style="margin-top: 32px; border: 1px solid var(--line); border-radius: 2px;">
+          <div style="padding: 11px 14px; border-bottom: 1px solid var(--line); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Card</div>
+          <div style="padding: 24px 14px 18px; display: flex; flex-direction: column; gap: 22px;">
+            <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 13px; color: var(--ink);">4021 88•• •••• ••••<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Card number</span></div>
+            <div style="display: flex; gap: 12px;">
+              <div style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 13px; color: var(--ink);">08 / 29<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Expiry</span></div>
+              <div style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft);">•••<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">CVC</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 28px;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Pay <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">$1,287</span> — held in escrow</div>
+          <div style="margin-top: 8px; font-size: 12px; line-height: 1.6; color: var(--ink-soft); text-align: center;">your payment is held until you confirm delivery. seller is paid after.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1c ORDER STATUS BUYER DESKTOP ============ -->
+<div class="dv-opt" id="1c">
+  <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Order status — buyer view, desktop 1440</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Order status buyer" style="background: var(--bg);">
+      <header style="height: 64px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 80px;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">ORDER NO. 08841 · PLACED 9 JUL 2026</span>
+        <a href="#1c" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">All orders</a>
+      </header>
+
+      <div style="max-width: 1080px; margin: 0 auto; padding: 48px 0 96px; display: grid; grid-template-columns: 1fr 360px; gap: 64px; align-items: start;">
+
+        <!-- Timeline -->
+        <div>
+          <h1 style="font-size: 28px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink);">Order status</h1>
+
+          <div style="margin-top: 40px; display: flex; flex-direction: column;">
+            <!-- PAID -->
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">PAID &amp; HELD</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">9 JUL · 14:22</div>
+              </div>
+            </div>
+            <!-- CONFIRMED -->
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">SELLER CONFIRMED</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">9 JUL · 18:05</div>
+              </div>
+            </div>
+            <!-- SHIPPED -->
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">SHIPPED · <a href="#1c" style="font-weight: 400; color: var(--ink);">TRACKING 9400 1108</a></div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">10 JUL · 09:41</div>
+              </div>
+            </div>
+            <!-- DELIVERED current -->
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 2px; background: var(--accent); animation: pvPulse 2s ease-in-out infinite;"></span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">DELIVERED</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">12 JUL · 11:18 · FROM CARRIER SCAN</div>
+              </div>
+            </div>
+            <!-- RELEASED pending -->
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 2px; display: block;"></span>
+              </div>
+              <div>
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">FUNDS RELEASED</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">PENDING</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="margin-top: 48px; max-width: 400px;">
+            <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Confirm receipt — release funds</div>
+            <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); text-align: center;">OR FUNDS RELEASE AUTOMATICALLY IN 2D 14H</div>
+            <div style="margin-top: 32px; text-align: center;">
+              <span style="font: 500 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Report an issue</span>
+              <div style="margin-top: 6px; font-size: 12px; color: var(--ink-soft);">requires photos within 72h of delivery · pauses the auto-release</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right rail -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <div style="border: 1px solid var(--line); border-radius: 2px;">
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--line); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Order</div>
+            <div style="padding: 16px; display: flex; gap: 16px;">
+              <div style="flex: none; width: 64px; aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+              <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; line-height: 1.4; color: var(--ink);">2004 DISTRESSED BONDAGE BOMBER</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">MAISON ARCHIVE · M / 48</span>
+              </div>
+            </div>
+            <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 7px;">
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--ink);"><span>PRICE</span><span>$1,250</span></div>
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);"><span>BUYER FEE 2%</span><span>$25</span></div>
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);"><span>SHIPPING</span><span>$12</span></div>
+              <div style="border-top: 1px solid var(--line); margin-top: 3px; padding-top: 10px; display: flex; justify-content: space-between; font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);"><span>TOTAL</span><span>$1,287</span></div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid var(--line); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);">@archivedealer</span>
+              <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Gold</span>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">4.9 · 212 SALES · SHIPS FROM US</div>
+            <span style="align-self: flex-start; font: 500 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink); cursor: pointer; margin-top: 4px;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Message seller</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1d ORDER STATUS SELLER DESKTOP ============ -->
+<div class="dv-opt" id="1d">
+  <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Order status — seller view, same order</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Order status seller" style="background: var(--bg);">
+      <header style="height: 64px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 80px;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">SALE NO. 08841 · SOLD 9 JUL 2026</span>
+        <a href="#1d" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">All sales</a>
+      </header>
+
+      <div style="max-width: 1080px; margin: 0 auto; padding: 48px 0 96px; display: grid; grid-template-columns: 1fr 360px; gap: 64px; align-items: start;">
+        <div>
+          <h1 style="font-size: 28px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink);">Sale status</h1>
+
+          <!-- BUYER RECORD -->
+          <div style="margin-top: 28px; border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); flex: none;">Buyer</span>
+            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);">@danaokafor</span>
+            <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Silver</span>
+            <span style="white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">37 PURCHASES · 0 DISPUTES · MEMBER 8MO</span>
+          </div>
+
+          <div style="margin-top: 40px; display: flex; flex-direction: column;">
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">PAID &amp; HELD</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">9 JUL · 14:22</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">SELLER CONFIRMED</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">9 JUL · 18:05</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">SHIPPED · <a href="#1d" style="font-weight: 400; color: var(--ink);">TRACKING 9400 1108</a></div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">10 JUL · 09:41</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 2px; background: var(--accent); animation: pvPulse 2s ease-in-out infinite;"></span>
+                <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+              </div>
+              <div style="padding-bottom: 36px;">
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">DELIVERED</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">12 JUL · 11:18 · FROM CARRIER SCAN</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 20px;">
+              <div style="flex: none;">
+                <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 2px; display: block;"></span>
+              </div>
+              <div>
+                <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">FUNDS RELEASED</div>
+                <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">PENDING</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 48px; max-width: 440px;">
+            <div style="font-family: var(--font-mono); font-size: 13px; color: var(--ink);">PAYOUT $1,225 — AUTO-RELEASES IN 2D 14H</div>
+            <div style="margin-top: 20px; border: 1px solid var(--line); border-radius: 2px;">
+              <div style="padding: 12px 16px; border-bottom: 1px solid var(--line); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Protected</div>
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 11px 16px;">
+                <span style="color: var(--accent); font-size: 12px; flex: none;">✓</span>
+                <span style="font-size: 12px; line-height: 1.6; color: var(--ink);">carrier scan confirms delivery</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 11px 16px; border-top: 1px solid var(--line);">
+                <span style="color: var(--accent); font-size: 12px; flex: none;">✓</span>
+                <span style="font-size: 12px; line-height: 1.6; color: var(--ink);">your listing photos are archived as evidence</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 11px 16px; border-top: 1px solid var(--line);">
+                <span style="color: var(--accent); font-size: 12px; flex: none;">✓</span>
+                <span style="font-size: 12px; line-height: 1.6; color: var(--ink);">disputes require buyer photos within 72h</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right rail -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <div style="border: 1px solid var(--line); border-radius: 2px;">
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--line); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Order</div>
+            <div style="padding: 16px; display: flex; gap: 16px;">
+              <div style="flex: none; width: 64px; aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+              <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; line-height: 1.4; color: var(--ink);">2004 DISTRESSED BONDAGE BOMBER</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">MAISON ARCHIVE · M / 48</span>
+              </div>
+            </div>
+            <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 7px;">
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 12px; color: var(--ink);"><span>SOLD FOR</span><span>$1,250</span></div>
+              <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);"><span>SELLER FEE 2%</span><span>−$25</span></div>
+              <div style="border-top: 1px solid var(--line); margin-top: 3px; padding-top: 10px; display: flex; justify-content: space-between; font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);"><span>PAYOUT</span><span>$1,225</span></div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid var(--line); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);">@danaokafor</span>
+              <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Silver</span>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">37 PURCHASES · 0 DISPUTES</div>
+            <span style="align-self: flex-start; font: 500 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink); cursor: pointer; margin-top: 4px;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Message buyer</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1e ORDER STATUS BUYER MOBILE ============ -->
+<div class="dv-opt" id="1e">
+  <div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Order status — buyer view, mobile 375</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Order status mobile" style="background: var(--bg);">
+      <div style="height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 16px;">
+        <span style="flex: none; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer;">‹</span>
+        <span style="flex: 1; text-align: center; font-family: var(--font-mono); font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ORDER NO. 08841</span>
+        <span style="flex: none; width: 20px;"></span>
+      </div>
+
+      <div style="padding: 24px 16px 32px;">
+        <!-- summary compact -->
+        <div style="border: 1px solid var(--line); border-radius: 2px; padding: 12px 14px; display: flex; gap: 12px;">
+          <div style="flex: none; width: 48px; aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 7px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+          <div style="min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">2004 DISTRESSED BONDAGE BOMBER</span>
+            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">M / 48 · TOTAL $1,287</span>
+          </div>
+        </div>
+
+        <!-- timeline -->
+        <div style="margin-top: 28px; display: flex; flex-direction: column;">
+          <div style="display: flex; gap: 16px;">
+            <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+              <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+              <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+            </div>
+            <div style="padding-bottom: 28px;">
+              <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">PAID &amp; HELD</div>
+              <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">9 JUL · 14:22</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 16px;">
+            <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+              <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+              <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+            </div>
+            <div style="padding-bottom: 28px;">
+              <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">SELLER CONFIRMED</div>
+              <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">9 JUL · 18:05</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 16px;">
+            <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+              <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: var(--accent);">✓</span>
+              <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+            </div>
+            <div style="padding-bottom: 28px;">
+              <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">SHIPPED</div>
+              <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">10 JUL · <a href="#1e" style="color: var(--ink);">TRACKING 9400 1108</a></div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 16px;">
+            <div style="flex: none; display: flex; flex-direction: column; align-items: center;">
+              <span style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 2px; background: var(--accent); animation: pvPulse 2s ease-in-out infinite;"></span>
+              <span style="width: 1px; flex: 1; background: var(--line); margin: 4px 0;"></span>
+            </div>
+            <div style="padding-bottom: 28px;">
+              <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink);">DELIVERED</div>
+              <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">12 JUL · FROM CARRIER SCAN</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 16px;">
+            <div style="flex: none;">
+              <span style="width: 18px; height: 18px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 2px; display: block;"></span>
+            </div>
+            <div>
+              <div style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">FUNDS RELEASED</div>
+              <div style="margin-top: 3px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">PENDING</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 36px;">
+          <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Confirm receipt — release funds</div>
+          <div style="margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); text-align: center;">OR FUNDS RELEASE AUTOMATICALLY IN 2D 14H</div>
+          <div style="margin-top: 24px; text-align: center;">
+            <span style="font: 500 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">Report an issue</span>
+            <div style="margin-top: 6px; font-size: 12px; line-height: 1.6; color: var(--ink-soft);">requires photos within 72h of delivery · pauses the auto-release</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 32px; border-top: 1px solid var(--line); padding-top: 16px; display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);">@archivedealer</span>
+          <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Gold</span>
+          <span style="margin-left: auto; font: 500 12px var(--font-ui); letter-spacing: -0.01em; color: var(--ink); cursor: pointer;">Message seller</span>
+        </div>
+      </div>
+
+      <!-- GLOBAL MOBILE TAB BAR — PROFILE active -->
+      <div style="height: 56px; border-top: 1px solid var(--line); display: flex; align-items: stretch;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 5h13M3.5 10h13M3.5 15h13"></path></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Feed</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8.5" cy="8.5" r="5"></circle><path d="M12.5 12.5L17 17"></path></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Discover</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3.5h5.5V9L9 16.5 3.5 11z"></path><circle cx="13.75" cy="6.25" r="1"></circle></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Sell</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 4.5h13v9h-7l-3 3v-3h-3z"></path></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Messages</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="6.5" r="3"></circle><path d="M4.5 16.5c0-3 2.5-4.5 5.5-4.5s5.5 1.5 5.5 4.5"></path></svg>
+          <span style="font: 700 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "dispute-opened state of the timeline" · "payment error state on checkout" · "seller's ship-by state (before carrier pickup)"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

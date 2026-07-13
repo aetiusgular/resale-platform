@@ -1,0 +1,32 @@
+<!-- @dsCard group="Type" viewport="700x160" name="Casing rules" subtitle="Sentence case chrome · caps for labels only" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; display: flex; gap: 48px; }
+  .col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .t { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .btnish { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; background: var(--ink); color: var(--bg); border-radius: 2px; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; align-self: flex-start; }
+  .caps { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+  .no { color: var(--alert); text-decoration: line-through; }
+</style>
+</head>
+<body>
+  <div class="col">
+    <div class="t">Chrome is sentence case</div>
+    <span class="btnish">Make offer</span>
+    <span style="font-size: 12px; color: var(--ink-soft);"><span class="no">MAKE OFFER</span> — never caps in buttons</span>
+  </div>
+  <div class="col">
+    <div class="t">Caps = nav + section labels, 11–12px, +0.08em</div>
+    <nav style="display: flex; gap: 24px;" aria-label="Example nav">
+      <span class="caps">Shop</span>
+      <span class="caps" style="color: var(--ink-soft);">Sell</span>
+      <span class="caps" style="color: var(--ink-soft);">Archive</span>
+    </nav>
+    <span class="caps" style="color: var(--ink-soft);">Seller record</span>
+  </div>
+</body>
+</html>

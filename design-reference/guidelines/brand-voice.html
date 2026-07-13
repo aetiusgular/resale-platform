@@ -1,0 +1,33 @@
+<!-- @dsCard group="Brand" viewport="700x230" name="Voice" subtitle="A registrar cataloguing objects, not a store selling them" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; padding: 20px 24px; display: flex; gap: 48px; }
+  .col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .t { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .yes { color: var(--accent); }
+  .no { color: var(--alert); }
+  .ex { font-size: 13px; line-height: 1.5; }
+  .ex .m { font-family: var(--font-mono); font-size: 12px; }
+</style>
+</head>
+<body>
+  <div class="col">
+    <div class="t yes">Yes</div>
+    <div class="ex">Authenticated. Certificate added to the listing.</div>
+    <div class="ex">Nothing in the archive yet.</div>
+    <div class="ex">Membership is by referral.</div>
+    <div class="ex"><span class="m">Raf Simons · AW03 · EU 48 · 8/10</span></div>
+  </div>
+  <div class="col">
+    <div class="t no">No</div>
+    <div class="ex" style="color: var(--ink-soft);">Woohoo! Item verified! 🎉</div>
+    <div class="ex" style="color: var(--ink-soft);">Hurry — only 2 left!</div>
+    <div class="ex" style="color: var(--ink-soft);">Join the exclusive club!!</div>
+    <div class="ex" style="color: var(--ink-soft);">Amazing vintage bomber jacket!!!</div>
+  </div>
+</body>
+</html>

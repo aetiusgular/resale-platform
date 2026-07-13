@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="styles.css">
+<style>
+body{margin:0;background:#F2F2F2;font-family:var(--font-ui),sans-serif}
+.dv-turn{padding:40px 44px 32px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:700 10px var(--font-mono),monospace;padding:3px 7px;background:var(--ink);color:var(--bg);border-radius:2px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 var(--font-ui),sans-serif;color:var(--ink)}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px var(--font-mono),monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:var(--ink);border-radius:2px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-ui),sans-serif;color:var(--ink-soft)}
+.dv-card{max-width:100%;background:var(--bg);border:1px solid rgba(0,0,0,.1);overflow:hidden}
+.dv-opt:target .dv-oid{background:var(--accent);color:var(--bg)}
+.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-ui),sans-serif;color:var(--ink-soft)}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Browse / search results — desktop 1440, sort detail, mobile 375, filter drawer, empty state</span></div>
+<div class="dv-opts">
+
+<!-- ============ 1a DESKTOP 1440 ============ -->
+<div class="dv-opt" id="1a">
+  <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Desktop 1440 — results with sidebar filters</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Browse desktop" style="background: var(--bg);">
+
+      <!-- Header 64 -->
+      <header style="height: 64px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 32px; padding: 0 80px;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink); flex: none; width: 160px;">———</span>
+        <div style="flex: 1; display: flex; justify-content: center;">
+          <div style="width: 100%; max-width: 480px; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink-soft);">search designers, items</div>
+        </div>
+        <div style="flex: none; display: flex; align-items: center; gap: 24px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Sell</div>
+          <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Saved</a>
+          <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Messages</a>
+          <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">OD</div>
+        </div>
+      </header>
+
+      <div style="max-width: 1280px; margin: 0 auto;">
+
+        <!-- Results header row -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 32px 0 28px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0;">
+            <span style="font-family: var(--font-mono); font-size: 14px; color: var(--ink); white-space: nowrap;">79 LISTINGS FOR</span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; background: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">MAISON ARCHIVE<span style="color: var(--ink-soft); cursor: pointer;">×</span></span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; background: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">FOOTWEAR: 9<span style="color: var(--ink-soft); cursor: pointer;">×</span></span>
+            <span style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; background: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">CONDITION 7+<span style="color: var(--ink-soft); cursor: pointer;">×</span></span>
+            <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; transition: color 120ms linear;" style-hover="color: var(--ink);">Clear all</a>
+          </div>
+          <div style="display: flex; align-items: center; gap: 24px; flex: none;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Follow search</div>
+            <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); cursor: pointer; white-space: nowrap;">Sort: Newest <span style="color: var(--ink-soft); font-size: 10px;">▾</span></span>
+          </div>
+        </div>
+
+        <!-- Columns -->
+        <div style="display: flex; gap: 24px; align-items: flex-start; padding-bottom: 64px;">
+
+          <!-- Sidebar 240 -->
+          <aside style="width: 240px; flex: none;">
+
+            <!-- My sizes module -->
+            <div style="border: 1px solid var(--line); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font: 500 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">My sizes</span>
+                <span style="position: relative; width: 36px; height: 20px; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg); display: inline-block; cursor: pointer;"><span style="position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 2px; background: var(--accent);"></span></span>
+              </div>
+              <span style="font-size: 12px; line-height: 1.5; color: var(--ink-soft);">hide listings that aren't your size</span>
+              <a href="#1a" style="font-size: 12px; color: var(--ink); align-self: flex-start;">edit</a>
+            </div>
+
+            <!-- DEPARTMENT collapsed -->
+            <div style="padding: 24px 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Department</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+
+            <!-- CATEGORY expanded -->
+            <div style="border-top: 1px solid var(--line); padding: 24px 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 14px;">
+                <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Category</span>
+                <span style="font-size: 10px; color: var(--ink-soft);">▴</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer;">
+                  <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg);"></span>
+                  <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Outerwear</span>
+                  <span style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">1,204</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer;">
+                  <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1;">✓</span>
+                  <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Footwear</span>
+                  <span style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">890</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer;">
+                  <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg);"></span>
+                  <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Tops</span>
+                  <span style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">2,113</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SIZE collapsed -->
+            <div style="border-top: 1px solid var(--line); padding: 24px 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Size</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+
+            <!-- DESIGNER collapsed -->
+            <div style="border-top: 1px solid var(--line); padding: 24px 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Designer</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+
+            <!-- PRICE expanded -->
+            <div style="border-top: 1px solid var(--line); padding: 24px 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 18px;">
+                <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Price</span>
+                <span style="font-size: 10px; color: var(--ink-soft);">▴</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box; font-family: var(--font-mono); font-size: 13px; color: var(--ink);">$50<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Min</span></span>
+                <span style="color: var(--ink-soft); flex: none;">—</span>
+                <span style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box; font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft);">$<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Max</span></span>
+              </div>
+            </div>
+
+            <!-- CONDITION expanded -->
+            <div style="border-top: 1px solid var(--line); padding: 24px 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 14px;">
+                <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Condition</span>
+                <span style="font-size: 10px; color: var(--ink-soft);">▴</span>
+              </div>
+              <div style="display: flex; gap: 2px; margin-bottom: 12px;">
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft);">1</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft);">2</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft);">3</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft);">4</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft);">5</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft);">6</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--ink); background: var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--bg);">7</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--ink); background: var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--bg);">8</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--ink); background: var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--bg);">9</span>
+                <span style="flex: 1; height: 24px; box-sizing: border-box; border: 1px solid var(--ink); background: var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--bg);">10</span>
+              </div>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; background: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--bg); cursor: pointer;">7+ ONLY</span>
+            </div>
+
+            <!-- SELLER LOCATION collapsed -->
+            <div style="border-top: 1px solid var(--line); padding: 24px 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Seller location</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+
+            <!-- SHOW ONLY expanded -->
+            <div style="border-top: 1px solid var(--line); padding: 24px 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-bottom: 14px;">
+                <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Show only</span>
+                <span style="font-size: 10px; color: var(--ink-soft);">▴</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer;">
+                  <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg);"></span>
+                  <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Verified</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer;">
+                  <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg);"></span>
+                  <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Price dropped</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- FOLLOWED SEARCHES collapsed -->
+            <div style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 24px 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Followed searches</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+          </aside>
+
+          <!-- Grid -->
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px 24px;">
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">1H AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">FORM STUDIO Raw Denim Trucker</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$310</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">M / 48 · 8/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">3H AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ATELIER 9 Split-Toe Derby</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$640</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">EU 43 · 9/10</div>
+                <div style="margin-top: 8px; font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--accent);">VERIFIED</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">5H AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">MAISON ARCHIVE Wool Overcoat</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$1,240</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">L / 52 · 9/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">1D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">COLD PRESS Garment-Dye Hoodie</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);"><span style="color: var(--ink-soft); text-decoration: line-through;">$420</span> $340</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">XL · 8/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">1D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">OBJET GREY Pleated Trouser</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$265</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">32 · 9/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">2D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">STUDIO HALDE Leather Tote</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$890</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">OS · 7/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">2D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">SECOND ROOM Cashmere Crewneck</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$385</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">M / 48 · 9/10</div>
+                <div style="margin-top: 8px; font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--accent);">VERIFIED</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">3D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">PAPER LABEL Boxy Tee, 3-Pack</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$85</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">L · 10/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">4D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">NORTH TERM Down Liner Vest</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$230</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">M · 8/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">5D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ARCHIVE 44 Split-Hem Cargo</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$195</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">30 · 7/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">6D AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">GALLERY WORK Mohair Cardigan</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$540</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">2 / M · 8/10</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; cursor: pointer; outline: 1px solid transparent; outline-offset: 8px; transition: outline-color 120ms linear;" style-hover="outline-color: var(--line);">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+                <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">1W AGO</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">FORM STUDIO Chore Coat</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$2,400</div>
+                <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">XL / 54 · 9/10</div>
+              </div>
+
+            </div>
+
+            <!-- Load more -->
+            <div style="display: flex; justify-content: center; padding-top: 64px;">
+              <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 32px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Load more</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1b SORT OPEN DETAIL ============ -->
+<div class="dv-opt" id="1b">
+  <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Detail — sort dropdown, open</div>
+  <div class="dv-card" style="width: 420px;">
+    <div data-screen-label="Sort open" style="background: var(--bg); padding: 32px; display: flex; flex-direction: column; align-items: flex-end; gap: 0; min-height: 340px;">
+      <div style="display: flex; align-items: center; gap: 24px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Follow search</div>
+        <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); cursor: pointer; white-space: nowrap;">Sort: Newest <span style="color: var(--ink); font-size: 10px;">▴</span></span>
+      </div>
+      <div style="width: 240px; margin-top: 8px; background: var(--bg); border: 1px solid var(--ink); border-radius: 2px; box-shadow: var(--shadow-1);">
+        <div style="height: 40px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Most relevant</div>
+        <div style="height: 40px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer;">Newest<span style="font-size: 12px;">✓</span></div>
+        <div style="height: 40px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Price ↑</div>
+        <div style="height: 40px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Price ↓</div>
+        <div style="height: 40px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--ink); cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Most saved</div>
+      </div>
+      <div style="margin-top: auto; align-self: flex-start; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">ACTIVE ROW: INTER 500 + ✓ · HOVER: UNDERLINE · NO FILLS</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1c MOBILE 375 ============ -->
+<div class="dv-opt" id="1c">
+  <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Mobile 375 — 2-col grid, chip rail, sticky filter row</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Browse mobile" style="background: var(--bg);">
+
+      <header style="height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 16px;">
+        <span style="font: 600 15px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">OD</div>
+      </header>
+
+      <div style="padding: 12px 16px 0;">
+        <div style="height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink-soft);">search designers, items</div>
+      </div>
+
+      <!-- chip rail (scrolls horizontally) -->
+      <div style="display: flex; gap: 8px; align-items: center; padding: 12px 16px; overflow: hidden;">
+        <span style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">MAISON ARCHIVE<span style="color: var(--ink-soft);">×</span></span>
+        <span style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">FOOTWEAR: 9<span style="color: var(--ink-soft);">×</span></span>
+        <span style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">CONDITION 7+<span style="color: var(--ink-soft);">×</span></span>
+      </div>
+
+      <!-- sticky controls row -->
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 12px; border-bottom: 1px solid var(--line); background: var(--bg);">
+        <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 20px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Filters (6)</div>
+        <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); white-space: nowrap;">Sort: Newest <span style="color: var(--ink-soft); font-size: 10px;">▾</span></span>
+      </div>
+
+      <div style="padding: 16px;">
+        <div style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); margin-bottom: 16px;">79 LISTINGS</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px 16px;">
+
+          <div style="display: flex; flex-direction: column;">
+            <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+            <div style="margin-top: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">1H AGO</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">FORM STUDIO Raw Denim Trucker</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$310</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">M / 48 · 8/10</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column;">
+            <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+            <div style="margin-top: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">3H AGO</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">ATELIER 9 Split-Toe Derby</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$640</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">EU 43 · 9/10</div>
+            <div style="margin-top: 6px; font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--accent);">VERIFIED</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column;">
+            <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+            <div style="margin-top: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">1D AGO</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">COLD PRESS Garment-Dye Hoodie</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);"><span style="color: var(--ink-soft); text-decoration: line-through;">$420</span> $340</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">XL · 8/10</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column;">
+            <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4</div>
+            <div style="margin-top: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">2D AGO</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-weight: 700; font-size: 14px; line-height: 1.4; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">SECOND ROOM Cashmere Crewneck</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 14px; color: var(--ink);">$385</div>
+            <div style="margin-top: 4px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">M / 48 · 9/10</div>
+          </div>
+
+        </div>
+        <div style="display: flex; justify-content: center; padding: 32px 0 24px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 32px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Load more</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1d MOBILE FILTER DRAWER ============ -->
+<div class="dv-opt" id="1d">
+  <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Mobile — full-screen filter drawer</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Filter drawer" style="background: var(--bg); position: relative; height: 812px; box-sizing: border-box; overflow: hidden;">
+
+      <div style="height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 16px;">
+        <span style="font: 600 20px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">Filters</span>
+        <span style="font-size: 18px; color: var(--ink-soft); cursor: pointer;">×</span>
+      </div>
+
+      <div style="padding: 16px 16px 96px;">
+        <div style="border: 1px solid var(--line); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font: 500 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">My sizes</span>
+            <span style="position: relative; width: 36px; height: 20px; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg); display: inline-block;"><span style="position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 2px; background: var(--accent);"></span></span>
+          </div>
+          <span style="font-size: 12px; line-height: 1.5; color: var(--ink-soft);">hide listings that aren't your size · <a href="#1d" style="color: var(--ink);">edit</a></span>
+        </div>
+
+        <div style="padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Department</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+
+        <div style="border-top: 1px solid var(--line); padding: 20px 0;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Category</span>
+            <span style="font-size: 10px; color: var(--ink-soft);">▴</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0;">
+              <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg);"></span>
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Outerwear</span>
+              <span style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">1,204</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0;">
+              <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1;">✓</span>
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Footwear</span>
+              <span style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">890</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0;">
+              <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg);"></span>
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Tops</span>
+              <span style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">2,113</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--line); padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Size</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+        <div style="border-top: 1px solid var(--line); padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Designer</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+        <div style="border-top: 1px solid var(--line); padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Price</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+        <div style="border-top: 1px solid var(--line); padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Condition</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+        <div style="border-top: 1px solid var(--line); padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Seller location</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+        <div style="border-top: 1px solid var(--line); padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Show only</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+        <div style="border-top: 1px solid var(--line); padding: 20px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Followed searches</span>
+          <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+        </div>
+      </div>
+
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 16px; border-top: 1px solid var(--line); background: var(--bg);">
+        <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Show 79 listings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1e EMPTY STATE ============ -->
+<div class="dv-opt" id="1e">
+  <div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Empty state — zero results</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Empty state" style="background: var(--bg); height: 640px; box-sizing: border-box; overflow: hidden;">
+
+      <header style="height: 64px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 32px; padding: 0 80px;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink); flex: none; width: 160px;">———</span>
+        <div style="flex: 1; display: flex; justify-content: center;">
+          <div style="width: 100%; max-width: 480px; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">margiela tabi 46</div>
+        </div>
+        <div style="flex: none; display: flex; align-items: center; gap: 24px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Sell</div>
+          <a href="#1e" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none;">Saved</a>
+          <a href="#1e" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none;">Messages</a>
+          <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">OD</div>
+        </div>
+      </header>
+
+      <div style="max-width: 1280px; margin: 0 auto;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 32px 0 28px; flex-wrap: wrap;">
+          <span style="font-family: var(--font-mono); font-size: 14px; color: var(--ink);">0 LISTINGS FOR</span>
+          <span style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">MARGIELA TABI<span style="color: var(--ink-soft); cursor: pointer;">×</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">EU 46<span style="color: var(--ink-soft); cursor: pointer;">×</span></span>
+          <a href="#1e" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Clear all</a>
+        </div>
+
+        <div style="display: flex; gap: 24px; align-items: flex-start;">
+          <aside style="width: 240px; flex: none;">
+            <div style="border: 1px solid var(--line); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font: 500 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">My sizes</span>
+                <span style="position: relative; width: 36px; height: 20px; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg); display: inline-block;"><span style="position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 2px; background: var(--accent);"></span></span>
+              </div>
+              <span style="font-size: 12px; line-height: 1.5; color: var(--ink-soft);">hide listings that aren't your size</span>
+            </div>
+            <div style="padding: 24px 0; display: flex; align-items: center; justify-content: space-between;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Department</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+            <div style="border-top: 1px solid var(--line); padding: 24px 0; display: flex; align-items: center; justify-content: space-between;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Category</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+            <div style="border-top: 1px solid var(--line); padding: 24px 0; display: flex; align-items: center; justify-content: space-between;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Size</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+            <div style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 24px 0; display: flex; align-items: center; justify-content: space-between;">
+              <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Designer</span>
+              <span style="font-size: 10px; color: var(--ink-soft);">▾</span>
+            </div>
+          </aside>
+
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 360px;">
+            <p style="font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 1.6rem; line-height: 1.35; color: var(--ink); margin: 0;">Nothing in the archive matches.</p>
+            <a href="#1e" style="font-size: 14px; color: var(--ink);">follow this search and we'll notify you</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make <a class="dv-oid" href="#1a">1a</a>'s sidebar sticky and show a scrolled state" · "add chip + checkbox hover/pressed detail frames" · "swap the 3 : 4 placeholders for photography when you have it"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="styles.css">
+<style>
+body{margin:0;background:#F2F2F2;font-family:var(--font-ui),sans-serif}
+.dv-turn{padding:40px 44px 32px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:700 10px var(--font-mono),monospace;padding:3px 7px;background:var(--ink);color:var(--bg);border-radius:2px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 var(--font-ui),sans-serif;color:var(--ink)}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px var(--font-mono),monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:var(--ink);border-radius:2px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-ui),sans-serif;color:var(--ink-soft)}
+.dv-card{max-width:100%;background:var(--bg);border:1px solid rgba(0,0,0,.1);overflow:hidden}
+.dv-opt:target .dv-oid{background:var(--accent);color:var(--bg)}
+.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-ui),sans-serif;color:var(--ink-soft)}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Listing detail — desktop 1440 + mobile 375, condition/possession states, comments-tab state</span></div>
+<div class="dv-opts">
+
+<!-- ============ 1a DESKTOP 1440 ============ -->
+<div class="dv-opt" id="1a">
+  <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Desktop 1440 — 60/40 split, trust strip above buy, community section (LEGIT CHECK open)</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Listing detail desktop" style="background: var(--bg);">
+
+      <header style="height: 64px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 32px; padding: 0 80px;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink); flex: none; width: 160px;">———</span>
+        <div style="flex: 1; display: flex; justify-content: center;">
+          <div style="width: 100%; max-width: 480px; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink-soft);">search designers, items</div>
+        </div>
+        <div style="flex: none; display: flex; align-items: center; gap: 24px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Sell</div>
+          <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Saved</a>
+          <a href="#1a" style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Messages</a>
+          <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">OD</div>
+        </div>
+      </header>
+
+      <div style="max-width: 1280px; margin: 0 auto; padding: 40px 0 64px;">
+        <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 48px; align-items: start;">
+
+          <!-- LEFT: images -->
+          <div>
+            <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4 — FRONT</div>
+            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-top: 16px;">
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); cursor: pointer;">3 : 4</div>
+                <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); text-align: center;">Front</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">3 : 4</div>
+                <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: center;">Back</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">3 : 4</div>
+                <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: center;">Tag</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">3 : 4</div>
+                <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: center;">Detail</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">3 : 4</div>
+                <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: center;">Flaw</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="position: relative; aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">3 : 4<span style="position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; background: var(--accent); border-radius: 2px; color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1;">✓</span></div>
+                <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: center;">Possession</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: panel -->
+          <div style="display: flex; flex-direction: column; gap: 0;">
+            <h1 style="font-family: var(--font-mono); font-weight: 700; font-size: 20px; line-height: 1.35; letter-spacing: 0; color: var(--ink); margin: 0;">2004 DISTRESSED BONDAGE BOMBER</h1>
+            <div style="margin-top: 8px; font-family: var(--font-mono); font-size: 16px; color: var(--ink);">MAISON ARCHIVE · M / 48</div>
+
+            <div style="margin-top: 16px; display: flex; align-items: baseline; gap: 12px;">
+              <span style="font-family: var(--font-mono); font-size: 14px; color: var(--ink);">CONDITION 8/10</span>
+              <a href="#1b" style="font-size: 12px; color: var(--ink);">what 8 means</a>
+            </div>
+
+            <div style="margin-top: 24px;">
+              <div style="font-family: var(--font-mono); font-weight: 700; font-size: 28px; color: var(--ink);">$1,250</div>
+              <div style="margin-top: 4px; font-size: 12px; color: var(--ink-soft);">buyer fee 2% · $25 — total $1,275 · that's it.</div>
+            </div>
+
+            <!-- TRUST STRIP -->
+            <div style="margin-top: 24px; border: 1px solid var(--line); border-radius: 2px;">
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 12px 16px;">
+                <span style="color: var(--accent); font-size: 13px; flex: none;">✓</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink); flex: none;">VERIFIED</span>
+                <span style="font-size: 12px; color: var(--ink-soft);">AI + human reviewed</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line);">
+                <span style="color: var(--accent); font-size: 13px; flex: none;">✓</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink); flex: none;">COMMUNITY CHECKED</span>
+                <span style="font-size: 12px; color: var(--ink-soft);">4 legit checks, 1 from a verified checker · <a href="#1a" style="color: var(--ink);">read</a></span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line);">
+                <span style="color: var(--accent); font-size: 13px; flex: none;">✓</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink); flex: none;">ESCROW</span>
+                <span style="font-size: 12px; color: var(--ink-soft);">your money is held until you confirm delivery</span>
+              </div>
+            </div>
+
+            <!-- Buttons -->
+            <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Buy now</div>
+              <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Make offer</div>
+              <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--bg); color: var(--ink); border: 1px solid transparent; border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Message seller</div>
+            </div>
+
+            <!-- Seller block -->
+            <div style="margin-top: 24px; border-top: 1px solid var(--line); padding-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink);">@archivedealer</span>
+                <span style="display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Gold</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 10px; letter-spacing: 0.08em; color: var(--accent);">VERIFIED ID</span>
+                <a href="#1a" style="margin-left: auto; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Follow</a>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 12px; color: var(--ink);">4.9 · 212 SALES</div>
+              <div style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">SHIPS FROM · US</div>
+            </div>
+
+            <div style="margin-top: 20px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">LISTED 3D AGO · 41 SAVES</div>
+          </div>
+        </div>
+
+        <!-- COMMUNITY SECTION -->
+        <div style="margin-top: 96px; max-width: 840px;">
+          <h2 style="font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 24px; line-height: 1.35; color: var(--ink); margin: 0;">The community weighs in.</h2>
+
+          <div style="margin-top: 24px; display: flex; gap: 32px; border-bottom: 1px solid var(--line);">
+            <span style="position: relative; padding-bottom: 12px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); cursor: pointer;">Legit check (4)<span style="position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--ink);"></span></span>
+            <a href="#1d" style="padding-bottom: 12px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Comments (2)</a>
+          </div>
+
+          <!-- Pinned verdict -->
+          <div style="margin-top: 24px; border: 1px solid var(--accent); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 14px; line-height: 1.6; color: var(--ink);"><span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--accent);">CHECKED</span> — hardware, stitching, and tag are consistent with authentic.</div>
+            <div style="display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">— @formcheck, <span style="font-weight: 700; font-size: 10px; letter-spacing: 0.08em; color: var(--accent);">VERIFIED CHECKER</span> · OUTERWEAR</div>
+          </div>
+
+          <!-- Threads -->
+          <div style="display: flex; flex-direction: column;">
+            <div style="padding: 20px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink);">@tabiwalker</span>
+                <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Silver</span>
+                <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">2D AGO</span>
+              </div>
+              <div style="font-size: 14px; line-height: 1.6; color: var(--ink);">seams and bar tacks match my 2004 run. zipper pull font is right.</div>
+              <a href="#1a" style="align-self: flex-start; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Agree (3)</a>
+            </div>
+            <div style="padding: 20px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink);">@coldpress</span>
+                <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Bronze</span>
+                <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">1D AGO</span>
+              </div>
+              <div style="font-size: 14px; line-height: 1.6; color: var(--ink);">tag stitching consistent with the era. would buy.</div>
+              <a href="#1a" style="align-self: flex-start; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Agree (1)</a>
+            </div>
+            <div style="padding: 20px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink);">@northterm</span>
+                <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Gold</span>
+                <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">18H AGO</span>
+              </div>
+              <div style="font-size: 14px; line-height: 1.6; color: var(--ink);">asked for a macro of the care tag — seller delivered, checks out.</div>
+              <a href="#1a" style="align-self: flex-start; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Agree (2)</a>
+            </div>
+          </div>
+
+          <!-- Input -->
+          <div style="margin-top: 24px;">
+            <div style="height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink-soft);">add a legit check</div>
+            <div style="margin-top: 6px; font-size: 12px; color: var(--ink-soft);">ID-verified members only · new accounts limited to 2 comments/day</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1b STATES DETAIL ============ -->
+<div class="dv-opt" id="1b">
+  <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>States — condition popover open · possession tooltip</div>
+  <div class="dv-card" style="width: 420px;">
+    <div data-screen-label="Detail states" style="background: var(--bg); padding: 32px; display: flex; flex-direction: column; gap: 40px;">
+
+      <div>
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+          <span style="font-family: var(--font-mono); font-size: 14px; color: var(--ink);">CONDITION 8/10</span>
+          <span style="font-size: 12px; color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer;">what 8 means</span>
+        </div>
+        <div style="margin-top: 8px; width: 280px; background: var(--bg); border: 1px solid var(--ink); border-radius: 2px; box-shadow: var(--shadow-1); padding: 12px 16px;">
+          <div style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink);">8/10</div>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--ink);">light wear, no flaws visible at arm's length.</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display: flex; align-items: flex-start; gap: 16px;">
+          <div style="flex: none; width: 96px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="position: relative; aspect-ratio: 3/4; box-sizing: border-box; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft);">3 : 4<span style="position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; background: var(--accent); border-radius: 2px; color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 10px; line-height: 1;">✓</span></div>
+            <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-align: center;">Possession</span>
+          </div>
+          <div style="width: 220px; background: var(--bg); border: 1px solid var(--ink); border-radius: 2px; box-shadow: var(--shadow-1); padding: 12px 16px; font-size: 12px; line-height: 1.6; color: var(--ink);">handwritten-tag photo — proof the item is in hand. required on every listing here.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1c MOBILE 375 ============ -->
+<div class="dv-opt" id="1c">
+  <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Mobile 375 — full page; action bar + tab bar are fixed at viewport bottom</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Listing detail mobile" style="background: var(--bg);">
+
+      <!-- Compact header -->
+      <div style="height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 16px;">
+        <span style="flex: none; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer;">‹</span>
+        <span style="flex: 1; text-align: center; font-family: var(--font-mono); font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">2004 DISTRESSED BONDAGE BOMBER</span>
+        <span style="flex: none; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); cursor: pointer;">Saved</span>
+      </div>
+
+      <!-- Gallery -->
+      <div style="position: relative; aspect-ratio: 3/4; box-sizing: border-box; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; color: var(--ink-soft);">3 : 4
+        <span style="position: absolute; bottom: 12px; left: 12px; display: inline-flex; align-items: center; height: 24px; padding: 0 8px; background: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink);">TAG</span>
+        <span style="position: absolute; bottom: 12px; right: 12px; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">6 PHOTOS</span>
+        <span style="position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px;">
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--line);"></span>
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--line);"></span>
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--ink);"></span>
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--line);"></span>
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--line);"></span>
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--line);"></span>
+        </span>
+      </div>
+
+      <!-- Content -->
+      <div style="padding: 20px 16px 0;">
+        <div style="font-family: var(--font-mono); font-weight: 700; font-size: 20px; line-height: 1.35; color: var(--ink);">2004 DISTRESSED BONDAGE BOMBER</div>
+        <div style="margin-top: 6px; font-family: var(--font-mono); font-size: 16px; color: var(--ink);">MAISON ARCHIVE · M / 48</div>
+        <div style="margin-top: 12px; display: flex; align-items: baseline; gap: 12px;">
+          <span style="font-family: var(--font-mono); font-size: 14px; color: var(--ink);">CONDITION 8/10</span>
+          <a href="#1b" style="font-size: 12px; color: var(--ink);">what 8 means</a>
+        </div>
+        <div style="margin-top: 20px;">
+          <div style="font-family: var(--font-mono); font-weight: 700; font-size: 28px; color: var(--ink);">$1,250</div>
+          <div style="margin-top: 4px; font-size: 12px; color: var(--ink-soft);">buyer fee 2% · $25 — total $1,275 · that's it.</div>
+        </div>
+
+        <!-- TRUST STRIP -->
+        <div style="margin-top: 20px; border: 1px solid var(--line); border-radius: 2px;">
+          <div style="display: flex; align-items: baseline; gap: 10px; padding: 12px 14px;">
+            <span style="color: var(--accent); font-size: 13px; flex: none;">✓</span>
+            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink); flex: none;">VERIFIED</span>
+            <span style="font-size: 12px; color: var(--ink-soft);">AI + human reviewed</span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line);">
+            <span style="color: var(--accent); font-size: 13px; flex: none;">✓</span>
+            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink); flex: none;">COMMUNITY CHECKED</span>
+            <span style="font-size: 12px; color: var(--ink-soft);">4 legit checks · <a href="#1c" style="color: var(--ink);">read</a></span>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line);">
+            <span style="color: var(--accent); font-size: 13px; flex: none;">✓</span>
+            <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink); flex: none;">ESCROW</span>
+            <span style="font-size: 12px; color: var(--ink-soft);">your money is held until you confirm delivery</span>
+          </div>
+        </div>
+
+        <!-- Seller row -->
+        <div style="margin-top: 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 14px 0; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink);">@archivedealer</span>
+          <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Gold</span>
+          <span style="white-space: nowrap; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">4.9 · 212 SALES</span>
+          <span style="margin-left: auto; font-size: 16px; color: var(--ink-soft);">›</span>
+        </div>
+
+        <!-- Community inline -->
+        <div style="margin-top: 32px; padding-bottom: 24px;">
+          <h2 style="font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 24px; line-height: 1.35; color: var(--ink); margin: 0;">The community weighs in.</h2>
+
+          <div style="margin-top: 16px; display: flex; border: 1px solid var(--ink); border-radius: 2px; overflow: hidden;">
+            <span style="flex: 1; display: flex; align-items: center; justify-content: center; height: 36px; background: var(--ink); color: var(--bg); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">Legit check (4)</span>
+            <span style="flex: 1; display: flex; align-items: center; justify-content: center; height: 36px; background: var(--bg); color: var(--ink); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">Comments (2)</span>
+          </div>
+
+          <div style="margin-top: 16px; border: 1px solid var(--accent); border-radius: 2px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 13px; line-height: 1.6; color: var(--ink);"><span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--accent);">CHECKED</span> — hardware, stitching, and tag are consistent with authentic.</div>
+            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">— @formcheck, <span style="font-weight: 700; font-size: 10px; letter-spacing: 0.08em; color: var(--accent);">VERIFIED CHECKER</span> · OUTERWEAR</div>
+          </div>
+
+          <div style="padding: 16px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink);">@tabiwalker</span>
+              <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Silver</span>
+              <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">2D AGO</span>
+            </div>
+            <div style="font-size: 14px; line-height: 1.6; color: var(--ink);">seams and bar tacks match my 2004 run. zipper pull font is right.</div>
+            <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Agree (3)</span>
+          </div>
+          <div style="padding: 16px 0; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink);">@coldpress</span>
+              <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Bronze</span>
+              <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">1D AGO</span>
+            </div>
+            <div style="font-size: 14px; line-height: 1.6; color: var(--ink);">tag stitching consistent with the era. would buy.</div>
+            <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Agree (1)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STICKY STACK (fixed in product; shown in flow here) -->
+      <div style="border-top: 1px solid var(--line); background: var(--bg);">
+        <div style="padding: 6px 16px 0; text-align: center; font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Escrow protected · 2% fee included</div>
+        <div style="display: flex; gap: 8px; padding: 8px 16px 12px;">
+          <div style="flex: 1; display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Offer</div>
+          <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; height: 44px; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;">Buy <span style="font-family: var(--font-mono); font-weight: 700; font-size: 13px;">$1,275</span></div>
+        </div>
+
+        <!-- GLOBAL MOBILE TAB BAR -->
+        <div style="height: 56px; border-top: 1px solid var(--line); display: flex; align-items: stretch;">
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 5h13M3.5 10h13M3.5 15h13"></path></svg>
+            <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Feed</span>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink); cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8.5" cy="8.5" r="5"></circle><path d="M12.5 12.5L17 17"></path></svg>
+            <span style="font: 700 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Discover</span>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3.5h5.5V9L9 16.5 3.5 11z"></path><circle cx="13.75" cy="6.25" r="1"></circle></svg>
+            <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Sell</span>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 4.5h13v9h-7l-3 3v-3h-3z"></path></svg>
+            <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Messages</span>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="6.5" r="3"></circle><path d="M4.5 16.5c0-3 2.5-4.5 5.5-4.5s5.5 1.5 5.5 4.5"></path></svg>
+            <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Profile</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1d COMMENTS TAB STATE ============ -->
+<div class="dv-opt" id="1d">
+  <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>State — COMMENTS tab open, policy-removed link</div>
+  <div class="dv-card" style="width: 840px;">
+    <div data-screen-label="Comments tab" style="background: var(--bg); padding: 32px 40px 40px;">
+      <h2 style="font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 24px; line-height: 1.35; color: var(--ink); margin: 0;">The community weighs in.</h2>
+
+      <div style="margin-top: 24px; display: flex; align-items: baseline; gap: 32px; border-bottom: 1px solid var(--line);">
+        <a href="#1a" style="padding-bottom: 12px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Legit check (4)</a>
+        <span style="position: relative; padding-bottom: 12px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); cursor: pointer;">Comments (2)<span style="position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--ink);"></span></span>
+        <span style="margin-left: auto; padding-bottom: 12px; white-space: nowrap; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">SELLER HAS COMMENTS ON</span>
+      </div>
+
+      <div style="padding: 20px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink);">@paperlabel</span>
+          <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Bronze</span>
+          <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">2D AGO</span>
+        </div>
+        <div style="font-size: 14px; line-height: 1.6; color: var(--ink);">is this still available? i can pay directly at <span style="text-decoration: line-through; color: var(--ink-soft);">grail-pay.example/8841</span></div>
+        <div style="font-size: 12px; line-height: 1.5; color: var(--alert);">link removed — off-platform payment offers violate policy.</div>
+      </div>
+
+      <div style="padding: 20px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink);">@galleryworks</span>
+          <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Silver</span>
+          <span style="margin-left: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);">1D AGO</span>
+        </div>
+        <div style="font-size: 14px; line-height: 1.6; color: var(--ink);">measurements pit to pit?</div>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <div style="height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink-soft);">add a comment</div>
+        <div style="margin-top: 6px; font-size: 12px; color: var(--ink-soft);">ID-verified members only · new accounts limited to 2 comments/day</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "show the make-offer sheet on mobile" · "show the trust strip's read state (checks expanded inline)" · "swap 3 : 4 placeholders for photography"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

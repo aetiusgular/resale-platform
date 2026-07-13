@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="styles.css">
+<style>
+body{margin:0;background:#F2F2F2;font-family:var(--font-ui),sans-serif}
+.dv-turn{padding:40px 44px 32px;scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:700 10px var(--font-mono),monospace;padding:3px 7px;background:var(--ink);color:var(--bg);border-radius:2px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 var(--font-ui),sans-serif;color:var(--ink)}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px var(--font-mono),monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:var(--ink);border-radius:2px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-ui),sans-serif;color:var(--ink-soft)}
+.dv-card{max-width:100%;background:var(--bg);border:1px solid rgba(0,0,0,.1);overflow:hidden}
+.dv-opt:target .dv-oid{background:var(--accent);color:var(--bg)}
+.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-ui),sans-serif;color:var(--ink-soft)}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Settings — nav rail + My sizes / Addresses / Payments panes, mobile index + detail</span></div>
+<div class="dv-opts">
+
+<!-- ============ 1a DESKTOP MY SIZES ============ -->
+<div class="dv-opt" id="1a">
+  <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Desktop 1440 — rail + MY SIZES pane (save disabled until changed)</div>
+  <div class="dv-card" style="width: 1440px;">
+    <div data-screen-label="Settings my sizes" style="background: var(--bg);">
+      <header style="height: 64px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 80px;">
+        <span style="font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--ink);">———</span>
+        <span style="font: 600 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">Settings</span>
+        <div style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft);">DO</div>
+      </header>
+
+      <div style="max-width: 1080px; margin: 0 auto; padding: 48px 0 96px; display: grid; grid-template-columns: 200px 1fr; gap: 64px; align-items: start;">
+
+        <!-- RAIL -->
+        <nav aria-label="Settings" style="display: flex; flex-direction: column; gap: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); margin-bottom: 6px;">ACCOUNT</span>
+            <a href="#1a" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Profile</a>
+            <span style="padding: 5px 0 5px 10px; border-left: 2px solid var(--ink); font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">My sizes</span>
+            <a href="#1b" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Addresses</a>
+            <a href="#1c" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Payments</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); margin-bottom: 6px;">SELLING</span>
+            <a href="#1a" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Listings</a>
+            <a href="#1a" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Offers</a>
+            <a href="#1a" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Vacation mode</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); margin-bottom: 6px;">TRUST</span>
+            <a href="#1a" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Verification</a>
+            <a href="#1a" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Privacy</a>
+            <a href="#1a" style="padding: 5px 0 5px 10px; border-left: 2px solid transparent; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 120ms linear;" style-hover="color: var(--ink);">Notifications</a>
+          </div>
+        </nav>
+
+        <!-- PANE: MY SIZES -->
+        <div style="max-width: 640px;">
+          <h1 style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink);">My sizes</h1>
+          <div style="margin-top: 6px; font-size: 12px; color: var(--ink-soft);">used by the MY SIZES filter and size alerts — never shown publicly.</div>
+
+          <div style="margin-top: 32px; display: flex; flex-direction: column; gap: 28px;">
+            <div>
+              <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px;">Tops</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">XS</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">S</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">M</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">L</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">XL</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">XXL</span>
+              </div>
+            </div>
+            <div>
+              <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px;">Bottoms</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">26</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">28</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">30</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">32</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">34</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">36</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">38</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">40</span>
+              </div>
+            </div>
+            <div>
+              <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px;">Footwear</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">6</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">6.5</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">7</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">7.5</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">8</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">8.5</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">9</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">9.5</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">10</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; cursor: pointer;">10.5</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">11</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">11.5</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">12</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">13</span>
+                <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink); cursor: pointer; transition: border-color 120ms linear;" style-hover="border-color: var(--ink);">14</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 40px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 32px; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; opacity: 0.35; cursor: not-allowed;">Save</div>
+            <span style="margin-left: 12px; font-size: 12px; color: var(--ink-soft);">enabled when something changes</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1b ADDRESSES PANE ============ -->
+<div class="dv-opt" id="1b">
+  <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Addresses pane — one card in edit mode</div>
+  <div class="dv-card" style="width: 800px;">
+    <div data-screen-label="Addresses pane" style="background: var(--bg); padding: 40px 48px 48px; box-sizing: border-box;">
+      <h1 style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink);">Addresses</h1>
+
+      <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 16px; max-width: 560px;">
+        <!-- default card -->
+        <div style="border: 1px solid var(--line); border-radius: 2px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink);">Dana Okafor</span>
+            <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">DEFAULT</span>
+            <div style="margin-left: auto; display: flex; gap: 16px;">
+              <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; transition: color 120ms linear;" style-hover="color: var(--ink);">Edit</span>
+              <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; transition: color 120ms linear;" style-hover="color: var(--ink);">Remove</span>
+            </div>
+          </div>
+          <span style="font-size: 13px; color: var(--ink);">414 Court St</span>
+          <span style="font-size: 13px; color: var(--ink-soft);">Brooklyn NY 11231 · United States</span>
+        </div>
+
+        <!-- edit mode card -->
+        <div style="border: 1px solid var(--ink); border-radius: 2px; padding: 24px 16px 16px; display: flex; flex-direction: column; gap: 22px;">
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">Dana Okafor<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Full name</span></div>
+          <div style="position: relative; height: 44px; border: 1px solid var(--ink); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">88 Water St<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Street address</span></div>
+          <div style="display: flex; gap: 12px;">
+            <div style="position: relative; flex: 1.4; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink);">Brooklyn<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">City</span></div>
+            <div style="position: relative; flex: 1; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; padding: 0 12px; box-sizing: border-box; font-family: var(--font-mono); font-size: 13px; color: var(--ink);">NY 11201<span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">State · ZIP</span></div>
+          </div>
+          <div style="position: relative; height: 44px; border: 1px solid var(--line); border-radius: 2px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; box-sizing: border-box; font-size: 14px; color: var(--ink); cursor: pointer;">United States<span style="font-size: 10px; color: var(--ink-soft);">▾</span><span style="position: absolute; left: 6px; top: -7px; background: var(--bg); padding: 0 4px; font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);">Country</span></div>
+          <div style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <span style="width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 1px solid var(--ink); border-radius: 2px; background: var(--bg);"></span>
+            <span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Set as default</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 32px; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Save</div>
+            <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 20px; background: var(--bg); color: var(--ink); border: 1px solid transparent; border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer;" style-hover="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;">Cancel</div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Add address</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1c PAYMENTS PANE ============ -->
+<div class="dv-opt" id="1c">
+  <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Payments pane — methods + payouts connected</div>
+  <div class="dv-card" style="width: 800px;">
+    <div data-screen-label="Payments pane" style="background: var(--bg); padding: 40px 48px 48px; box-sizing: border-box;">
+      <h1 style="font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--ink);">Payments</h1>
+
+      <div style="margin-top: 24px; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); border-bottom: 1px solid var(--line); padding-bottom: 10px; max-width: 560px;">Payment methods</div>
+
+      <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 560px;">
+        <div style="border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: var(--font-mono); font-size: 13px; color: var(--ink); white-space: nowrap;">VISA ·· 4242 · EXPIRES 08/28</span>
+          <span style="display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--ink); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">DEFAULT</span>
+          <span style="margin-left: auto; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; transition: color 120ms linear;" style-hover="color: var(--ink);">Remove</span>
+        </div>
+        <div style="border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+          <span style="font-family: var(--font-mono); font-size: 13px; color: var(--ink); white-space: nowrap;">PAYPAL · dana@···.net</span>
+          <span style="margin-left: auto; display: flex; gap: 16px;">
+            <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; transition: color 120ms linear;" style-hover="color: var(--ink);">Make default</span>
+            <span style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; transition: color 120ms linear;" style-hover="color: var(--ink);">Remove</span>
+          </span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Add card</div>
+          <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 24px; background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: all 120ms linear;" style-hover="background: var(--ink); color: var(--bg);">Link PayPal</div>
+        </div>
+        <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.6; color: var(--ink-soft);">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" style="flex: none; margin-top: 3px;"><rect x="2" y="5" width="8" height="5.5" rx="0.5"></rect><path d="M4 5V3.5a2 2 0 014 0V5"></path></svg>
+          <span>stored with our payment providers (Stripe / PayPal) — card numbers never touch our servers. saved methods pre-fill checkout; you can still use a different card on any purchase.</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 40px; font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); border-bottom: 1px solid var(--line); padding-bottom: 10px; max-width: 560px;">Payouts</div>
+
+      <div style="margin-top: 16px; max-width: 560px;">
+        <div style="border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+          <span style="color: var(--accent); font-size: 13px; flex: none;">✓</span>
+          <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap;">PAYOUT ACCOUNT · CONNECTED</span>
+          <span style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); white-space: nowrap;">BANK ·· 6789</span>
+          <a href="#1c" style="margin-left: auto; font-size: 12px; color: var(--ink); white-space: nowrap;">manage in Stripe</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1d PAYOUTS NOT CONNECTED ============ -->
+<div class="dv-opt" id="1d">
+  <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>State — payouts not connected</div>
+  <div class="dv-card" style="width: 560px;">
+    <div data-screen-label="Payouts empty" style="background: var(--bg); padding: 32px; box-sizing: border-box;">
+      <div style="border: 1px solid var(--line); border-radius: 2px; padding: 20px 16px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+        <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; color: var(--ink-soft);">PAYOUT ACCOUNT · NOT CONNECTED</span>
+        <div style="display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; padding: 0 32px; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; cursor: pointer; transition: opacity 120ms linear;" style-hover="opacity: 0.9;">Set up payouts</div>
+        <span style="font-size: 12px; color: var(--ink-soft);">required before your first listing goes live.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1e MOBILE INDEX ============ -->
+<div class="dv-opt" id="1e">
+  <div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Mobile 375 — settings index</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="Settings index mobile" style="background: var(--bg);">
+      <div style="height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 16px;">
+        <span style="flex: none; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer;">‹</span>
+        <span style="flex: 1; text-align: center; font: 600 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">Settings</span>
+        <span style="flex: none; width: 20px;"></span>
+      </div>
+
+      <div style="padding: 24px 16px 32px;">
+        <div style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); padding-bottom: 8px;">ACCOUNT</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Profile</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">My sizes</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Addresses</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Payments</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+
+        <div style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); padding: 28px 0 8px;">SELLING</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Listings</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Offers</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Vacation mode</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+
+        <div style="font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--ink-soft); padding: 28px 0 8px;">TRUST</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Verification</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Privacy</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: pointer;"><span style="font: 500 12px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);">Notifications</span><span style="font-size: 16px; color: var(--ink-soft);">›</span></div>
+      </div>
+
+      <!-- GLOBAL MOBILE TAB BAR — PROFILE active -->
+      <div style="height: 56px; border-top: 1px solid var(--line); display: flex; align-items: stretch;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 5h13M3.5 10h13M3.5 15h13"></path></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Feed</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8.5" cy="8.5" r="5"></circle><path d="M12.5 12.5L17 17"></path></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Discover</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3.5h5.5V9L9 16.5 3.5 11z"></path><circle cx="13.75" cy="6.25" r="1"></circle></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Sell</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-soft); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 4.5h13v9h-7l-3 3v-3h-3z"></path></svg>
+          <span style="font: 500 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Messages</span>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink); cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="6.5" r="3"></circle><path d="M4.5 16.5c0-3 2.5-4.5 5.5-4.5s5.5 1.5 5.5 4.5"></path></svg>
+          <span style="font: 700 10px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;">Profile</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 1f MOBILE DETAIL ============ -->
+<div class="dv-opt" id="1f">
+  <div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Mobile 375 — MY SIZES detail</div>
+  <div class="dv-card" style="width: 375px;">
+    <div data-screen-label="My sizes mobile" style="background: var(--bg);">
+      <div style="height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 16px;">
+        <span style="flex: none; font-size: 20px; line-height: 1; color: var(--ink); cursor: pointer;">‹</span>
+        <span style="flex: 1; text-align: center; font: 600 14px var(--font-ui); letter-spacing: -0.01em; color: var(--ink);">My sizes</span>
+        <span style="flex: none; width: 20px;"></span>
+      </div>
+
+      <div style="padding: 20px 16px 32px;">
+        <div style="font-size: 12px; line-height: 1.6; color: var(--ink-soft);">used by the MY SIZES filter and size alerts — never shown publicly.</div>
+
+        <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 24px;">
+          <div>
+            <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px;">Tops</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">XS</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">S</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px;">M</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px;">L</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">XL</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">XXL</span>
+            </div>
+          </div>
+          <div>
+            <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px;">Bottoms</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">26</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">28</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">30</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px;">32</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">34</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">36</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">38</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">40</span>
+            </div>
+          </div>
+          <div>
+            <div style="font: 500 11px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-bottom: 10px;">Footwear</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">8</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">8.5</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">9</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">9.5</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px;">10</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg); border-radius: 2px; font-family: var(--font-mono); font-size: 11px;">10.5</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">11</span>
+              <span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 2px; font-family: var(--font-mono); font-size: 11px; color: var(--ink);">12</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 32px;">
+          <div style="display: flex; align-items: center; justify-content: center; white-space: nowrap; height: 44px; width: 100%; box-sizing: border-box; background: var(--ink); color: var(--bg); border: 1px solid var(--ink); border-radius: 2px; font: 500 14px var(--font-ui); letter-spacing: -0.01em; opacity: 0.35; cursor: not-allowed;">Save</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "vacation mode pane" · "notifications pane (grouped toggle list)" · "verification pane showing the checker credential"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

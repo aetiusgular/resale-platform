@@ -1,0 +1,5 @@
+# pnpm 11 build script approvals (written by pnpm approve-builds)
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

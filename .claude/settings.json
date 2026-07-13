@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "pnpm *",
+      "git *",
+      "supabase *",
+      "stripe *",
+      "npx playwright *"
+    ],
+    "deny": []
+  }
+}
