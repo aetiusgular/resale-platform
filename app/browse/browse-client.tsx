@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useState, useTransition, useCallback } from 'react'
+import { useState, useTransition, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
@@ -546,7 +546,13 @@ export default function BrowseClient({
   }
 
   // ── Load more ──────────────────────────────────────────────────────────────
-  async function loadMore() {
+  // inFlightRef guards against the observer firing again mid-fetch (fast
+  // scrolling) — state alone is too slow to gate re-entry.
+  const inFlightRef = useRef(false)
+
+  const loadMore = useCallback(async () => {
+    if (inFlightRef.current || !hasMore) return
+    inFlightRef.current = true
     setLoadingMore(true)
     const p = new URLSearchParams(searchParams.toString())
     p.set('offset', String(nextOffset + extraListings.length))
@@ -562,7 +568,29 @@ export default function BrowseClient({
       })
     }
     setLoadingMore(false)
-  }
+    inFlightRef.current = false
+  }, [hasMore, searchParams, nextOffset, extraListings.length])
+
+  // ── Infinite scroll ────────────────────────────────────────────────────────
+  // Sentinel sits below the grid; rootMargin pre-fetches 600px before it is
+  // actually reached, so the next page is usually already there on arrival.
+  // The LOAD MORE button stays as a no-JS / observer-unsupported fallback.
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const sentinelRefMobile = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!hasMore) return
+    if (typeof IntersectionObserver === 'undefined') return
+    // Both grids exist in the DOM (one is CSS-hidden per breakpoint); a hidden
+    // node never intersects, so observing both is safe and covers either layout.
+    const nodes = [sentinelRef.current, sentinelRefMobile.current].filter(Boolean) as HTMLDivElement[]
+    if (nodes.length === 0) return
+    const observer = new IntersectionObserver(
+      entries => { if (entries.some(e => e.isIntersecting)) void loadMore() },
+      { rootMargin: '600px 0px' },
+    )
+    nodes.forEach(n => observer.observe(n))
+    return () => observer.disconnect()
+  }, [hasMore, loadMore])
 
   // ── Follow search ──────────────────────────────────────────────────────────
   async function followSearch() {
@@ -784,18 +812,30 @@ export default function BrowseClient({
                   ))}
                 </div>
 
-                {/* Load more */}
-                {hasMore && (
-                  <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '64px' }}>
+                {/* Infinite scroll sentinel — observer pre-fetches 600px early */}
+                <div ref={sentinelRef} data-testid="scroll-sentinel" style={{ height: '1px' }} />
+
+                {hasMore ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', paddingTop: '48px' }}>
+                    <div style={{ minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }} data-testid="loading-more">
+                      {loadingMore ? 'LOADING…' : ''}
+                    </div>
+                    {/* Fallback for no-JS / no IntersectionObserver */}
                     <button
                       onClick={loadMore}
                       disabled={loadingMore}
-                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', padding: '0 32px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: loadingMore ? 'not-allowed' : 'pointer', opacity: loadingMore ? 0.6 : 1 }}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', padding: '0 32px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-line)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: loadingMore ? 'not-allowed' : 'pointer', opacity: loadingMore ? 0.4 : 1 }}
                       data-testid="load-more-btn"
                     >
                       {loadingMore ? 'Loading…' : 'Load more'}
                     </button>
                   </div>
+                ) : (
+                  allListings.length > 0 && (
+                    <div style={{ paddingTop: '64px', textAlign: 'center', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--color-ink-soft)' }} data-testid="end-of-archive">
+                      End of the archive.
+                    </div>
+                  )
                 )}
               </>
             )}
@@ -820,9 +860,10 @@ export default function BrowseClient({
             ))}
           </div>
         )}
+        <div ref={sentinelRefMobile} data-testid="scroll-sentinel-mobile" style={{ height: '1px' }} />
         {hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0 24px' }}>
-            <button onClick={loadMore} disabled={loadingMore} style={{ height: '44px', padding: '0 32px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: loadingMore ? 'not-allowed' : 'pointer' }}>
+            <button onClick={loadMore} disabled={loadingMore} style={{ height: '44px', padding: '0 32px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-line)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: loadingMore ? 'not-allowed' : 'pointer' }}>
               {loadingMore ? 'Loading…' : 'Load more'}
             </button>
           </div>
