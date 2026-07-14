@@ -333,6 +333,13 @@ function FilterRail({
 }
 
 // ─── Listing card ────────────────────────────────────────────────────────────
+// Hard character cap keeps mono titles visually uniform across the row;
+// CSS ellipsis is the second line of defence at narrow widths.
+const TITLE_MAX_CHARS = 38
+function truncateTitle(t: string): string {
+  return t.length > TITLE_MAX_CHARS ? t.slice(0, TITLE_MAX_CHARS - 1).trimEnd() + '…' : t
+}
+
 function ListingCard({
   listing, isSaved, onSaveToggle,
 }: {
@@ -373,8 +380,12 @@ function ListingCard({
         <div style={{ marginTop: '12px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
           {formatTimeAgo(listing.created_at)}
         </div>
-        <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {listing.title.toUpperCase()}
+        <div
+          title={listing.title}
+          style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
+          data-testid="card-title"
+        >
+          {truncateTitle(listing.title.toUpperCase())}
         </div>
 
         {/* Price — strikethrough original if dropped */}
@@ -762,7 +773,7 @@ export default function BrowseClient({
               </div>
             ) : (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '40px 24px' }} data-testid="listings-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '40px 24px' }} data-testid="listings-grid">
                   {allListings.map(l => (
                     <ListingCard
                       key={l.id}
@@ -803,7 +814,7 @@ export default function BrowseClient({
             <button onClick={followSearch} style={{ fontSize: '14px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>follow this search</button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '32px 16px' }}>
             {allListings.map(l => (
               <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} />
             ))}

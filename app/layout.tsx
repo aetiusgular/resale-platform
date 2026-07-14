@@ -39,7 +39,9 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${ebGaramond.variable} ${spaceMono.variable}`}
     >
-      <body>{children}</body>
+      {/* suppressHydrationWarning: browser extensions (Grammarly et al.) inject
+          attributes into <body> before React hydrates — not a real mismatch. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   )
 }
