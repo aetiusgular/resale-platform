@@ -1,6 +1,6 @@
 ---
 name: db-guard
-model: haiku
+model: opus
 tools:
   - Read
   - Grep

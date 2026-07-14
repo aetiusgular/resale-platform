@@ -1,6 +1,6 @@
 ---
 name: ui-verifier
-model: haiku
+model: opus
 tools:
   - mcp__playwright__browser_navigate
   - mcp__playwright__browser_screenshot

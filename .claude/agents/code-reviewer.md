@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-model: sonnet
+model: opus
 tools:
   - Read
   - Grep
