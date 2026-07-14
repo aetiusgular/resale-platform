@@ -1,6 +1,6 @@
 ---
 name: db-guard
-model: claude-sonnet-4-6
+model: haiku
 tools:
   - Read
   - Grep

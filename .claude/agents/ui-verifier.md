@@ -1,6 +1,6 @@
 ---
 name: ui-verifier
-model: claude-sonnet-4-6
+model: haiku
 tools:
   - mcp__playwright__browser_navigate
   - mcp__playwright__browser_screenshot

@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-model: claude-opus-4-6
+model: sonnet
 tools:
   - Read
   - Grep

@@ -12,10 +12,13 @@
 - Node 22 LTS
 
 ## Model routing (token discipline)
-- **Plan Mode (fable/opus):** architecture decisions, migration design, RLS policy design, prompt planning.
-- **Execute (sonnet):** all file writing, boilerplate, UI implementation.
-- Never let sonnet make architectural decisions; never burn opus on boilerplate.
-- Subagents: `code-reviewer` (opus, read-only), `db-guard` (sonnet, read-only), `ui-verifier` (sonnet, playwright).
+**QA-PHASE POLICY (July 2026): docs/MODEL_ROUTING.md is authoritative.**
+Summary: start LOW and escalate on failed gates, never preemptively.
+- TRIVIAL/STANDARD fixes → haiku (escalate to sonnet only after a failed gate).
+- SENSITIVE (auth/money/RLS/webhooks) → sonnet minimum + `code-reviewer-critical` (opus) mandatory.
+- ARCHITECTURAL → two-stage: PLAN-only run on opus (fable only for genuinely novel design), EXECUTE on sonnet/haiku.
+- Subagents: `code-reviewer` (sonnet), `code-reviewer-critical` (opus, escalation tier), `db-guard` (haiku), `ui-verifier` (haiku).
+- Headless runs always pass --model explicitly; interactive default pinned to sonnet in .claude/settings.json (the /model UI switcher is buggy — never rely on it).
 
 ## Token / read discipline
 - Read ONLY files whitelisted for the current prompt. See each Bn prompt for its whitelist.
