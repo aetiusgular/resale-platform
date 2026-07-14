@@ -173,7 +173,17 @@ function AccountForm() {
           onChange={(v) => { setPassword(v); setError(null) }} autoComplete="new-password" />
 
         {error && (
-          <div style={{ fontSize: '12px', color: 'var(--color-alert)' }}>{error}</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-alert)' }}>
+            {error}
+            {error.toLowerCase().includes('already registered') && (
+              <>
+                {' — '}
+                <a href="/enter/login" style={{ color: 'var(--color-ink)', textDecoration: 'underline' }}>
+                  log in instead
+                </a>
+              </>
+            )}
+          </div>
         )}
 
         <button type="submit" disabled={loading} style={{
