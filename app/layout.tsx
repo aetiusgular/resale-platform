@@ -39,7 +39,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${ebGaramond.variable} ${spaceMono.variable}`}
     >
-      <body suppressHydrationWarning>{children}</body>
+      <body>{children}</body>
     </html>
   )
 }

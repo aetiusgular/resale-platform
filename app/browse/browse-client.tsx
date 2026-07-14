@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useState, useTransition, useCallback, useEffect, useRef } from 'react'
+import { useState, useTransition, useCallback } from 'react'
 import Link from 'next/link'
 import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
@@ -342,8 +342,6 @@ function ListingCard({
 }) {
   const frontImage = listing.images[0] ?? null
   const isVerified = listing.seller?.id_verification_status === 'verified'
-  const titleText = listing.title.toUpperCase()
-  const truncatedTitle = titleText.length > 38 ? titleText.slice(0, 38) + '…' : titleText
 
   return (
     <div style={{
@@ -358,7 +356,7 @@ function ListingCard({
       >
         {/* Image */}
         <div style={{
-          aspectRatio: '3/4', width: '100%', boxSizing: 'border-box',
+          aspectRatio: '3/4', boxSizing: 'border-box',
           border: '1px solid var(--color-line)', overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'var(--color-line)',
@@ -376,7 +374,7 @@ function ListingCard({
           {formatTimeAgo(listing.created_at)}
         </div>
         <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {truncatedTitle}
+          {listing.title.toUpperCase()}
         </div>
 
         {/* Price — strikethrough original if dropped */}
@@ -445,34 +443,9 @@ export default function BrowseClient({
   const [sortOpen, setSortOpen]             = useState(false)
   const [followPending, setFollowPending]   = useState(false)
   const [followedMsg, setFollowedMsg]       = useState('')
-  const sentinelRef                         = useRef<HTMLDivElement>(null)
-  const isInFlightRef                       = useRef(false)
 
   const allListings = [...initialListings, ...extraListings]
   const nextOffset  = currentOffset + initialListings.length
-
-  // ── Infinite scroll via IntersectionObserver ────────────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!hasMore || !sentinelRef.current) return
-
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting && !isInFlightRef.current && hasMore && !loadingMore) {
-            isInFlightRef.current = true
-            loadMore().finally(() => {
-              isInFlightRef.current = false
-            })
-          }
-        })
-      },
-      { rootMargin: '600px' }
-    )
-
-    observer.observe(sentinelRef.current)
-    return () => observer.disconnect()
-  }, [hasMore, loadingMore])
 
   const q       = searchParams.get('q') ?? ''
   const dept    = searchParams.get('dept') ?? ''
@@ -830,14 +803,11 @@ export default function BrowseClient({
             <button onClick={followSearch} style={{ fontSize: '14px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>follow this search</button>
           </div>
         ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px 16px' }}>
             {allListings.map(l => (
               <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} />
             ))}
           </div>
-            <div ref={sentinelRef} style={{ paddingTop: '16px' }} />
-          </>
         )}
         {hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0 24px' }}>

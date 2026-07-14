@@ -1,8 +1,0 @@
-@@ -832,6 +835,7 @@
-                   <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} />
-                 ))}
-               </div>
-+            <div ref={sentinelRef} style={{ paddingTop: '16px' }} />
-             )}
-             {hasMore && (
-               <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0 24px' }}>
