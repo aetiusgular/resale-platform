@@ -1,0 +1,28 @@
+/* Type — three families, six sizes. Body is 14px Inter 400 / 1.6.
+   Inter       → headers, nav, buttons, body. Sentence case in chrome;
+                 ALL CAPS only for nav items + section labels at 11–12px.
+   EB Garamond → subheaders, section intros, editorial lines.
+                 One serif moment per screen, 1.35–1.75rem, 400 or italic.
+   Space Mono  → ALL listing data: titles, prices, sizes, condition
+                 scores, timestamps, usernames. The brand signature. */
+:root {
+  --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'EB Garamond', Georgia, serif;
+  --font-mono: 'Space Mono', 'Courier New', monospace;
+
+  /* Scale: 12 / 14 / 16 / 20 / 28 / 40 */
+  --text-12: 12px;
+  --text-14: 14px;
+  --text-16: 16px;
+  --text-20: 20px;
+  --text-28: 28px;
+  --text-40: 40px;
+
+  /* Caps labels may drop to 11px (nav, tags, tier badges) */
+  --text-11: 11px;
+
+  --track-tight: -0.01em; /* Inter 500–700 headers/nav/buttons */
+  --track-caps: 0.08em;   /* ALL-CAPS labels */
+  --leading-body: 1.6;
+  --leading-tight: 1.2;
+}

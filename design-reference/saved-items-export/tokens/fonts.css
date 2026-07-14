@@ -1,0 +1,5 @@
+/* Webfonts — Google Fonts. Exactly three families, no others.
+   Inter        400 / 500 / 600 / 700  — UI chrome
+   EB Garamond  400 + 400 italic       — editorial serif moments
+   Space Mono   400 / 700              — all listing data */
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
