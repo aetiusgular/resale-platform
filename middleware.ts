@@ -10,6 +10,10 @@ const AUTH_ONLY_PATHS = ['/enter', '/enter/waitlist']
 // Routes requiring role='admin'
 const ADMIN_PATHS = ['/admin']
 
+// Gate cache cookie name and TTL (10 minutes)
+const GATE_COOKIE = 'x-gate-ok'
+const GATE_TTL_S = 600
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -53,7 +57,10 @@ export async function middleware(request: NextRequest) {
   const isPublicPath = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
   if (!user) {
-    // No session → redirect everything to /enter
+    // No session → redirect everything to /enter; clear stale gate cookie
+    if (request.cookies.has(GATE_COOKIE)) {
+      response.cookies.delete(GATE_COOKIE)
+    }
     if (!isPublicPath) {
       return NextResponse.redirect(new URL('/enter', request.url))
     }
@@ -70,6 +77,15 @@ export async function middleware(request: NextRequest) {
   // Authenticated users hitting /enter → send to home
   if (AUTH_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  const isAdminPath = ADMIN_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  const hasGateCookie = request.cookies.has(GATE_COOKIE)
+
+  // Skip profiles query if gate cookie exists AND this is not an admin path
+  // (admin paths always need a fresh role check)
+  if (hasGateCookie && !isAdminPath) {
+    return response
   }
 
   // Check if user has a profile + claimed invite code
@@ -89,13 +105,26 @@ export async function middleware(request: NextRequest) {
     if (!isPublicPath) {
       return NextResponse.redirect(new URL('/enter', request.url))
     }
+    // Don't set gate cookie for ungated users
+    return response
   }
 
   // Admin gate: /admin/* requires role='admin'
-  if (ADMIN_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+  if (isAdminPath) {
     if (profile.role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url))
     }
+  }
+
+  // Gate passed — set short-lived cookie to skip profiles query on next requests
+  if (!hasGateCookie) {
+    response.cookies.set(GATE_COOKIE, '1', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: GATE_TTL_S,
+      path: '/',
+    })
   }
 
   return response

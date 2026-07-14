@@ -52,46 +52,53 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const { id } = await params
   const supabase = await createClient()
 
-  // Check if current user is admin or seller so they can see non-active listings
-  const { data: { user } } = await supabase.auth.getUser()
-  let isAdmin = false
-  let isSeller = false
-  let userProfile: { role?: string; id_verification_status?: string; verified_checker?: boolean; tier?: string } | null = null
-  let currentUsername = ''
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, id_verification_status, verified_checker, tier, username')
-      .eq('id', user.id)
-      .single()
-    isAdmin = profile?.role === 'admin'
-    userProfile = profile
-    currentUsername = (profile?.username as string) ?? ''
-  }
-
-  // Fetch the listing
-  // No app-level status filter — RLS handles visibility:
-  //   anon/auth → active only (listings_public_read_active)
-  //   seller    → own listings any status (listings_seller_read_own)
-  //   admin     → all (listings_admin_all)
-  const { data: listing } = await supabase
-    .from('listings')
-    .select(`
-      id, title, brand, category, size, description,
-      condition_score, condition_notes,
-      price_cents, saves_count, is_price_dropped,
-      images, possession_photo_url,
-      status, rejection_reason, created_at,
-      seller_id, comments_enabled,
-      profiles:seller_id (username, role, id_verification_status)
-    `)
-    .eq('id', id)
-    .single()
+  // Fetch user + listing in parallel (both independent)
+  const [{ data: { user } }, { data: listing }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('listings')
+      .select(`
+        id, title, brand, category, size, description,
+        condition_score, condition_notes,
+        price_cents, saves_count, is_price_dropped,
+        images, possession_photo_url,
+        status, rejection_reason, created_at,
+        seller_id, comments_enabled,
+        profiles:seller_id (username, role, id_verification_status)
+      `)
+      .eq('id', id)
+      .single(),
+  ])
 
   if (!listing) notFound()
 
-  isSeller = user?.id === listing.seller_id
+  // Profile, save check, and price history — run in parallel after we have user + listing
+  let isAdmin = false
+  const isSeller = user?.id === listing.seller_id
+  let userProfile: { role?: string; id_verification_status?: string; verified_checker?: boolean; tier?: string } | null = null
+  let currentUsername = ''
+  let isSaved = false
+  let originalPriceCents: number | null = null
+
+  if (user) {
+    const [profileResult, saveResult, priceResult] = await Promise.all([
+      supabase.from('profiles').select('role, id_verification_status, verified_checker, tier, username').eq('id', user.id).single(),
+      supabase.from('saves').select('id').eq('user_id', user.id).eq('listing_id', id).maybeSingle(),
+      listing.is_price_dropped
+        ? supabase.from('price_history').select('old_price_cents').eq('listing_id', id).order('changed_at', { ascending: true }).limit(1).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ])
+    isAdmin = profileResult.data?.role === 'admin'
+    userProfile = profileResult.data
+    currentUsername = (profileResult.data?.username as string) ?? ''
+    isSaved = !!saveResult.data
+    originalPriceCents = priceResult.data?.old_price_cents ?? null
+  } else if (listing.is_price_dropped) {
+    const { data: firstHistory } = await supabase
+      .from('price_history').select('old_price_cents').eq('listing_id', id)
+      .order('changed_at', { ascending: true }).limit(1).maybeSingle()
+    originalPriceCents = firstHistory?.old_price_cents ?? null
+  }
 
   // If non-active and not admin/seller, 404
   if (listing.status !== 'active' && !isAdmin && !isSeller) {
@@ -105,31 +112,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const fee     = buyerFee(listing.price_cents)
   const total   = buyerTotal(listing.price_cents)
   const listedAgo = formatTimeAgo(listing.created_at)
-
-  // Check if current user has this listing saved
-  let isSaved = false
-  if (user) {
-    const { data: saveRow } = await supabase
-      .from('saves')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('listing_id', id)
-      .maybeSingle()
-    isSaved = !!saveRow
-  }
-
-  // Fetch price history for price-drop display
-  let originalPriceCents: number | null = null
-  if (listing.is_price_dropped) {
-    const { data: firstHistory } = await supabase
-      .from('price_history')
-      .select('old_price_cents')
-      .eq('listing_id', id)
-      .order('changed_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    originalPriceCents = firstHistory?.old_price_cents ?? null
-  }
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>

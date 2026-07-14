@@ -40,46 +40,26 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
 
-  // Fetch current user's username for header
-  const { data: currentProfile } = await supabase
-    .from('profiles').select('username').eq('id', user.id).single()
-  const currentUsername: string = (currentProfile?.username as string) ?? ''
-
-  // Fetch the target seller profile (service_role to read restricted columns)
+  // Fetch current user's profile + target seller in parallel
   const service = createServiceClientRaw()
-  const { data: seller } = await service
-    .from('profiles')
-    .select('id, username, role, id_verification_status, tier, verified_checker, checker_category, created_at')
-    .eq('username', username)
-    .single()
+  const [{ data: currentProfile }, { data: seller }] = await Promise.all([
+    supabase.from('profiles').select('username').eq('id', user.id).single(),
+    service.from('profiles').select('id, username, role, id_verification_status, tier, verified_checker, checker_category, created_at').eq('username', username).single(),
+  ])
+  const currentUsername: string = (currentProfile?.username as string) ?? ''
 
   if (!seller) notFound()
 
-  // Fetch seller stats (aggregate from orders)
-  const { data: sellerOrders } = await service
-    .from('orders')
-    .select('id, state')
-    .eq('seller_id', seller.id)
+  // Fetch seller stats, buyer stats, and listings in parallel
+  const [{ data: sellerOrders }, { data: buyerStats }, { data: listingsRaw }] = await Promise.all([
+    service.from('orders').select('id, state').eq('seller_id', seller.id),
+    service.from('buyer_stats').select('purchase_count, dispute_count, pays_fast').eq('user_id', seller.id).single(),
+    service.from('listings').select('id, title, price_cents, images, condition_score, size, is_price_dropped, created_at').eq('seller_id', seller.id).eq('status', 'active').order('created_at', { ascending: false }).limit(48),
+  ])
 
   const totalSales = (sellerOrders ?? []).filter(o => o.state === 'released').length
   const totalDisputes = (sellerOrders ?? []).filter(o => o.state === 'disputed').length
   const disputeRate = totalSales > 0 ? `${((totalDisputes / totalSales) * 100).toFixed(0)}%` : '0%'
-
-  // Fetch buyer stats
-  const { data: buyerStats } = await service
-    .from('buyer_stats')
-    .select('purchase_count, dispute_count, pays_fast')
-    .eq('user_id', seller.id)
-    .single()
-
-  // Fetch active listings
-  const { data: listingsRaw } = await service
-    .from('listings')
-    .select('id, title, price_cents, images, condition_score, size, is_price_dropped, created_at')
-    .eq('seller_id', seller.id)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(48)
 
   const listings = listingsRaw ?? []
   const memberYear = new Date(seller.created_at as string).getFullYear()

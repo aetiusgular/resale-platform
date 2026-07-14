@@ -60,7 +60,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   const sort     = params.sort ?? 'newest'
   const offset   = params.offset ? parseInt(params.offset, 10) : 0
 
-  // ── Fetch listings ──────────────────────────────────────────────────────────
+  // ── Build listing query ────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from('listings')
@@ -98,7 +98,38 @@ export default async function BrowsePage({ searchParams }: PageProps) {
 
   query = query.range(offset, offset + PAGE_SIZE)
 
-  const { data: rawListings } = await query
+  // ── Build count query ─────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let countQuery: any = supabase
+    .from('listings')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active')
+
+  if (q)     countQuery = countQuery.textSearch('search_vector', q, { type: 'websearch', config: 'english' })
+  if (dept)  countQuery = countQuery.eq('department', dept)
+  if (cat)   countQuery = countQuery.eq('category', cat)
+  if (size)  countQuery = countQuery.eq('size', size)
+  if (brand) countQuery = countQuery.ilike('brand', `%${brand}%`)
+  if (minPrice !== null) countQuery = countQuery.gte('price_cents', minPrice)
+  if (maxPrice !== null) countQuery = countQuery.lte('price_cents', maxPrice)
+  if (condMin !== null)  countQuery = countQuery.gte('condition_score', condMin)
+  if (dropped) countQuery = countQuery.eq('is_price_dropped', true)
+
+  // ── Run independent queries in parallel ───────────────────────────────────
+  const [
+    { data: rawListings },
+    { count: totalCount },
+    { data: deptData },
+    { data: catData },
+    { data: profileData },
+  ] = await Promise.all([
+    query,
+    countQuery,
+    supabase.from('listings').select('department').eq('status', 'active'),
+    supabase.from('listings').select('category').eq('status', 'active'),
+    supabase.from('profiles').select('sizes, username').eq('id', user.id).single(),
+  ])
+
   const listings = (rawListings ?? []) as Array<{
     id: string; title: string; brand: string; category: string; department: string
     size: string; condition_score: number; price_cents: number; saves_count: number
@@ -108,23 +139,27 @@ export default async function BrowsePage({ searchParams }: PageProps) {
 
   const hasMore = listings.length > PAGE_SIZE
   const pageListings = hasMore ? listings.slice(0, PAGE_SIZE) : listings
-
-  // ── Fetch original price for price-dropped listings ─────────────────────────
+  const displayedIds = pageListings.map(l => l.id)
   const droppedIds = pageListings.filter(l => l.is_price_dropped).map(l => l.id)
+
+  // ── Second parallel batch (depends on listing IDs) ────────────────────────
+  const [priceHistoryResult, savesResult] = await Promise.all([
+    droppedIds.length > 0
+      ? supabase.from('price_history').select('listing_id, old_price_cents, changed_at').in('listing_id', droppedIds).order('changed_at', { ascending: true })
+      : Promise.resolve({ data: null }),
+    displayedIds.length > 0
+      ? supabase.from('saves').select('listing_id').in('listing_id', displayedIds)
+      : Promise.resolve({ data: null }),
+  ])
+
   const origPriceMap = new Map<string, number>()
-  if (droppedIds.length > 0) {
-    const { data: history } = await supabase
-      .from('price_history')
-      .select('listing_id, old_price_cents, changed_at')
-      .in('listing_id', droppedIds)
-      .order('changed_at', { ascending: true })
-    // First entry per listing = original price
-    for (const row of history ?? []) {
-      if (!origPriceMap.has(row.listing_id)) {
-        origPriceMap.set(row.listing_id, row.old_price_cents)
-      }
+  for (const row of priceHistoryResult.data ?? []) {
+    if (!origPriceMap.has(row.listing_id)) {
+      origPriceMap.set(row.listing_id, row.old_price_cents)
     }
   }
+
+  const savedSet = new Set((savesResult.data ?? []).map((s: { listing_id: string }) => s.listing_id))
 
   const browseListing: BrowseListing[] = pageListings.map(l => ({
     id: l.id,
@@ -144,22 +179,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     price_display: formatCents(l.price_cents),
   }))
 
-  // ── Filter counts (total active, no filters applied — alpha simplification) ─
-  const [{ data: deptData }, { data: catData }] = await Promise.all([
-    supabase
-      .from('listings')
-      .select('department')
-      .eq('status', 'active'),
-    supabase
-      .from('listings')
-      .select('category')
-      .eq('status', 'active'),
-  ])
-
-  const filterCounts: FilterCounts = {
-    departments: {},
-    categories: {},
-  }
+  const filterCounts: FilterCounts = { departments: {}, categories: {} }
   for (const row of deptData ?? []) {
     filterCounts.departments[row.department] = (filterCounts.departments[row.department] ?? 0) + 1
   }
@@ -167,44 +187,8 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     filterCounts.categories[row.category] = (filterCounts.categories[row.category] ?? 0) + 1
   }
 
-  // ── Current user's saves for displayed listings ─────────────────────────────
-  const displayedIds = browseListing.map(l => l.id)
-  let savedSet = new Set<string>()
-  if (displayedIds.length > 0) {
-    const { data: savesData } = await supabase
-      .from('saves')
-      .select('listing_id')
-      .in('listing_id', displayedIds)
-    savedSet = new Set((savesData ?? []).map(s => s.listing_id))
-  }
-
-  // ── User's size preferences ─────────────────────────────────────────────────
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('sizes, username')
-    .eq('id', user.id)
-    .single()
   const userSizes: Record<string, string> = (profileData?.sizes as Record<string, string>) ?? {}
   const username: string = (profileData?.username as string) ?? ''
-
-  // ── Total count for header ──────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let countQuery: any = supabase
-    .from('listings')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'active')
-
-  if (q)     countQuery = countQuery.textSearch('search_vector', q, { type: 'websearch', config: 'english' })
-  if (dept)  countQuery = countQuery.eq('department', dept)
-  if (cat)   countQuery = countQuery.eq('category', cat)
-  if (size)  countQuery = countQuery.eq('size', size)
-  if (brand) countQuery = countQuery.ilike('brand', `%${brand}%`)
-  if (minPrice !== null) countQuery = countQuery.gte('price_cents', minPrice)
-  if (maxPrice !== null) countQuery = countQuery.lte('price_cents', maxPrice)
-  if (condMin !== null)  countQuery = countQuery.gte('condition_score', condMin)
-  if (dropped) countQuery = countQuery.eq('is_price_dropped', true)
-
-  const { count: totalCount } = await countQuery
 
   return (
     <Suspense>

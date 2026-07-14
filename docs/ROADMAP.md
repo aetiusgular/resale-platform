@@ -10,3 +10,10 @@
 - [x] **B6** — Chat + offers (M6): Realtime messaging, offer state machine, link blocking, accepted offer → checkout
 - [x] **B7** — Community layer (M7): comments with RLS, LC thread, agree/flag, verified_checker gate, admin moderation, seller toggle
 - [x] **B8** — Analytics, hardening, alpha polish (M8): PostHog dashboards, Sentry, rate limiting, security review, seed script, LAUNCH.md — **ALPHA BUILD COMPLETE**
+
+## Hotfix milestones
+
+- [x] **HF1** — Fix recursive RLS policies (infinite recursion on profiles)
+- [x] **HF2** — UI polish batch: React key fix, card alignment, shared SiteHeader, seller profile page
+- [x] **HF3** — Infinite scroll, card uniformity, suppress hydration warning
+- [x] **HF4** — Saved Items page + navigation performance: /saved route, ListingCard extraction, query parallelization, middleware gate caching

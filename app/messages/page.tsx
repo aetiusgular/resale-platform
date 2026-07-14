@@ -18,11 +18,13 @@ export default async function MessagesPage({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
 
-  const { data: profileRow } = await supabase
-    .from('profiles').select('username').eq('id', user.id).single()
+  const [{ data: profileRow }, searchParamsResolved] = await Promise.all([
+    supabase.from('profiles').select('username').eq('id', user.id).single(),
+    searchParams,
+  ])
   const username: string = (profileRow?.username as string) ?? ''
 
-  const { listing: listingId } = await searchParams
+  const { listing: listingId } = searchParamsResolved
 
   // Auto-create conversation if ?listing= present
   if (listingId) {

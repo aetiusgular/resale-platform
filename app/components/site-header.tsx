@@ -73,7 +73,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
           Sell
         </Link>
         <Link
-          href="/browse?saved=1"
+          href="/saved"
           style={{
             font: '500 11px var(--font-ui)', letterSpacing: '0.08em',
             textTransform: 'uppercase', color: 'var(--color-ink-soft)',

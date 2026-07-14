@@ -5,8 +5,8 @@ import { useState, useTransition, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
-import { formatCents } from '@/lib/fees'
 import AvatarMenu from '@/app/components/avatar-menu'
+import ListingCard from '@/app/components/listing-card'
 
 type Props = {
   initialListings: BrowseListing[]
@@ -29,16 +29,6 @@ const SORT_OPTIONS = [
   { value: 'most_saved','label': 'Most saved' },
 ]
 
-function formatTimeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60)  return `${mins}H AGO`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24)   return `${hrs}H AGO`
-  const days = Math.floor(hrs / 24)
-  if (days < 7)   return `${days}D AGO`
-  return `${Math.floor(days / 7)}W AGO`
-}
 
 // ─── Monochrome checkbox ────────────────────────────────────────────────────
 function Checkbox({ checked }: { checked: boolean }) {
@@ -332,103 +322,6 @@ function FilterRail({
   )
 }
 
-// ─── Listing card ────────────────────────────────────────────────────────────
-// Hard character cap keeps mono titles visually uniform across the row;
-// CSS ellipsis is the second line of defence at narrow widths.
-const TITLE_MAX_CHARS = 38
-function truncateTitle(t: string): string {
-  return t.length > TITLE_MAX_CHARS ? t.slice(0, TITLE_MAX_CHARS - 1).trimEnd() + '…' : t
-}
-
-function ListingCard({
-  listing, isSaved, onSaveToggle,
-}: {
-  listing: BrowseListing
-  isSaved: boolean
-  onSaveToggle: (id: string, saved: boolean) => void
-}) {
-  const frontImage = listing.images[0] ?? null
-  const isVerified = listing.seller?.id_verification_status === 'verified'
-
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', cursor: 'pointer',
-      outline: '1px solid transparent', outlineOffset: '8px', transition: 'outline-color 120ms linear',
-    }}
-      onMouseEnter={e => (e.currentTarget.style.outlineColor = 'var(--color-line)')}
-      onMouseLeave={e => (e.currentTarget.style.outlineColor = 'transparent')}
-    >
-      <Link href={`/listings/${listing.id}`} style={{ textDecoration: 'none' }}
-        onClick={() => trackEvent('product_clicked', { listing_id: listing.id })}
-      >
-        {/* Image */}
-        <div style={{
-          aspectRatio: '3/4', boxSizing: 'border-box',
-          border: '1px solid var(--color-line)', overflow: 'hidden',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'var(--color-line)',
-        }}>
-          {frontImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={frontImage} alt={listing.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>3 : 4</span>
-          )}
-        </div>
-
-        {/* Meta — fixed-height lines so cards in same row align pixel-perfect */}
-        <div style={{ marginTop: '12px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
-          {formatTimeAgo(listing.created_at)}
-        </div>
-        <div
-          title={listing.title}
-          style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
-          data-testid="card-title"
-        >
-          {truncateTitle(listing.title.toUpperCase())}
-        </div>
-
-        {/* Price — strikethrough original if dropped */}
-        <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
-          {listing.is_price_dropped && listing.original_price_cents ? (
-            <>
-              <span style={{ color: 'var(--color-ink-soft)', textDecoration: 'line-through' }}>
-                {formatCents(listing.original_price_cents)}
-              </span>
-              {' '}{listing.price_display}
-            </>
-          ) : (
-            listing.price_display
-          )}
-        </div>
-
-        <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-          {listing.size} · {listing.condition_score}/10
-        </div>
-
-        {/* VERIFIED badge — always rendered to reserve height; visible only when verified */}
-        <div style={{ marginTop: '8px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-          {isVerified ? 'VERIFIED' : ''}
-        </div>
-      </Link>
-
-      {/* Save toggle — no heart on image, text button below */}
-      <button
-        onClick={e => { e.preventDefault(); onSaveToggle(listing.id, isSaved) }}
-        style={{
-          marginTop: '6px', background: 'none', border: 'none', padding: 0,
-          fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em',
-          textTransform: 'uppercase', color: isSaved ? 'var(--color-ink)' : 'var(--color-ink-soft)',
-          cursor: 'pointer', alignSelf: 'flex-start', transition: 'color 120ms linear',
-        }}
-        data-testid={`save-btn-${listing.id}`}
-      >
-        {isSaved ? 'SAVED' : 'SAVE'}
-      </button>
-    </div>
-  )
-}
-
 // ─── Main client component ───────────────────────────────────────────────────
 export default function BrowseClient({
   initialListings,
@@ -664,7 +557,7 @@ export default function BrowseClient({
           <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
             Sell
           </Link>
-          <Link href="/browse?saved=1" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</Link>
+          <Link href="/saved" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</Link>
           <Link href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Messages</Link>
           <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
         </nav>

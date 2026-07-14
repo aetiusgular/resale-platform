@@ -21,6 +21,7 @@ Guidelines: `design-reference/guidelines/`.
 | `Messages.dc.html` | Inbox + conversation thread | `/messages`, `/messages/[id]` | **B6** | Realtime chat, pinned listing bar, counterparty record, offer UI, link-blocking system lines |
 | `Onboarding.dc.html` | Signup + invite code flow | `/enter`, `/onboarding/[step]` | **B1** | Code entry, waitlist, ID-verification placeholder, quick-setup, generated invite codes screen |
 | `Seller Profile.dc.html` | Public seller profile | `/sellers/[username]` | **B2** (stub), enriched **B4** | Active listings grid, trust indicators, review aggregate |
+| `Saved Items.dc.html` | Saved items / searches / sellers | `/saved` | **HF4** | Items grid with price-drop/sold states, tabs (Items/Searches/Sellers), empty state, mobile 375, × unsave |
 | `Settings.dc.html` | Account + payout settings | `/settings`, `/settings/[section]` | **B5** (Stripe Connect), **B1** (profile basics) | Stripe Express onboarding, saved payment methods, address, size preferences, notification prefs |
 
 ---
