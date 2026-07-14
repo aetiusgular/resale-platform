@@ -1,10 +1,10 @@
 /**
  * SiteHeader — shared authenticated page header.
- * Wordmark (→ /), search (→ /browse?q=), Sell, SAVED, MESSAGES, avatar.
+ * Desktop: Wordmark (→ /), search (→ /browse?q=), Sell, SAVED, MESSAGES, avatar.
+ * Mobile (<768px): Wordmark (→ /), search, avatar only — other links in tab bar.
  *
  * Server component: accepts preloaded user data so callers can avoid a
- * second DB round-trip. For pages that need the header but have already
- * fetched user/profile data, pass props directly.
+ * second DB round-trip.
  */
 import Link from 'next/link'
 import AvatarMenu from './avatar-menu'
@@ -20,8 +20,8 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
 
   return (
     <header style={{
-      height: '64px', borderBottom: '1px solid var(--color-line)',
-      display: 'flex', alignItems: 'center', gap: '32px', padding: '0 80px',
+      height: '56px', borderBottom: '1px solid var(--color-line)',
+      display: 'flex', alignItems: 'center', gap: '16px', padding: '0 16px',
       background: 'var(--color-bg)',
     }}>
       {/* Wordmark */}
@@ -31,7 +31,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
         style={{
           font: '600 16px var(--font-ui)', letterSpacing: '0.08em',
           color: 'var(--color-ink)', textDecoration: 'none',
-          flex: 'none', width: '160px',
+          flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center',
         }}
       >
         ———
@@ -58,10 +58,11 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
         </form>
       </div>
 
-      {/* Right nav */}
+      {/* Right nav — desktop only links */}
       <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
         <Link
           href="/sell"
+          className="desktop-only"
           style={{
             display: 'inline-flex', alignItems: 'center',
             height: '44px', padding: '0 24px',
@@ -74,6 +75,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
         </Link>
         <Link
           href="/saved"
+          className="desktop-only"
           style={{
             font: '500 11px var(--font-ui)', letterSpacing: '0.08em',
             textTransform: 'uppercase', color: 'var(--color-ink-soft)',
@@ -84,6 +86,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
         </Link>
         <Link
           href="/messages"
+          className="desktop-only"
           style={{
             font: '500 11px var(--font-ui)', letterSpacing: '0.08em',
             textTransform: 'uppercase', color: 'var(--color-ink-soft)',

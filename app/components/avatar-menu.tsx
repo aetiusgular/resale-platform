@@ -42,17 +42,22 @@ export default function AvatarMenu({ username, initials }: Props) {
         onClick={() => setOpen(o => !o)}
         data-testid="avatar-btn"
         style={{
-          width: '32px', height: '32px', borderRadius: '50%',
-          border: '1px solid var(--color-line)',
-          background: 'var(--color-bg)',
+          width: '44px', height: '44px', borderRadius: '0',
+          border: 'none',
+          background: 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-mono)', fontSize: '11px',
-          color: 'var(--color-ink-soft)',
           cursor: 'pointer', padding: 0, flexShrink: 0,
         }}
         aria-label="Account menu"
       >
-        {initials}
+        <span style={{
+          width: '32px', height: '32px', borderRadius: '50%',
+          border: '1px solid var(--color-line)', background: 'var(--color-bg)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)',
+        }}>
+          {initials}
+        </span>
       </button>
 
       {open && (

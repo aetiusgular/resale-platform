@@ -17,3 +17,4 @@
 - [x] **HF2** — UI polish batch: React key fix, card alignment, shared SiteHeader, seller profile page
 - [x] **HF3** — Infinite scroll, card uniformity, suppress hydration warning
 - [x] **HF4** — Saved Items page + navigation performance: /saved route, ListingCard extraction, query parallelization, middleware gate caching
+- [x] **HF5** — Mobile overhaul + Messages layout: bottom tab bar, responsive SiteHeader, single-pane messages, /sell wrapping, tap targets >=44px, all mobile routes clean

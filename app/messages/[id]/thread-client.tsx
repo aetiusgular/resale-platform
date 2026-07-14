@@ -188,9 +188,9 @@ export default function ThreadClient({
   const otherRole = isBuyer ? 'SELLER' : 'BUYER'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 64px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       {/* Pinned listing context bar */}
-      <div style={{ borderBottom: '1px solid var(--color-line)', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div style={{ borderBottom: '1px solid var(--color-line)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
         {listing.images?.[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={listing.images[0]} alt={listing.title} style={{ flex: 'none', width: '40px', aspectRatio: '3/4', objectFit: 'cover', border: '1px solid var(--color-line)' }} />

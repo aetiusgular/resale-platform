@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
 import SiteHeader from '@/app/components/site-header'
+import MobileTabBar from '@/app/components/mobile-tabbar'
 
 interface PageProps {
   params: Promise<{ username: string }>
@@ -72,10 +73,10 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const activeTab = tab === 'reviews' ? 'reviews' : 'listings'
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
       <SiteHeader username={currentUsername} />
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 80px 96px' }}>
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 80px 96px' }} className="seller-profile-inner">
 
         {/* Profile header */}
         <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
@@ -159,10 +160,11 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               key={t}
               href={`/sellers/${username}?tab=${t}`}
               style={{
-                position: 'relative', paddingBottom: '12px',
+                position: 'relative', paddingBottom: '12px', paddingTop: '12px',
                 font: '500 12px var(--font-ui)', letterSpacing: '0.08em',
                 textTransform: 'uppercase', textDecoration: 'none',
                 color: activeTab === t ? 'var(--color-ink)' : 'var(--color-ink-soft)',
+                minHeight: '44px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
               }}
             >
               {t === 'listings' ? `Listings (${listings.length})` : 'Reviews'}
@@ -189,6 +191,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               </p>
             ) : (
               <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '40px 24px' }}
+                className="seller-listings-grid"
                 data-testid="seller-listings-grid"
               >
                 {listings.map(l => {
@@ -239,6 +242,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
           </div>
         )}
       </div>
+      <MobileTabBar username={currentUsername} />
     </div>
   )
 }

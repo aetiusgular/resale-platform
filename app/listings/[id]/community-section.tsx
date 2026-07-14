@@ -136,7 +136,7 @@ export default function CommunitySection({
       <div style={{ marginTop: '24px', display: 'flex', alignItems: 'baseline', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
         <button
           onClick={() => setTab('lc')}
-          style={{ position: 'relative', paddingBottom: '12px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: tab === 'lc' ? 'var(--color-ink)' : 'var(--color-ink-soft)', cursor: 'pointer', background: 'none', border: 'none' }}
+          style={{ position: 'relative', padding: '12px 0', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: tab === 'lc' ? 'var(--color-ink)' : 'var(--color-ink-soft)', cursor: 'pointer', background: 'none', border: 'none', minHeight: '44px', boxSizing: 'border-box' }}
         >
           Legit check ({lcCount})
           {tab === 'lc' && <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />}
@@ -145,7 +145,7 @@ export default function CommunitySection({
         {commentsEnabled && (
           <button
             onClick={() => setTab('general')}
-            style={{ position: 'relative', paddingBottom: '12px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: tab === 'general' ? 'var(--color-ink)' : 'var(--color-ink-soft)', cursor: 'pointer', background: 'none', border: 'none' }}
+            style={{ position: 'relative', padding: '12px 0', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: tab === 'general' ? 'var(--color-ink)' : 'var(--color-ink-soft)', cursor: 'pointer', background: 'none', border: 'none', minHeight: '44px', boxSizing: 'border-box' }}
           >
             Comments ({genCount})
             {tab === 'general' && <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />}

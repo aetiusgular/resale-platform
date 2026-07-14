@@ -103,3 +103,33 @@ a:hover { text-decoration-color: var(--color-ink); }
 :focus-visible { outline: 1px solid var(--color-ink); outline-offset: 2px; }
 
 hr { border: none; border-top: 1px solid var(--color-line); margin: 0; }
+
+/* ─── Responsive utilities ──────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+  .mobile-bottom-pad { padding-bottom: 72px !important; }
+  /* Browse page header switching */
+  .browse-header-desktop { display: none !important; }
+  .browse-header-mobile { display: block !important; }
+  .browse-desktop-inner { padding: 0 16px !important; }
+  /* Sell photo grid: 3 cols on mobile */
+  .sell-photo-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  /* Seller profile mobile padding */
+  .seller-profile-inner { padding: 24px 16px 48px !important; }
+  /* Listing detail mobile */
+  .listing-detail-inner { padding: 16px 16px 48px !important; }
+  .listing-detail-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+  .listing-thumbnails { grid-template-columns: repeat(3, 1fr) !important; }
+  /* Seller listings grid mobile */
+  .seller-listings-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
+  /* Messages layout: single column on mobile */
+  .messages-layout { grid-template-columns: 1fr !important; }
+  .messages-sidebar { border-right: none !important; }
+  /* Saved items grid mobile */
+  .saved-items-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 16px !important; }
+}
+@media (min-width: 768px) {
+  .mobile-only { display: none !important; }
+  /* Restore desktop padding where mobile uses 16px */
+  .content-pad { padding-left: 80px !important; padding-right: 80px !important; }
+}

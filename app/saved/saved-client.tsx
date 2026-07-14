@@ -83,7 +83,7 @@ export default function SavedClient({ listings: initialListings }: Props) {
   // Empty state
   if (allVisible.length === 0 && listings.length === 0) {
     return (
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 80px' }}>
+      <div className="content-pad" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px' }}>
         <h1 style={{ font: '400 28px var(--font-serif)', letterSpacing: 0, color: 'var(--color-ink)', margin: 0, padding: '48px 0 24px' }}>Saved</h1>
 
         {/* Tabs */}
@@ -117,7 +117,7 @@ export default function SavedClient({ listings: initialListings }: Props) {
   }
 
   return (
-    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 80px' }}>
+    <div className="content-pad" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px' }}>
       <h1 style={{ font: '400 28px var(--font-serif)', letterSpacing: 0, color: 'var(--color-ink)', margin: 0, padding: '48px 0 24px' }}>Saved</h1>
 
       {/* Tabs */}
@@ -154,6 +154,7 @@ export default function SavedClient({ listings: initialListings }: Props) {
 
       {/* Grid */}
       <div
+        className="saved-items-grid"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '40px 24px', paddingBottom: '8px' }}
         data-testid="saved-items-grid"
       >
@@ -184,12 +185,12 @@ export default function SavedClient({ listings: initialListings }: Props) {
 function TabItem({ label, count, active }: { label: string; count: number; active?: boolean }) {
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'baseline', gap: '8px',
-      padding: '0 0 14px',
+      display: 'inline-flex', alignItems: 'center', gap: '8px',
+      padding: '12px 0 14px',
       ...(active ? { marginBottom: '-1px', borderBottom: '1px solid var(--color-accent)' } : {}),
       font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase',
       color: active ? 'var(--color-accent)' : 'var(--color-ink-soft)',
-      cursor: 'pointer',
+      cursor: 'pointer', minHeight: '44px', boxSizing: 'border-box',
     }}>
       {label}<span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>{count}</span>
     </span>
@@ -237,8 +238,8 @@ function SavedCard({
         onClick={e => { e.stopPropagation(); onRemove() }}
         data-testid={`unsave-${listing.id}`}
         style={{
-          position: 'absolute', top: '8px', right: '8px',
-          width: '28px', height: '28px', boxSizing: 'border-box',
+          position: 'absolute', top: '4px', right: '4px',
+          width: '40px', height: '40px', boxSizing: 'border-box',
           background: 'var(--color-bg)', border: '1px solid var(--color-line)',
           borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '13px', color: 'var(--color-ink-soft)', cursor: 'pointer',

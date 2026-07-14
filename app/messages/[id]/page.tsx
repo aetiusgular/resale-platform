@@ -1,15 +1,17 @@
 /**
  * /messages/[id] — conversation thread.
- * Server component: fetches initial data, renders two-pane layout.
- * ThreadClient handles realtime + interactions.
+ * Mobile: full-screen thread with back chevron.
+ * Desktop: two-pane (sidebar + thread).
  */
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { formatCents } from '@/lib/fees'
 import ThreadClient from './thread-client'
 import type { Offer } from '@/lib/offers'
 import SiteHeader from '@/app/components/site-header'
+import MobileTabBar from '@/app/components/mobile-tabbar'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -52,7 +54,6 @@ export default async function ThreadPage({ params }: PageProps) {
   const currentUsername: string = (currentProfile?.username as string) ?? ''
 
   // Fetch buyer stats (service_role only) for counterparty record
-  // Always show the buyer's stats regardless of who is viewing
   const { data: buyerStats } = await service
     .from('buyer_stats')
     .select('purchase_count, dispute_count, strike_count, pays_fast')
@@ -87,13 +88,25 @@ export default async function ThreadPage({ params }: PageProps) {
     .limit(50)
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
       <SiteHeader username={currentUsername} />
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '360px 1fr', alignItems: 'stretch', minHeight: 'calc(100vh - 64px)' }}>
-        {/* LEFT: conversation list sidebar */}
-        <div style={{ borderRight: '1px solid var(--color-line)', padding: '24px 24px 24px 0', overflowY: 'auto', maxHeight: 'calc(100vh - 64px)' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: '0 0 16px' }}>Messages</h1>
+      {/* Mobile thread header — back chevron + counterparty name */}
+      <div className="mobile-only" style={{ height: '48px', borderBottom: '1px solid var(--color-line)', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <Link href="/messages" style={{ fontSize: '20px', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', lineHeight: 1, minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center' }} data-testid="messages-back">
+          ‹
+        </Link>
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)' }}>
+          @{otherProfile?.username ?? '—'}
+        </span>
+      </div>
+
+      <div className="messages-layout" style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '360px 1fr', alignItems: 'stretch', minHeight: 'calc(100vh - 56px)' }}>
+        {/* LEFT: conversation list sidebar — desktop only */}
+        <div className="messages-sidebar desktop-only" style={{ borderRight: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column', overflowY: 'auto', maxHeight: 'calc(100vh - 56px)' }}>
+          <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--color-line)' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>Messages</h1>
+          </div>
 
           {conversations?.map((c) => {
             const isActive = c.id === conversationId
@@ -113,9 +126,8 @@ export default async function ThreadPage({ params }: PageProps) {
                   border: isActive ? '1px solid var(--color-ink)' : 'none',
                   borderBottom: isActive ? '1px solid var(--color-ink)' : '1px solid var(--color-line)',
                   borderRadius: '2px',
-                  padding: isActive ? '12px' : '14px 12px',
+                  padding: isActive ? '12px 24px' : '14px 24px',
                   display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer',
-                  marginBottom: isActive ? '0' : undefined,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: 'var(--color-ink)' }}>@{other?.username ?? '—'}</span>
@@ -134,10 +146,9 @@ export default async function ThreadPage({ params }: PageProps) {
         </div>
 
         {/* RIGHT: active thread */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* Thread header */}
-          <div style={{ borderBottom: '1px solid var(--color-line)', padding: '0 24px', height: '48px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Link href="/messages" style={{ fontSize: '20px', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', display: 'none' }}>‹</Link>
+        <div className="messages-thread" style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Desktop thread header */}
+          <div className="desktop-only" style={{ borderBottom: '1px solid var(--color-line)', padding: '0 24px', height: '48px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)' }}>
               @{otherProfile?.username ?? '—'}
             </span>
@@ -155,6 +166,8 @@ export default async function ThreadPage({ params }: PageProps) {
           />
         </div>
       </div>
+
+      <MobileTabBar username={currentUsername} />
     </div>
   )
 }

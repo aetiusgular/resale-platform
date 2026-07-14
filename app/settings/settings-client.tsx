@@ -162,6 +162,7 @@ export default function SettingsClient({ username, initialSizes, payoutsEnabled,
               <Link href="/" style={{
                 flex: 'none', fontSize: 20, lineHeight: '1',
                 color: 'var(--color-ink)', textDecoration: 'none',
+                minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               }}>&#8249;</Link>
               <span style={{
                 flex: 1, textAlign: 'center',
@@ -216,6 +217,7 @@ export default function SettingsClient({ username, initialSizes, payoutsEnabled,
                 style={{
                   flex: 'none', fontSize: 20, lineHeight: '1',
                   color: 'var(--color-ink)', cursor: 'pointer',
+                  minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 }}>&#8249;</span>
               <span style={{
                 flex: 1, textAlign: 'center',

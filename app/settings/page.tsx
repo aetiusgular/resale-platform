@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import SiteHeader from '@/app/components/site-header'
+import MobileTabBar from '@/app/components/mobile-tabbar'
 import SettingsClient from './settings-client'
 
 export default async function SettingsPage() {
@@ -21,7 +22,7 @@ export default async function SettingsPage() {
   const stripeConnectId: string | null = (profile?.stripe_connect_account_id as string) ?? null
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }} className="mobile-bottom-pad">
       <SiteHeader username={username} />
       <Suspense>
         <SettingsClient
@@ -31,6 +32,7 @@ export default async function SettingsPage() {
           stripeConnectId={stripeConnectId}
         />
       </Suspense>
+      <MobileTabBar username={username} />
     </div>
   )
 }

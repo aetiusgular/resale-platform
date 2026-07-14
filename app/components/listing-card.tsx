@@ -147,10 +147,11 @@ export default function ListingCard({
       <button
         onClick={e => { e.preventDefault(); onSaveToggle(listing.id, isSaved) }}
         style={{
-          marginTop: '6px', background: 'none', border: 'none', padding: 0,
+          marginTop: '2px', background: 'none', border: 'none', padding: '8px 4px 8px 0',
           fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em',
           textTransform: 'uppercase', color: isSaved ? 'var(--color-ink)' : 'var(--color-ink-soft)',
           cursor: 'pointer', alignSelf: 'flex-start', transition: 'color 120ms linear',
+          minHeight: '44px', boxSizing: 'border-box',
         }}
         data-testid={`save-btn-${listing.id}`}
       >

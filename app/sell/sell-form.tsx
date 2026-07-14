@@ -254,7 +254,7 @@ export default function SellForm({ userId }: SellFormProps) {
           <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Photos</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginTop: '24px' }}>
+        <div className="sell-photo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginTop: '24px' }}>
           {PHOTO_SLOTS.map((slot) => {
             const url   = slotUrls[slot]
             const busy  = uploading[slot]

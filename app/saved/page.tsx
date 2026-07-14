@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { formatCents } from '@/lib/fees'
 import SiteHeader from '@/app/components/site-header'
+import MobileTabBar from '@/app/components/mobile-tabbar'
 import SavedClient from './saved-client'
 
 export const metadata: Metadata = {
@@ -127,11 +128,12 @@ export default async function SavedPage() {
   })
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
       <SiteHeader username={username} />
       <Suspense>
         <SavedClient listings={savedListings} />
       </Suspense>
+      <MobileTabBar username={username} />
     </div>
   )
 }

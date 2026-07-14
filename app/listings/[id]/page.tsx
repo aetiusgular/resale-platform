@@ -9,6 +9,7 @@ import SaveButton from './save-button'
 import MessageSellerButton from './message-seller-button'
 import CommunitySection from './community-section'
 import SiteHeader from '@/app/components/site-header'
+import MobileTabBar from '@/app/components/mobile-tabbar'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -114,29 +115,29 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const listedAgo = formatTimeAgo(listing.created_at)
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className={user ? 'mobile-bottom-pad' : undefined}>
       {user && <SiteHeader username={currentUsername} />}
 
       {/* Seller status banners */}
       {isSeller && listing.status === 'pending_review' && (
-        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', padding: '10px 80px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', padding: '10px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
           REVIEW: PENDING — your listing is in the queue
         </div>
       )}
       {isSeller && listing.status === 'removed' && listing.rejection_reason && (
-        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-alert)', padding: '10px 80px', fontSize: '13px', color: 'var(--color-alert)' }}>
+        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-alert)', padding: '10px 16px', fontSize: '13px', color: 'var(--color-alert)' }}>
           Listing rejected: {listing.rejection_reason}
         </div>
       )}
       {isAdmin && listing.status !== 'active' && (
-        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', padding: '8px 80px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>ADMIN VIEW · STATUS: {listing.status.toUpperCase()}</span>
           <Link href="/admin/queue" style={{ fontSize: '12px', color: 'var(--color-ink)' }}>← queue</Link>
         </div>
       )}
 
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 80px 64px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '48px', alignItems: 'start' }}>
+      <div className="listing-detail-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 80px 64px' }}>
+        <div className="listing-detail-grid" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '48px', alignItems: 'start' }}>
 
           {/* LEFT: Gallery */}
           <div>
@@ -151,7 +152,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
             </div>
 
             {/* Thumbnails */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginTop: '16px' }}>
+            <div className="listing-thumbnails" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginTop: '16px' }}>
               {PHOTO_SLOTS.map((slot, idx) => {
                 const url = images[idx]
                 const label = slot.charAt(0) + slot.slice(1).toLowerCase()
@@ -278,7 +279,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
             {/* Seller block */}
             <div style={{ marginTop: '24px', borderTop: '1px solid var(--color-line)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <Link href={seller?.username ? `/sellers/${seller.username}` : '#'} style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)', textDecoration: 'none' }}>@{seller?.username ?? '—'}</Link>
+                <Link href={seller?.username ? `/sellers/${seller.username}` : '#'} style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)', textDecoration: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>@{seller?.username ?? '—'}</Link>
                 {/* Tier badge stub — B2 uses Bronze as placeholder */}
                 <span style={{ display: 'inline-flex', alignItems: 'center', height: '22px', padding: '0 8px', border: '1px solid var(--color-line)', borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Bronze</span>
                 {seller?.id_verification_status === 'verified' && (
@@ -320,6 +321,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
           />
         )}
       </div>
+      {user && <MobileTabBar username={currentUsername} />}
     </div>
   )
 }

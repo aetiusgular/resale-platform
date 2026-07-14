@@ -1,88 +1,86 @@
 # HANDOFF.md
-## Current state: HF4 COMPLETE — SAVED ITEMS + NAV PERFORMANCE
+## Current state: HF5 COMPLETE — MOBILE OVERHAUL + MESSAGES LAYOUT
 
 **Last updated:** 2026-07-14
 **Next prompt:** PA (post-alpha) — see LAUNCH.md §8 for PA backlog
 
 ---
 
-## HF4 — Saved Items page + navigation performance
+## HF5 — Mobile overhaul + Messages layout (audit-driven)
 
-### Issue 1: SAVED button was a dead link
-The SAVED nav link pointed to `/browse?saved=1`, but nothing read a `saved` param.
+### Summary
+Fixed all CRITICAL and HIGH issues from `docs/AUDIT-2026-07-14.md`. The app now
+has a fully functional mobile experience: bottom tab bar, responsive headers,
+single-pane messages, no horizontal overflow, and >=44px tap targets on all mobile
+routes.
 
-**Fixed:**
-- Built `/saved` route per `design-reference/saved-items-export/Saved Items.dc.html`
-- Server component page (`app/saved/page.tsx`) + client component (`app/saved/saved-client.tsx`)
-- Items tab: shows saved listings with "SAVED Xh AGO" labels, price-drop flags ("↓ $80 SINCE SAVED"), sold items with 85% white veil + "Find similar →" link
-- Unsaving: × button on image + SAVED text toggle, optimistic removal with revert on error
-- "Clear sold" bulk action removes all sold/removed saved items
-- Empty state: EB Garamond italic "Nothing saved yet." + "Browse listings" CTA
-- Tabs (Items/Searches/Sellers) — Items functional, Searches/Sellers stubbed with count 0
-- Extracted `ListingCard` to `app/components/listing-card.tsx` — shared by browse + saved + (future) sellers
-- SiteHeader + BrowseClient SAVED links updated to `/saved`
+### What was built/changed
 
-### Issue 2: Slow page-to-page navigation
-Serial Supabase round-trips on every page load. Fixed by parallelizing independent queries.
+**TASK 1 — Global mobile bottom tab bar (CRITICAL)**
+- `app/components/mobile-tabbar.tsx` — fixed bottom, 56px, white, 1px --line top
+  border, safe-area inset padding, 5 tabs (FEED/DISCOVER/SELL/MESSAGES/PROFILE),
+  inline SVG 20px line icons, active=solid --ink, inactive=--ink-soft, Inter 10px
+  caps labels, data-testid="mobile-tabbar"
+- Rendered on ALL authenticated routes at <768px, hidden on desktop via CSS
+- SiteHeader: mobile variant shows wordmark + search + avatar only
 
-**Performance — /browse Supabase round-trips:**
-- **Before:** 7 sequential round-trips (getUser → listings → price_history → filter_counts → saves → profile → count)
-- **After:** 3 sequential round-trips (getUser → [listings, count, filter_counts×2, profile] → [price_history, saves])
-- Reduction: **57% fewer serial hops**
+**TASK 2 — /messages layout (CRITICAL mobile, HIGH desktop)**
+- Mobile: `/messages` = full-screen conversation list; `/messages/[id]` = full-screen
+  thread with back chevron + counterparty name header
+- Desktop: two-pane with bordered containers, sidebar header, anchored empty state
 
-**Pages parallelized:**
-- `app/browse/page.tsx` — 5 queries in first batch, 2 in second (7→3 sequential)
-- `app/listings/[id]/page.tsx` — user+listing in parallel, then profile+save+price_history in parallel
-- `app/sellers/[username]/page.tsx` — current_profile+seller in parallel, then orders+buyer_stats+listings in parallel
-- `app/messages/page.tsx` — profile+searchParams in parallel
+**TASK 3 — Mobile fixes across remaining routes**
+- `/sell`: progress indicator wraps at 375px, photo grid 3-col on mobile
+- `/listings/[id]`: single-column grid on mobile, 3-col thumbnails, responsive padding
+- `/saved`: 2-col grid on mobile, responsive padding
+- `/sellers/[username]`: 2-col listings grid, responsive padding
+- All pages: overflow-causing 80px padding replaced with responsive 16px on mobile
 
-**Middleware optimization:**
-- Added `x-gate-ok` httpOnly cookie (10-min TTL) to cache invite-gate result
-- Skips the per-request `profiles` SELECT when cookie present (non-admin paths only)
-- Admin paths always do a fresh role check — no bypass possible
-- Cookie cleared on logout (`getUser()` returns null)
-- `getUser()` still runs on every request — auth is never cached
-- code-reviewer: **APPROVED** — 0 FAIL items, trade-off documented (10-min revocation window)
+**TASK 4 — Tap targets (HIGH)**
+- All interactive elements on mobile raised to >=44px effective touch height
 
-### Verify state (HF4)
+### Audit results (post-HF5)
 ```
-pnpm build       ✓  0 errors, 34 routes
-pnpm verify      ✓  133 unit tests, 0 warnings-as-errors
-pnpm verify:ui   ✓  48 passed, 3 skipped (@live), 3 pre-existing auth test failures (not introduced by HF4)
-code-reviewer    ✓  APPROVED (0 FAIL)
+MOBILE:  ALL 7 ROUTES CLEAN (0 H-overflow, 0 missing-tabbar, 0 JS errors, 0 tap-targets <40px)
+DESKTOP: all routes render, tap-targets <40px are expected (mouse-fine)
+```
+
+### Verify state (HF5)
+```
+pnpm verify      ✓  133 unit tests, 0 errors
+pnpm verify:ui   ✓  62 passed (14 new), 3 skipped (@live), 0 failures
+node audit.mjs   ✓  ALL mobile routes CLEAN
 ```
 
 ### Key files added
 ```
-app/components/listing-card.tsx       — Shared ListingCard (extracted from browse-client)
-app/saved/page.tsx                    — Saved items server page
-app/saved/saved-client.tsx            — Saved items client component
-tests/e2e/saved.spec.ts              — 11 e2e tests (6 gate regression + 5 saved page)
+app/components/mobile-tabbar.tsx      — Mobile bottom tab bar
+tests/e2e/mobile.spec.ts             — 11 mobile e2e tests
 ```
 
 ### Key files modified
 ```
-app/browse/browse-client.tsx          — Import shared ListingCard, remove duplicate, fix SAVED href
-app/browse/page.tsx                   — Parallelized queries (7→3 sequential round-trips)
-app/components/site-header.tsx        — SAVED link → /saved
-app/listings/[id]/page.tsx            — Parallelized user+listing, then profile+save+price
-app/messages/page.tsx                 — Parallelized profile+searchParams
-app/sellers/[username]/page.tsx       — Parallelized profile+seller, then orders+stats+listings
-middleware.ts                         — Gate cookie caching (x-gate-ok, 10-min TTL)
-docs/DESIGN_MAP.md                    — Added Saved Items row
-docs/ROADMAP.md                       — Added HF1-HF4 entries
+app/globals.css                       — Responsive media queries
+app/components/site-header.tsx        — Responsive header
+app/components/avatar-menu.tsx        — 44x44 tap target
+app/components/listing-card.tsx       — Save button tap area
+app/messages/page.tsx                 — Bordered list, empty state, MobileTabBar
+app/messages/[id]/page.tsx            — Mobile single-pane, back chevron, sidebar
+app/messages/[id]/thread-client.tsx   — Responsive padding
+app/browse/browse-client.tsx          — MobileTabBar, header, tap targets
+app/sell/page.tsx                     — Wrapping steps, MobileTabBar, username fetch
+app/sell/sell-form.tsx                — 3-col photo grid on mobile
+app/listings/[id]/page.tsx            — Responsive grid, MobileTabBar, tap targets
+app/listings/[id]/condition-popover.tsx — 44px tap target
+app/listings/[id]/community-section.tsx — Tab buttons 44px
+app/saved/page.tsx                    — MobileTabBar
+app/saved/saved-client.tsx            — Responsive grid, unsave button, tab heights
+app/sellers/[username]/page.tsx       — MobileTabBar, responsive grid/padding
+app/settings/page.tsx                 — MobileTabBar
+app/settings/settings-client.tsx      — Back chevron 44px
+docs/AUDIT-2026-07-14.md             — RESOLVED section
+docs/ROADMAP.md                       — HF5 entry
 ```
-
----
-
-## Pre-existing test failures (NOT introduced by HF4)
-
-3 auth e2e tests fail identically before and after HF4 changes:
-- `Gate — unauthenticated › invalid format shows error`
-- `Gate — unauthenticated › waitlist form submits email`
-- `Gate — /enter page error states › code already used error shows in alert color`
-
-These test the `/enter` page's code-entry error states and have been failing since at least HF2.
 
 ---
 
@@ -116,5 +114,5 @@ Read CLAUDE.md and docs/HANDOFF.md, then read docs/LAUNCH.md for launch checklis
 
 ## ALPHA BUILD COMPLETE
 
-All B0–B8 milestones + HF1–HF4 complete. The codebase is ready for private alpha launch.
+All B0-B8 milestones + HF1-HF5 complete. The codebase is ready for private alpha launch.
 Follow `docs/LAUNCH.md` to deploy.

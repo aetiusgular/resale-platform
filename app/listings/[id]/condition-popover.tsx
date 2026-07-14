@@ -14,7 +14,7 @@ export default function ConditionPopover({ score, definition }: ConditionPopover
     <div style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen((o) => !o)}
-        style={{ fontSize: '12px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textDecorationThickness: '1px', textUnderlineOffset: '3px', padding: 0 }}
+        style={{ fontSize: '12px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textDecorationThickness: '1px', textUnderlineOffset: '3px', padding: '10px 4px 10px 0', minHeight: '44px', boxSizing: 'border-box' }}
       >
         what {score} means
       </button>

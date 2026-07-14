@@ -7,6 +7,7 @@ import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
 import AvatarMenu from '@/app/components/avatar-menu'
 import ListingCard from '@/app/components/listing-card'
+import MobileTabBar from '@/app/components/mobile-tabbar'
 
 type Props = {
   initialListings: BrowseListing[]
@@ -146,7 +147,7 @@ function FilterRail({
             <button
               key={d}
               onClick={() => update('dept', dept === d ? null : d)}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
             >
               <Checkbox checked={dept === d} />
               <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>
@@ -167,7 +168,7 @@ function FilterRail({
             <button
               key={c}
               onClick={() => update('cat', cat === c ? null : c)}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
             >
               <Checkbox checked={cat === c} />
               <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>
@@ -297,14 +298,14 @@ function FilterRail({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingBottom: '16px' }}>
           <button
             onClick={() => update('verified', verified ? null : '1')}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
           >
             <Checkbox checked={verified} />
             <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Verified</span>
           </button>
           <button
             onClick={() => update('dropped', dropped ? null : '1')}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
           >
             <Checkbox checked={dropped} />
             <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Price dropped</span>
@@ -517,7 +518,7 @@ export default function BrowseClient({
   const currentSortLabel = SORT_OPTIONS.find(o => o.value === sort)?.label ?? 'Newest'
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
       {/* Header */}
       <header style={{
         height: '64px', borderBottom: '1px solid var(--color-line)',
@@ -565,9 +566,10 @@ export default function BrowseClient({
 
       {/* Mobile header */}
       <header style={{ display: 'none' }} className="browse-header-mobile">
-        <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}>
-          <Link href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none' }}>———</Link>
-          <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '36px', padding: '0 16px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 13px var(--font-ui)', textDecoration: 'none' }}>Sell</Link>
+        <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px' }}>
+          <Link href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</Link>
+          <div style={{ flex: 1 }} />
+          <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
         </div>
         {/* Mobile search */}
         <div style={{ padding: '12px 16px 0' }}>
@@ -597,7 +599,7 @@ export default function BrowseClient({
           >
             Filters{activeCount > 0 ? ` (${activeCount})` : ''}
           </button>
-          <button onClick={() => setSortOpen(o => !o)} style={{ background: 'none', border: 'none', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <button onClick={() => setSortOpen(o => !o)} style={{ background: 'none', border: 'none', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '44px', padding: '0 4px' }}>
             Sort: {currentSortLabel} <span style={{ color: 'var(--color-ink-soft)', fontSize: '10px' }}>▾</span>
           </button>
         </div>
@@ -634,7 +636,7 @@ export default function BrowseClient({
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setSortOpen(o => !o)}
-                style={{ background: 'none', border: 'none', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ background: 'none', border: 'none', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '44px', padding: '0 4px' }}
                 data-testid="sort-dropdown-btn"
               >
                 Sort: {currentSortLabel} <span style={{ color: sortOpen ? 'var(--color-ink)' : 'var(--color-ink-soft)', fontSize: '10px' }}>{sortOpen ? '▴' : '▾'}</span>
@@ -646,7 +648,7 @@ export default function BrowseClient({
                       key={o.value}
                       onClick={() => { updateFilter('sort', o.value); setSortOpen(false) }}
                       style={{
-                        width: '100%', height: '40px', padding: '0 12px',
+                        width: '100%', height: '44px', padding: '0 12px',
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         background: 'none', border: 'none',
                         fontSize: '14px', fontWeight: sort === o.value ? 500 : 400,
@@ -795,15 +797,16 @@ export default function BrowseClient({
       )}
 
       {/* Responsive CSS */}
+      <MobileTabBar username={username} />
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 767px) {
           .browse-header-desktop { display: none !important; }
           .browse-header-mobile  { display: block !important; }
           .browse-desktop-inner  { display: none !important; }
           .browse-mobile-grid    { display: block !important; }
           .browse-sidebar        { display: none; }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 768px) {
           .browse-header-mobile { display: none !important; }
           .browse-mobile-grid   { display: none !important; }
         }
