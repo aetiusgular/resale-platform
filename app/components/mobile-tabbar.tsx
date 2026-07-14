@@ -22,6 +22,7 @@ export default function MobileTabBar({ username, hasUnread }: Props) {
   return (
     <nav
       data-testid="mobile-tabbar"
+      className="mobile-only"
       style={{
         position: 'fixed',
         bottom: 0,
