@@ -358,7 +358,7 @@ function ListingCard({
       >
         {/* Image */}
         <div style={{
-          aspectRatio: '3/4', width: '100%', boxSizing: 'border-box',
+          width: '100%', aspectRatio: '3/4', boxSizing: 'border-box',
           border: '1px solid var(--color-line)', overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'var(--color-line)',
@@ -452,7 +452,6 @@ export default function BrowseClient({
   const nextOffset  = currentOffset + initialListings.length
 
   // ── Infinite scroll via IntersectionObserver ────────────────────────────────
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!hasMore || !sentinelRef.current) return
 
@@ -830,14 +829,11 @@ export default function BrowseClient({
             <button onClick={followSearch} style={{ fontSize: '14px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>follow this search</button>
           </div>
         ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px 16px' }}>
             {allListings.map(l => (
               <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} />
             ))}
           </div>
-            <div ref={sentinelRef} style={{ paddingTop: '16px' }} />
-          </>
         )}
         {hasMore && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0 24px' }}>
