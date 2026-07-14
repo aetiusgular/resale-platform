@@ -1,4 +1,51 @@
 # HANDOFF.md
+## Current state: HF1 COMPLETE — RLS RECURSION FIXED
+
+**Last updated:** 2026-07-13
+**Next prompt:** PA (post-alpha) — see LAUNCH.md §8 for PA backlog
+
+---
+
+## HF1 — Hotfix: recursive RLS policies (infinite recursion on profiles)
+
+### Cause
+`profiles_admin_all` (migration 000000) used `EXISTS(SELECT FROM profiles)` inside an RLS
+policy on the `profiles` table itself → infinite recursion: any SELECT on profiles triggered
+`profiles_admin_all`, which ran another SELECT on profiles, looping indefinitely.
+
+Effect: `"infinite recursion detected in policy for relation profiles"` — blocked all new
+signups (profile INSERT), broke middleware profile reads (users bounced to onboarding),
+and broke all admin paths on orders/listings/comments/etc.
+
+### Fix — migration 20240101000014_fix_recursive_rls.sql
+Created `public.is_admin()` SECURITY DEFINER function. SECURITY DEFINER runs as the
+function owner (postgres), bypassing RLS entirely when reading profiles — no recursion
+possible. Rebuilt all 9 recursive policies (1 self-recursive on profiles, 8 indirect
+on other tables) to call `is_admin()` instead of the EXISTS subquery. Semantics
+identical; execution path changed.
+
+Audit: `docs/RLS_RECURSION_AUDIT.md` (9 policies enumerated from live DB; full survey).
+
+### Steps taken
+1. Queried live DB via Management API → enumerated all 9 recursive policies → `docs/RLS_RECURSION_AUDIT.md`
+2. Migration `20240101000014_fix_recursive_rls.sql` — db-guard reviewed and APPROVED
+3. Pushed migration: `pnpm exec supabase db push --yes --linked`
+4. Deleted orphan auth user `aetiusgular@gmail.com` (no profiles row, from failed signup during recursion window) via admin API
+5. Added `tests/e2e/signup-live.spec.ts` — 2 @live tests: UI flow + direct-client RLS proof
+6. Sanity script confirmed: signUp → profile INSERT → claim → invited_by all pass without recursion
+7. `pnpm verify` ✓ (133 tests), `pnpm verify:ui` ✓ (36 passed, 3 skipped @live)
+8. @live tests: 2/2 passed
+9. code-reviewer: APPROVED
+
+### Pre-existing bug surfaced (not introduced by HF1)
+`generate_member_codes` RPC fails on live: `gen_random_bytes` not found because the RPC
+has `SET search_path = public` but pgcrypto is installed in `extensions` schema. The
+onboarding `/api/onboarding/generate-codes` route is therefore broken on live. Fix: update
+`generate_member_codes` to reference `extensions.gen_random_bytes` or install pgcrypto in
+`public`. Added to PA backlog.
+
+---
+
 ## Current state: B8 COMPLETE — ALPHA BUILD COMPLETE
 
 **Last updated:** 2026-07-13
