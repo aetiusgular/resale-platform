@@ -181,10 +181,11 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   // ── User's size preferences ─────────────────────────────────────────────────
   const { data: profileData } = await supabase
     .from('profiles')
-    .select('sizes')
+    .select('sizes, username')
     .eq('id', user.id)
     .single()
   const userSizes: Record<string, string> = (profileData?.sizes as Record<string, string>) ?? {}
+  const username: string = (profileData?.username as string) ?? ''
 
   // ── Total count for header ──────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -215,6 +216,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
         userSizes={userSizes}
         hasMore={hasMore}
         currentOffset={offset}
+        username={username}
       />
     </Suspense>
   )

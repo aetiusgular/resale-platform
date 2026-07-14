@@ -8,6 +8,7 @@ import ConditionPopover from './condition-popover'
 import SaveButton from './save-button'
 import MessageSellerButton from './message-seller-button'
 import CommunitySection from './community-section'
+import SiteHeader from '@/app/components/site-header'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -56,15 +57,17 @@ export default async function ListingDetailPage({ params }: PageProps) {
   let isAdmin = false
   let isSeller = false
   let userProfile: { role?: string; id_verification_status?: string; verified_checker?: boolean; tier?: string } | null = null
+  let currentUsername = ''
 
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, id_verification_status, verified_checker, tier')
+      .select('role, id_verification_status, verified_checker, tier, username')
       .eq('id', user.id)
       .single()
     isAdmin = profile?.role === 'admin'
     userProfile = profile
+    currentUsername = (profile?.username as string) ?? ''
   }
 
   // Fetch the listing
@@ -130,14 +133,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
-      {/* Header */}
-      <header style={{ height: '64px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '32px', padding: '0 80px' }}>
-        <Link href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>———</Link>
-        <div style={{ flex: 1 }} />
-        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>Sell</Link>
-        </div>
-      </header>
+      {user && <SiteHeader username={currentUsername} />}
 
       {/* Seller status banners */}
       {isSeller && listing.status === 'pending_review' && (
@@ -300,7 +296,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
             {/* Seller block */}
             <div style={{ marginTop: '24px', borderTop: '1px solid var(--color-line)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)' }}>@{seller?.username ?? '—'}</span>
+                <Link href={seller?.username ? `/sellers/${seller.username}` : '#'} style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)', textDecoration: 'none' }}>@{seller?.username ?? '—'}</Link>
                 {/* Tier badge stub — B2 uses Bronze as placeholder */}
                 <span style={{ display: 'inline-flex', alignItems: 'center', height: '22px', padding: '0 8px', border: '1px solid var(--color-line)', borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Bronze</span>
                 {seller?.id_verification_status === 'verified' && (

@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -29,13 +30,13 @@ export default async function SellPage() {
             { n: '03', label: 'Condition' },
             { n: '04', label: 'Price' },
           ].map((step, i) => (
-            <>
-              <span key={step.n} style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <Fragment key={step.n}>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>{step.n}</span>
                 <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>{step.label}</span>
               </span>
               {i < 3 && <span style={{ color: 'var(--color-ink-soft)', fontSize: '12px' }}>→</span>}
-            </>
+            </Fragment>
           ))}
         </div>
       </div>

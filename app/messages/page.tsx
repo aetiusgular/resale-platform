@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
+import SiteHeader from '@/app/components/site-header'
 
 interface PageProps {
   searchParams: Promise<{ listing?: string }>
@@ -16,6 +17,10 @@ export default async function MessagesPage({ searchParams }: PageProps) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
+
+  const { data: profileRow } = await supabase
+    .from('profiles').select('username').eq('id', user.id).single()
+  const username: string = (profileRow?.username as string) ?? ''
 
   const { listing: listingId } = await searchParams
 
@@ -68,16 +73,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
-      {/* Header */}
-      <header style={{ height: '64px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '32px', padding: '0 80px' }}>
-        <Link href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>———</Link>
-        <div style={{ flex: 1 }} />
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>Sell</Link>
-          <Link href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', textDecoration: 'none' }}>Messages</Link>
-          <Link href="/settings" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Settings</Link>
-        </nav>
-      </header>
+      <SiteHeader username={username} />
 
       <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '360px 1fr', alignItems: 'stretch', minHeight: 'calc(100vh - 64px)' }}>
         {/* LEFT: conversation list */}

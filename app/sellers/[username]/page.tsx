@@ -1,0 +1,264 @@
+/**
+ * /sellers/[username] — public seller profile.
+ * Header, avatar initials, tier, VERIFIED ID microtag, member-since,
+ * two-sided stats rows, LISTINGS tab (grid), REVIEWS tab (empty state).
+ */
+import { notFound, redirect } from 'next/navigation'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClientRaw } from '@/lib/supabase/service'
+import { formatCents } from '@/lib/fees'
+import SiteHeader from '@/app/components/site-header'
+
+interface PageProps {
+  params: Promise<{ username: string }>
+  searchParams: Promise<{ tab?: string }>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { username } = await params
+  return { title: `@${username} — Resale Platform` }
+}
+
+function formatTimeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins}H AGO`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}H AGO`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}D AGO`
+  return `${Math.floor(days / 7)}W AGO`
+}
+
+export default async function SellerProfilePage({ params, searchParams }: PageProps) {
+  const { username } = await params
+  const { tab = 'listings' } = await searchParams
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/enter')
+
+  // Fetch current user's username for header
+  const { data: currentProfile } = await supabase
+    .from('profiles').select('username').eq('id', user.id).single()
+  const currentUsername: string = (currentProfile?.username as string) ?? ''
+
+  // Fetch the target seller profile (service_role to read restricted columns)
+  const service = createServiceClientRaw()
+  const { data: seller } = await service
+    .from('profiles')
+    .select('id, username, role, id_verification_status, tier, verified_checker, checker_category, created_at')
+    .eq('username', username)
+    .single()
+
+  if (!seller) notFound()
+
+  // Fetch seller stats (aggregate from orders)
+  const { data: sellerOrders } = await service
+    .from('orders')
+    .select('id, state')
+    .eq('seller_id', seller.id)
+
+  const totalSales = (sellerOrders ?? []).filter(o => o.state === 'released').length
+  const totalDisputes = (sellerOrders ?? []).filter(o => o.state === 'disputed').length
+  const disputeRate = totalSales > 0 ? `${((totalDisputes / totalSales) * 100).toFixed(0)}%` : '0%'
+
+  // Fetch buyer stats
+  const { data: buyerStats } = await service
+    .from('buyer_stats')
+    .select('purchase_count, dispute_count, pays_fast')
+    .eq('user_id', seller.id)
+    .single()
+
+  // Fetch active listings
+  const { data: listingsRaw } = await service
+    .from('listings')
+    .select('id, title, price_cents, images, condition_score, size, is_price_dropped, created_at')
+    .eq('seller_id', seller.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(48)
+
+  const listings = listingsRaw ?? []
+  const memberYear = new Date(seller.created_at as string).getFullYear()
+  const avatarInitials = (seller.username as string).slice(0, 2).toUpperCase()
+  const tierLabel = ((seller.tier as string) ?? 'bronze').toUpperCase()
+  const isVerified = seller.id_verification_status === 'verified'
+  const isChecker = seller.verified_checker === true
+  const checkerCategory = seller.checker_category as string | null
+
+  const activeTab = tab === 'reviews' ? 'reviews' : 'listings'
+
+  return (
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+      <SiteHeader username={currentUsername} />
+
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 80px 96px' }}>
+
+        {/* Profile header */}
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+          {/* Avatar */}
+          <div style={{
+            flex: 'none', width: '64px', height: '64px', borderRadius: '50%',
+            border: '1px solid var(--color-line)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--color-ink-soft)',
+          }}>
+            {avatarInitials}
+          </div>
+
+          {/* Info */}
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '20px', color: 'var(--color-ink)' }}>
+                @{seller.username}
+              </span>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', height: '22px', padding: '0 8px',
+                border: '1px solid var(--color-ink)', borderRadius: '2px',
+                fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em',
+                textTransform: 'uppercase', color: 'var(--color-ink)',
+              }}>
+                {tierLabel}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              {isVerified && (
+                <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
+                  VERIFIED ID
+                </span>
+              )}
+              {isChecker && checkerCategory && (
+                <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
+                  VERIFIED CHECKER — {(checkerCategory as string).toUpperCase()}
+                </span>
+              )}
+              <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
+                MEMBER SINCE {memberYear}
+              </span>
+            </div>
+
+            {/* Two-sided stats */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
+                AS SELLER · {totalSales} SALES{totalSales > 0 ? ` · ${disputeRate} DISPUTES` : ''}
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
+                AS BUYER · {buyerStats?.purchase_count ?? 0} PURCHASES
+                {buyerStats?.pays_fast ? ' · PAYS FAST' : ''}
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          {seller.id !== user.id && (
+            <div style={{ marginLeft: 'auto', flex: 'none', display: 'flex', gap: '8px' }}>
+              <Link
+                href={`/messages?seller=${seller.id}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  height: '44px', padding: '0 24px',
+                  background: 'var(--color-bg)', color: 'var(--color-ink)',
+                  border: '1px solid var(--color-ink)', borderRadius: '2px',
+                  font: '500 14px var(--font-ui)', textDecoration: 'none',
+                }}
+              >
+                Message
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ marginTop: '64px', display: 'flex', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
+          {(['listings', 'reviews'] as const).map(t => (
+            <Link
+              key={t}
+              href={`/sellers/${username}?tab=${t}`}
+              style={{
+                position: 'relative', paddingBottom: '12px',
+                font: '500 12px var(--font-ui)', letterSpacing: '0.08em',
+                textTransform: 'uppercase', textDecoration: 'none',
+                color: activeTab === t ? 'var(--color-ink)' : 'var(--color-ink-soft)',
+              }}
+            >
+              {t === 'listings' ? `Listings (${listings.length})` : 'Reviews'}
+              {activeTab === t && (
+                <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />
+              )}
+            </Link>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        {activeTab === 'listings' ? (
+          <>
+            {/* Sort */}
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+              <span style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>
+                Sort: Newest <span style={{ color: 'var(--color-ink-soft)', fontSize: '10px' }}>▾</span>
+              </span>
+            </div>
+
+            {listings.length === 0 ? (
+              <p style={{ marginTop: '48px', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.4rem', color: 'var(--color-ink)' }}>
+                No active listings.
+              </p>
+            ) : (
+              <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '40px 24px' }}
+                data-testid="seller-listings-grid"
+              >
+                {listings.map(l => {
+                  const images: string[] = Array.isArray(l.images) ? l.images : []
+                  const frontImage = images[0] ?? null
+                  return (
+                    <Link key={l.id} href={`/listings/${l.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{
+                        aspectRatio: '3/4', boxSizing: 'border-box',
+                        border: '1px solid var(--color-line)', overflow: 'hidden',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'var(--color-line)',
+                      }}>
+                        {frontImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={frontImage} alt={l.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>3 : 4</span>
+                        )}
+                      </div>
+                      <div style={{ marginTop: '12px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
+                        {formatTimeAgo(l.created_at)}
+                      </div>
+                      <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {(l.title as string).toUpperCase()}
+                      </div>
+                      <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
+                        {formatCents(l.price_cents as number)}
+                      </div>
+                      <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+                        {l.size} · {l.condition_score}/10
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          /* Reviews tab — empty state for alpha */
+          <div style={{ marginTop: '48px' }}>
+            <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.35rem', lineHeight: 1.35, color: 'var(--color-ink)' }}>
+              No reviews yet.
+            </p>
+            <p style={{ marginTop: '12px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+              Reviews are written after completed orders.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

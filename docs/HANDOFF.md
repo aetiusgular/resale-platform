@@ -1,8 +1,64 @@
 # HANDOFF.md
-## Current state: HF1 COMPLETE — RLS RECURSION FIXED
+## Current state: HF2 COMPLETE — UI POLISH BATCH
 
 **Last updated:** 2026-07-13
 **Next prompt:** PA (post-alpha) — see LAUNCH.md §8 for PA backlog
+
+---
+
+## HF2 — UI polish batch from founder inspection (4 issues fixed)
+
+### Issue 1: React key warning — app/sell/page.tsx
+Fragment inside `.map()` had `key` on inner `<span>` instead of the `<>` wrapper.
+Fixed: import `Fragment`, use `<Fragment key={step.n}>`. Grepped entire codebase — no other instances.
+
+### Issue 2: Listing card alignment — browse-client.tsx
+Cards in the same grid row misaligned when the conditional VERIFIED badge was absent.
+Fixed: added `minHeight` to every text line in `ListingCard` (timestamp 16px, title 20px, price 20px, size/condition 18px). VERIFIED line always rendered with `minHeight: 16px` (empty string when not verified). Image container already had `aspectRatio: 3/4` + `objectFit: cover`.
+
+### Issue 3: Navbar gaps — shared SiteHeader
+Multiple pages had divergent headers; none had SAVED / MESSAGES / avatar.
+Fixed:
+- Created `app/components/avatar-menu.tsx` (client component): 32px avatar, initials, dropdown with PROFILE → /sellers/[username], SETTINGS → /settings, LOG OUT → signOut + /enter.
+- Created `app/components/site-header.tsx` (server component): wordmark → /, search → /browse?q=, Sell button, SAVED, MESSAGES, AvatarMenu.
+- Applied SiteHeader to: `/messages`, `/messages/[id]`, `/listings/[id]`, `/settings`.
+- Updated `/browse` (BrowseClient): added `username` prop, replaced right-side nav with Sell + Saved + Messages + AvatarMenu.
+- Linked seller username block on `/listings/[id]` to `/sellers/[username]`.
+
+### Issue 4: Seller profile — /sellers/[username]
+Page did not exist.
+Built `app/sellers/[username]/page.tsx`:
+- Header: 64px avatar initials, username (Space Mono), tier badge, VERIFIED ID + VERIFIED CHECKER microtags, MEMBER SINCE year.
+- Two-sided stats: AS SELLER (sales, dispute %) and AS BUYER (purchases, PAYS FAST).
+- Tabs: LISTINGS (4-col grid, same card design as browse with min-height rows) and REVIEWS (empty-state).
+- Message button (hidden for own profile).
+- Fetches seller profile via service_role; active listings via service_role.
+
+### Verify state (HF2)
+```
+pnpm build       ✓  0 errors, 33 routes
+pnpm verify      ✓  133 unit tests, 0 errors
+pnpm verify:ui   ✓  42 passed, 3 skipped (@live)
+```
+
+### Key files added
+```
+app/components/site-header.tsx
+app/components/avatar-menu.tsx
+app/sellers/[username]/page.tsx
+tests/e2e/hf2.spec.ts
+```
+
+### Key files modified
+```
+app/sell/page.tsx                    — Fragment key fix
+app/browse/browse-client.tsx         — Card min-heights + AvatarMenu in header
+app/browse/page.tsx                  — Pass username to BrowseClient
+app/messages/page.tsx                — SiteHeader
+app/messages/[id]/page.tsx           — SiteHeader
+app/listings/[id]/page.tsx           — SiteHeader + seller link
+app/settings/page.tsx                — SiteHeader
+```
 
 ---
 

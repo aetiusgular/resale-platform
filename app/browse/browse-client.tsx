@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
 import { formatCents } from '@/lib/fees'
+import AvatarMenu from '@/app/components/avatar-menu'
 
 type Props = {
   initialListings: BrowseListing[]
@@ -15,6 +16,7 @@ type Props = {
   userSizes: Record<string, string>
   hasMore: boolean
   currentOffset: number
+  username: string
 }
 
 const DEPARTMENTS = ['menswear', 'womenswear', 'unisex']
@@ -367,16 +369,16 @@ function ListingCard({
           )}
         </div>
 
-        {/* Meta */}
-        <div style={{ marginTop: '12px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
+        {/* Meta — fixed-height lines so cards in same row align pixel-perfect */}
+        <div style={{ marginTop: '12px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
           {formatTimeAgo(listing.created_at)}
         </div>
-        <div style={{ marginTop: '4px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {listing.title.toUpperCase()}
         </div>
 
         {/* Price — strikethrough original if dropped */}
-        <div style={{ marginTop: '4px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
+        <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
           {listing.is_price_dropped && listing.original_price_cents ? (
             <>
               <span style={{ color: 'var(--color-ink-soft)', textDecoration: 'line-through' }}>
@@ -389,15 +391,14 @@ function ListingCard({
           )}
         </div>
 
-        <div style={{ marginTop: '4px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+        <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
           {listing.size} · {listing.condition_score}/10
         </div>
 
-        {isVerified && (
-          <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-            VERIFIED
-          </div>
-        )}
+        {/* VERIFIED badge — always rendered to reserve height; visible only when verified */}
+        <div style={{ marginTop: '8px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
+          {isVerified ? 'VERIFIED' : ''}
+        </div>
       </Link>
 
       {/* Save toggle — no heart on image, text button below */}
@@ -426,6 +427,7 @@ export default function BrowseClient({
   userSizes,
   hasMore: initialHasMore,
   currentOffset,
+  username,
 }: Props) {
   const searchParams = useSearchParams()
   const router       = useRouter()
@@ -619,11 +621,14 @@ export default function BrowseClient({
             />
           </form>
         </div>
-        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
           <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
             Sell
           </Link>
-        </div>
+          <Link href="/browse?saved=1" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</Link>
+          <Link href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Messages</Link>
+          <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
+        </nav>
       </header>
 
       {/* Mobile header */}

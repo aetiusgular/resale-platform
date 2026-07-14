@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import ThreadClient from './thread-client'
 import type { Offer } from '@/lib/offers'
+import SiteHeader from '@/app/components/site-header'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -43,12 +44,12 @@ export default async function ThreadPage({ params }: PageProps) {
 
   if (!listing) notFound()
 
-  // Fetch other user's username for header
-  const { data: otherProfile } = await service
-    .from('profiles')
-    .select('username')
-    .eq('id', otherUserId)
-    .single()
+  // Fetch other user's username for header + current user's username for SiteHeader
+  const [{ data: otherProfile }, { data: currentProfile }] = await Promise.all([
+    service.from('profiles').select('username').eq('id', otherUserId).single(),
+    service.from('profiles').select('username').eq('id', user.id).single(),
+  ])
+  const currentUsername: string = (currentProfile?.username as string) ?? ''
 
   // Fetch buyer stats (service_role only) for counterparty record
   // Always show the buyer's stats regardless of who is viewing
@@ -87,16 +88,7 @@ export default async function ThreadPage({ params }: PageProps) {
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
-      {/* Header */}
-      <header style={{ height: '64px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '32px', padding: '0 80px' }}>
-        <Link href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>———</Link>
-        <div style={{ flex: 1 }} />
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>Sell</Link>
-          <Link href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', textDecoration: 'none' }}>Messages</Link>
-          <Link href="/settings" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Settings</Link>
-        </nav>
-      </header>
+      <SiteHeader username={currentUsername} />
 
       <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '360px 1fr', alignItems: 'stretch', minHeight: 'calc(100vh - 64px)' }}>
         {/* LEFT: conversation list sidebar */}
