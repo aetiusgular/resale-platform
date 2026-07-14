@@ -9,18 +9,21 @@ frontmatter. Nobody should ever need /model.
 
 | Intensity | Examples | Model flag |
 |---|---|---|
-| TRIVIAL | copy/CSS tweaks, single-file fix, config change, key-prop bugs | `--model haiku` |
-| STANDARD | multi-file feature or fix + tests (typical HF batch) | `--model haiku` first; escalate to sonnet only if the haiku run fails its gate |
-| SENSITIVE | anything touching auth, money, RLS, webhooks | `--model sonnet` (never haiku), critical reviewer mandatory |
+| TRIVIAL (non-visual) | config change, copy fix, key-prop bugs, script tweaks | `--model haiku` |
+| DESIGN-FIDELITY | ANY user-visible UI work — components, layout, settings panes, design-system adherence | `--model opus` (calibrated 2026-07-13: haiku produced off-design UI on HF3 and was fully reverted; sonnet minimum for small isolated visual fixes, opus for whole surfaces) |
+| STANDARD (logic) | multi-file non-visual logic + tests | `--model sonnet` |
+| SENSITIVE | anything touching auth, money, RLS, webhooks | `--model sonnet` minimum, critical reviewer mandatory |
 | ARCHITECTURAL | new subsystem (e.g. BR1–BR4 recommendations) | two-stage: PLAN run then EXECUTE run (below) |
+
+**Deliberation model: opus (claude-opus-4-8).** Fable is retired from this
+workflow by founder decision — opus for all PLAN runs and design-critical
+execution. The token-saving lever is scope discipline and read whitelists,
+NOT model downgrades on visible surfaces.
 
 ## Two-stage pattern for architectural work
 1. PLAN run: `claude -p "<prompt> — PLAN ONLY: read the whitelisted files,
    write docs/PLAN-<id>.md (approach, files, schemas, risks, test list).
    Do NOT modify code." --model opus --allowedTools "Read,Glob,Grep,Write"`
-   Use fable instead of opus ONLY for genuinely novel/ambiguous design
-   questions (new product surface, unclear tradeoffs) — not for applying
-   established patterns.
 2. EXECUTE run: `--model sonnet` (haiku if the plan turned out small),
    prompt = "implement docs/PLAN-<id>.md exactly; deviations require a
    PLAN-DEVIATION note in HANDOFF."
