@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint .",
     "verify": "tsc --noEmit && eslint . && vitest run",
-    "verify:ui": "playwright test"
+    "verify:ui": "playwright test",
+    "doctor": "react-doctor",
+    "scan": "react-scan http://localhost:3000"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.65.0",
@@ -32,6 +34,9 @@
     "@vitejs/plugin-react": "^4.5.2",
     "eslint": "^9.29.0",
     "eslint-config-next": "^15.3.3",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "react-doctor": "^0.9.1",
+    "react-scan": "^0.5.7",
     "supabase": "^2.26.9",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",
