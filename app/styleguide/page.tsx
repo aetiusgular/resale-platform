@@ -7,12 +7,12 @@ export const metadata: Metadata = {
 /* ─── Token data ─────────────────────────────────────────────────────────── */
 
 const COLORS = [
-  { name: '--color-bg',       hex: '#FFFFFF', label: 'Background',    usage: 'All page backgrounds' },
-  { name: '--color-ink',      hex: '#111111', label: 'Ink',           usage: 'Primary text, solid buttons' },
-  { name: '--color-ink-soft', hex: '#6B6B6B', label: 'Ink Soft',      usage: 'Secondary text, metadata' },
-  { name: '--color-line',     hex: '#E5E5E5', label: 'Line',          usage: 'All borders — 1px only' },
-  { name: '--color-accent',   hex: '#1B4332', label: 'Accent',        usage: 'Verified badges, active states, success' },
-  { name: '--color-alert',    hex: '#B3261E', label: 'Alert',         usage: 'Errors + disputes only' },
+  { name: '--color-bg',       hex: '#1E1D1A', label: 'Background',    usage: 'All page backgrounds — warm charcoal' },
+  { name: '--color-ink',      hex: '#E7E3DA', label: 'Ink',           usage: 'Primary text, solid buttons' },
+  { name: '--color-ink-soft', hex: '#9C978C', label: 'Ink Soft',      usage: 'Secondary text, metadata' },
+  { name: '--color-line',     hex: '#34322C', label: 'Line',          usage: 'All borders — 1px only' },
+  { name: '--color-accent',   hex: '#F1EEE7', label: 'Accent',        usage: 'Highlight, active states, verified' },
+  { name: '--color-alert',    hex: '#CE6A5C', label: 'Alert',         usage: 'Errors + disputes only' },
 ]
 
 const TYPE_SCALE = [
@@ -49,7 +49,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function ColorSwatch({ name, hex, label, usage }: typeof COLORS[0]) {
-  const isDark = ['#111111', '#1B4332', '#6B6B6B', '#B3261E'].includes(hex)
+  const isDark = ['#1E1D1A', '#34322C'].includes(hex)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)', marginBottom: 'var(--spacing-2)' }}>
       <div

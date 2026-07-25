@@ -76,7 +76,7 @@ export default function ListingCard({
         {unavailable && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(255,255,255,0.85)',
+            background: 'rgba(14,14,13,0.78)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>SOLD</span>

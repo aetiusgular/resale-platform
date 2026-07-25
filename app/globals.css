@@ -1,23 +1,26 @@
 @import "tailwindcss";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────────
-   Six colours, nothing else. No gradients. No dark mode.
-   Source: design-reference/tokens/colors.css + typography.css + spacing.css
+   Six colours, nothing else. No gradients.
+   LOCKED THEME (2026): warm-charcoal dark — archive/streetwear aesthetic.
+   Warm greige charcoal ground, warm off-white text, monochrome near-white
+   highlight. Chosen over pure-black / cool-slate / warm-onyx after live review.
    ─────────────────────────────────────────────────────────────────────────── */
 @theme {
   /* Colors */
-  --color-bg:       #FFFFFF;
-  --color-ink:      #111111;
-  --color-ink-soft: #6B6B6B;
-  --color-line:     #E5E5E5;
-  --color-accent:   #1B4332;
-  --color-alert:    #B3261E;
+  /* Warm charcoal — archive/streetwear aesthetic (concrete/gunmetal, not cool tech-grey) */
+  --color-bg:       #1E1D1A;   /* warm dark charcoal — clearly grey, not black; greige undertone */
+  --color-ink:      #E7E3DA;   /* warm light grey leaning white — body text */
+  --color-ink-soft: #9C978C;   /* warm taupe-grey — secondary text */
+  --color-line:     #34322C;   /* warm charcoal hairline, a step lighter than bg */
+  --color-accent:   #F1EEE7;   /* highlight — warm near-white (brighter than body) */
+  --color-alert:    #CE6A5C;   /* muted red — only shown on error states */
 
   /* Shadow — floating surfaces only (dropdown, toast, modal) */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
 
   /* Overlay */
-  --color-overlay: rgba(255, 255, 255, 0.85);
+  --color-overlay: rgba(0, 0, 0, 0.85);
 
   /* Typography — three families */
   --font-ui:    var(--font-inter, 'Inter'), system-ui, -apple-system, sans-serif;
