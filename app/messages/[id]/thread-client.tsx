@@ -408,7 +408,7 @@ export default function ThreadClient({
   )
 }
 
-function CounterButton({ offerId, onCounter, disabled }: { offerId: string; onCounter: (amt: number) => void; disabled: boolean }) {
+function CounterButton({ onCounter, disabled }: { offerId: string; onCounter: (amt: number) => void; disabled: boolean }) {
   const [show, setShow] = useState(false)
   const [val, setVal] = useState('')
 

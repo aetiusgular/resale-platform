@@ -57,11 +57,9 @@ const NAV_SECTIONS = [
   },
 ]
 
-const IMPLEMENTED_PANES = new Set(['my-sizes', 'addresses', 'payments'])
-
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
-export default function SettingsClient({ username, initialSizes, payoutsEnabled, stripeConnectId }: Props) {
+export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId }: Props) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -431,7 +429,7 @@ function AddressesPane() {
 
 /* ─── Payments pane ─────────────────────────────────────────────────────── */
 
-function PaymentsPane({ payoutsEnabled, stripeConnectId }: { payoutsEnabled: boolean; stripeConnectId: string | null }) {
+function PaymentsPane({ payoutsEnabled }: { payoutsEnabled: boolean; stripeConnectId: string | null }) {
   return (
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>

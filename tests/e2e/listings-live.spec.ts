@@ -49,6 +49,7 @@ async function deleteTestUser(userId: string) {
 }
 
 // signIn helper is unused in these direct API / DB tests, but kept for future flow tests
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function signIn(_page: Page, _email: string, _password: string): Promise<void> {
   // Placeholder: @live flow tests sign in via createClient directly, not page.evaluate
 }

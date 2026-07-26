@@ -59,6 +59,7 @@ export default async function AdminMetricsPage() {
   const disputeRate = totalOrders > 0 ? ((disputeOrders / totalOrders) * 100).toFixed(1) : '0.0'
 
   // ── Signups by day (last 14 days) ───────────────────────────────────────
+  // eslint-disable-next-line react-hooks/purity -- server component: evaluated once per request, not a client render
   const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
   const { data: signupRows } = await service
     .from('profiles')

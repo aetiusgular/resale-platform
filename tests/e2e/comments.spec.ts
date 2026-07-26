@@ -15,8 +15,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 
-const isLive = !!process.env.RUN_LIVE_TESTS
-
 const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 const TEST_LISTING_ID  = process.env.TEST_LISTING_ID ?? ''
@@ -125,7 +123,7 @@ test('@live checker posts + admin pins verdict → renders as pinned card', asyn
   if (!commentId) { test.skip(); return }
 
   // Admin pins it
-  const pinRes = await page.request.post(`/api/admin/comments/${commentId}/pin`, {
+  await page.request.post(`/api/admin/comments/${commentId}/pin`, {
     data: { pinned: true },
     headers: { 'Content-Type': 'application/json' },
   })
@@ -295,7 +293,7 @@ test('@live 2 flags → comment lands in admin queue → admin removes → hidde
   if (f2Id) await db.auth.admin.deleteUser(f2Id)
 })
 
-test('@live RLS: client direct INSERT on comments rejected', async ({ page }) => {
+test('@live RLS: client direct INSERT on comments rejected', async () => {
   const email = process.env.FOUNDER3_EMAIL ?? 'founder3@resale-platform.internal'
   const pw    = process.env.FOUNDER3_PASSWORD ?? ''
   if (!pw || !TEST_LISTING_ID || !SUPABASE_URL) { test.skip(); return }
