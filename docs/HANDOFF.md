@@ -1,8 +1,8 @@
 # HANDOFF.md
-## Current state: FEE MODEL F1+F2 built on `feat/tiered-fees` · tracker → docs/LAUNCH_ROADMAP.md
+## Current state: FEE MODEL F1+F2+F3-core built on `feat/tiered-fees`; F3 display half remaining · tracker → docs/LAUNCH_ROADMAP.md
 
 **Last updated:** 2026-07-26
-**Next prompt:** F3 — wire tiered fees into checkout + display (`docs/prompts/F3_fee_wiring.md`)
+**Next prompt:** F3 display half — refactor the ~20 fee-display sites (`docs/prompts/F3_fee_wiring.md`, start at Step 4)
 
 ---
 
@@ -18,13 +18,17 @@ Tiers: ≥$10k → 2.5% · ≥$5k → 3.5% · ≥$3k → 4% · ≥$1k → 4.5% �
 - F1: tiered fee math in `lib/fees.ts` (`FEE_TIERS`, `feeBpsForVolumeCents`, per-side
   `*At` variants); legacy flat fns retained for migration. 27 unit tests; `pnpm verify` green.
 - F2: `lib/fee-tier.ts` server-only resolver (trailing-365d volume → bps, fail-safe to BASE);
-  migration `0017_tiered_fees.sql` (composite trailing-volume indexes). Inert — live checkout
-  still charges flat 2% until F3.
-- code-reviewer + db-guard: PASS; `fee-tier.ts` tsc-clean under TS 5.9.3.
+  migration `0017_tiered_fees.sql` (composite trailing-volume indexes).
+- F3 money core: migration `0018_fee_bps_snapshot.sql` (bps columns on checkout_sessions +
+  orders, backfill 200); `app/api/checkout/route.ts` charges tiered via `orderAmountsAt` +
+  snapshots bps; webhook copies bps onto the order. Typecheck-clean; code-reviewer + db-guard PASS.
 
-**Next:** F3 — apply tiered rates to checkout + the ~20 fee-display sites and snapshot the
-bps onto orders. Step-by-step: `docs/prompts/F3_fee_wiring.md`. Ship checkout + display in
-ONE commit (displayed fee must equal charged fee).
+⚠️ **Live checkout now CHARGES tiered rates but displays still SHOW flat 2%.** The branch must
+NOT deploy/merge until the F3 display half is complete.
+
+**Next:** F3 display half — refactor the ~20 fee-display sites (viewer's live rate for
+prospective fees; snapshotted bps for receipts), retire the legacy flat fns, add tier UX.
+Start at **Step 4** of `docs/prompts/F3_fee_wiring.md`. Run on-computer (native tsc + ui-verifier).
 
 **Full program:** `docs/LAUNCH_ROADMAP.md` — phased plan + kickoff prompts for F3 and gap
 features G1–G9 (recs integration, notifications, shipping/tracking, ID verification, auth
