@@ -16,7 +16,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
-import { orderAmounts } from '@/lib/fees'
+import { orderAmountsAt } from '@/lib/fees'
+import { feeBpsForUser } from '@/lib/fee-tier'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
@@ -135,7 +136,13 @@ export async function POST(request: NextRequest) {
     verifiedOfferId = offerRow.id
   }
 
-  const amounts = orderAmounts(priceCents, offerId ? 0 : undefined)
+  // Tiered fees: each side rated on its own trailing-365d activity, resolved
+  // server-side and snapshotted below (never trust the client, never recompute).
+  const [buyerBps, sellerBps] = await Promise.all([
+    feeBpsForUser(service, user.id, 'buyer'),
+    feeBpsForUser(service, listing.seller_id, 'seller'),
+  ])
+  const amounts = orderAmountsAt(priceCents, buyerBps, sellerBps, offerId ? 0 : undefined)
 
   // ── 6. Atomically lock listing + create checkout_session ─────────────────
   // UPDATE ... WHERE status = 'active' is atomic — if two requests race, only
@@ -206,6 +213,8 @@ export async function POST(request: NextRequest) {
       seller_fee_cents:         amounts.seller_fee_cents,
       shipping_cents:           amounts.shipping_cents,
       total_cents:              amounts.total_cents,
+      buyer_fee_bps:            buyerBps,
+      seller_fee_bps:           sellerBps,
     })
 
   if (sessionError) {
@@ -226,6 +235,7 @@ export async function POST(request: NextRequest) {
       image:            (listing.images as string[])?.[0] ?? null,
       item_cents:       amounts.item_cents,
       buyer_fee_cents:  amounts.buyer_fee_cents,
+      buyer_fee_bps:    buyerBps,
       shipping_cents:   amounts.shipping_cents,
       total_cents:      amounts.total_cents,
     },

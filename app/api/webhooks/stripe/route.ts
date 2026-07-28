@@ -90,7 +90,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
   // This prevents fee manipulation via Stripe Dashboard metadata edits.
   const { data: session } = await service
     .from('checkout_sessions')
-    .select('item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, buyer_id, seller_id, listing_id')
+    .select('item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, buyer_fee_bps, seller_fee_bps, buyer_id, seller_id, listing_id')
     .eq('stripe_payment_intent_id', pi.id)
     .single()
 
@@ -105,7 +105,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     throw new Error(`No checkout_session for PI ${pi.id} and no existing order`)
   }
 
-  const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents } = session
+  const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, buyer_fee_bps, seller_fee_bps } = session
   const transfer_cents = item_cents - seller_fee_cents
 
   // Verify PI amount matches session total (tamper check)
@@ -130,6 +130,8 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
       item_cents,
       buyer_fee_cents,
       seller_fee_cents,
+      buyer_fee_bps,
+      seller_fee_bps,
       shipping_cents,
       total_cents,
       transfer_cents,
