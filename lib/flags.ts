@@ -1,7 +1,33 @@
 /**
  * Feature flags — checked at runtime, not build time.
  * Server-only values (no NEXT_PUBLIC_ prefix where not needed).
+ *
+ * Pre-launch gap features each ship behind their own flag, OFF by default, so
+ * partial/in-progress work never affects production. See docs/LAUNCH_ROADMAP.md
+ * for the phase that turns each on.
  */
 
 export const VERIFICATION_ENABLED =
   process.env.VERIFICATION_ENABLED === 'true'
+
+// ── Recommendation engine (recs-engine microservice) ────────────────────────
+// Platform stays fully functional with this false — discovery/browse falls back
+// to the existing default listing order and telemetry is a no-op.
+export const RECS_ENABLED =
+  process.env.RECS_ENABLED === 'true'
+
+// ── Pre-launch gap features (see docs/LAUNCH_ROADMAP.md) ─────────────────────
+export const BUMP_ENABLED =
+  process.env.BUMP_ENABLED === 'true'
+export const SAVED_SEARCH_ALERTS_ENABLED =
+  process.env.SAVED_SEARCH_ALERTS_ENABLED === 'true'
+export const NOTIFICATIONS_ENABLED =
+  process.env.NOTIFICATIONS_ENABLED === 'true'
+export const AUTH_BADGE_ENABLED =
+  process.env.AUTH_BADGE_ENABLED === 'true'
+export const SHIPPING_LABELS_ENABLED =
+  process.env.SHIPPING_LABELS_ENABLED === 'true'
+export const FOLLOWS_ENABLED =
+  process.env.FOLLOWS_ENABLED === 'true'
+export const REVIEWS_ENABLED =
+  process.env.REVIEWS_ENABLED === 'true'
