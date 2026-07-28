@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { sellerFee, sellerPayout, formatCents } from '@/lib/fees'
+import { sellerFeeAt, sellerPayoutAt, formatCents } from '@/lib/fees'
 import {
   CONDITION_DEFINITIONS,
   PHOTO_SLOTS,
@@ -26,6 +26,7 @@ const SIZES = [
 
 interface SellFormProps {
   userId: string
+  sellerBps: number
 }
 
 type SlotUploading = { [key: string]: boolean }
@@ -56,7 +57,7 @@ async function resizeToJpeg(file: File, maxPx = 2000): Promise<Blob> {
   })
 }
 
-export default function SellForm({ userId }: SellFormProps) {
+export default function SellForm({ userId, sellerBps }: SellFormProps) {
   // Draft ID — stable for this session; used as storage path prefix
   const draftId = useRef(
     typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2),
@@ -94,8 +95,8 @@ export default function SellForm({ userId }: SellFormProps) {
   // ── price calculation ───────────────────────────────────────────────────────
   const priceDollars = parseFloat(priceRaw.replace(/[^0-9.]/g, ''))
   const priceCents   = Number.isFinite(priceDollars) ? Math.round(priceDollars * 100) : 0
-  const feeAmount    = priceCents > 0 ? sellerFee(priceCents) : 0
-  const payoutAmount = priceCents > 0 ? sellerPayout(priceCents) : 0
+  const feeAmount    = priceCents > 0 ? sellerFeeAt(priceCents, sellerBps) : 0
+  const payoutAmount = priceCents > 0 ? sellerPayoutAt(priceCents, sellerBps) : 0
 
   // ── image upload ────────────────────────────────────────────────────────────
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -507,7 +508,7 @@ export default function SellForm({ userId }: SellFormProps) {
           />
           {priceCents > 0 && (
             <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              you receive {formatCents(payoutAmount)} — seller fee 2% ({formatCents(feeAmount)})
+              you receive {formatCents(payoutAmount)} — seller fee {sellerBps / 100}% ({formatCents(feeAmount)})
             </div>
           )}
         </div>

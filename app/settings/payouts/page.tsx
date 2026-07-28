@@ -73,7 +73,7 @@ export default async function PayoutsSettingsPage({ searchParams }: PageProps) {
               </p>
               <ul style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {[
-                  '2% seller fee deducted from each sale',
+                  'Seller fee (2.5%–5.5%) deducted from each sale — lower as you sell more',
                   'Funds held in escrow until delivery confirmation',
                   'Auto-released after 3 days',
                   'Disputes resolved within 72h window',

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 import SellForm from './sell-form'
+import { feeBpsForUser } from '@/lib/fee-tier'
+import { createServiceClientRaw } from '@/lib/supabase/service'
 
 export const metadata = { title: 'List an item' }
 
@@ -19,6 +21,9 @@ export default async function SellPage() {
     .eq('id', user.id)
     .single()
   const username: string = (profile?.username as string) ?? ''
+
+  // Seller's fee rate — set by their trailing-365d sales volume (see lib/fee-tier).
+  const sellerBps = await feeBpsForUser(createServiceClientRaw(), user.id, 'seller')
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
@@ -49,7 +54,7 @@ export default async function SellPage() {
         </div>
       </div>
 
-      <SellForm userId={user.id} />
+      <SellForm userId={user.id} sellerBps={sellerBps} />
       <MobileTabBar username={username} />
     </div>
   )

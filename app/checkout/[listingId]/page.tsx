@@ -7,7 +7,9 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { formatCents, orderAmounts } from '@/lib/fees'
+import { formatCents, orderAmountsAt } from '@/lib/fees'
+import { feeBpsForUser } from '@/lib/fee-tier'
+import { createServiceClientRaw } from '@/lib/supabase/service'
 import CheckoutClient from './checkout-client'
 
 interface PageProps {
@@ -64,7 +66,12 @@ export default async function CheckoutPage({ params }: PageProps) {
     .eq('id', user.id)
     .single()
 
-  const amounts = orderAmounts(listing.price_cents)
+  const service = createServiceClientRaw()
+  const [buyerBps, sellerBps] = await Promise.all([
+    feeBpsForUser(service, user.id, 'buyer'),
+    feeBpsForUser(service, listing.seller_id, 'seller'),
+  ])
+  const amounts = orderAmountsAt(listing.price_cents, buyerBps, sellerBps)
   const image = (listing.images as string[])?.find(Boolean) ?? null
 
   return (
@@ -137,7 +144,7 @@ export default async function CheckoutPage({ params }: PageProps) {
               <span>{formatCents(amounts.item_cents)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
-              <span>BUYER FEE 2%</span>
+              <span>BUYER FEE {buyerBps / 100}%</span>
               <span>{formatCents(amounts.buyer_fee_cents)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>

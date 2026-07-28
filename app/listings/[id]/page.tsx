@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { buyerFee, buyerTotal, formatCents } from '@/lib/fees'
+import { buyerFeeAt, buyerTotalAt, formatCents, BASE_FEE_BPS } from '@/lib/fees'
+import { feeBpsForUser } from '@/lib/fee-tier'
+import { createServiceClientRaw } from '@/lib/supabase/service'
 import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
 import SaveButton from './save-button'
@@ -110,8 +112,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const frontImage = images[0] ?? null
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
 
-  const fee     = buyerFee(listing.price_cents)
-  const total   = buyerTotal(listing.price_cents)
+  const buyerBps = user ? await feeBpsForUser(createServiceClientRaw(), user.id, 'buyer') : BASE_FEE_BPS
+  const fee     = buyerFeeAt(listing.price_cents, buyerBps)
+  const total   = buyerTotalAt(listing.price_cents, buyerBps)
   const listedAgo = formatTimeAgo(listing.created_at)
 
   return (
@@ -213,7 +216,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 )}
               </div>
               <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                buyer fee 2% · {formatCents(fee)} — total {formatCents(total)} · that&apos;s it.
+                buyer fee {buyerBps / 100}% · {formatCents(fee)} — total {formatCents(total)} · that&apos;s it.
               </div>
             </div>
 
