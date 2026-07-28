@@ -11,11 +11,6 @@
  * checkout (see lib/fee-tier.ts + app/api/checkout/route.ts) and snapshotted into
  * checkout_sessions / order metadata — never trust the client, never recompute a
  * historical order's fee.
- *
- * NOTE: the flat SELLER_FEE_BPS/BUYER_FEE_BPS + sellerFee/buyerFee/orderAmounts
- * below are the LEGACY flat-2% path, retained only so existing display call sites
- * keep compiling during migration. New code MUST use the *At tiered variants.
- * The flat exports are removed once all ~20 display sites pass an explicit rate.
  */
 
 // ─── Tiered fee model ───────────────────────────────────────────────────────
@@ -106,31 +101,6 @@ export function orderAmountsAt(
   }
 }
 
-// ─── LEGACY flat-2% path (retained during migration — see header) ────────────
-
-export const SELLER_FEE_BPS = 200 // 2%  [legacy flat — migrate to tiers]
-export const BUYER_FEE_BPS  = 200 // 2%  [legacy flat — migrate to tiers]
-
-/** @deprecated flat 2%. Use sellerFeeAt(price, tierBps). */
-export function sellerFee(priceCents: number): number {
-  return Math.round(priceCents * SELLER_FEE_BPS / 10000)
-}
-
-/** @deprecated flat 2%. Use buyerFeeAt(price, tierBps). */
-export function buyerFee(priceCents: number): number {
-  return Math.round(priceCents * BUYER_FEE_BPS / 10000)
-}
-
-/** @deprecated flat 2%. Use sellerPayoutAt(price, tierBps). */
-export function sellerPayout(priceCents: number): number {
-  return priceCents - sellerFee(priceCents)
-}
-
-/** @deprecated flat 2%. Use buyerTotalAt(price, tierBps). */
-export function buyerTotal(priceCents: number): number {
-  return priceCents + buyerFee(priceCents)
-}
-
 /** Format integer cents as a dollar string (no decimals for whole dollars). */
 export function formatCents(cents: number): string {
   const dollars = cents / 100
@@ -142,35 +112,3 @@ export function formatCents(cents: number): string {
 
 /** Fixed shipping cost for alpha (buyer-paid, $12). */
 export const SHIPPING_CENTS = 1200
-
-/**
- * @deprecated flat 2% both sides. Use orderAmountsAt(price, buyerBps, sellerBps).
- * Compute the full fee breakdown for an order.
- * Call this server-side at PaymentIntent creation — NEVER trust client totals.
- * The returned object maps 1:1 to the orders table column names.
- *
- * transfer_cents = item_cents - seller_fee_cents
- * (shipping is buyer-paid; platform holds it in alpha)
- */
-export function orderAmounts(
-  priceCents: number,
-  shippingCents: number = SHIPPING_CENTS,
-): {
-  item_cents:       number
-  buyer_fee_cents:  number
-  seller_fee_cents: number
-  shipping_cents:   number
-  total_cents:      number
-  transfer_cents:   number
-} {
-  const buyer_fee_cents  = buyerFee(priceCents)
-  const seller_fee_cents = sellerFee(priceCents)
-  return {
-    item_cents:       priceCents,
-    buyer_fee_cents,
-    seller_fee_cents,
-    shipping_cents:   shippingCents,
-    total_cents:      priceCents + buyer_fee_cents + shippingCents,
-    transfer_cents:   priceCents - seller_fee_cents,
-  }
-}

@@ -102,9 +102,11 @@ test.describe('@live checkout flow', () => {
 
     expect(listing).toBeTruthy()
 
-    // Import and verify server-side amounts
-    const { orderAmounts } = await import('../../lib/fees')
-    const amounts = orderAmounts(listing!.price_cents)
+    // Import and verify server-side amounts. A fresh @live test user has no
+    // trailing volume → base tier both sides.
+    const { orderAmountsAt, feeBpsForVolumeCents } = await import('../../lib/fees')
+    const bps = feeBpsForVolumeCents(0)
+    const amounts = orderAmountsAt(listing!.price_cents, bps, bps)
     expect(amounts.transfer_cents).toBe(amounts.item_cents - amounts.seller_fee_cents)
   })
 
