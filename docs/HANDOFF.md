@@ -1,8 +1,37 @@
 # HANDOFF.md
-## Current state: HF5 COMPLETE — MOBILE OVERHAUL + MESSAGES LAYOUT
+## Current state: FEE MODEL F1+F2 built on `feat/tiered-fees` · tracker → docs/LAUNCH_ROADMAP.md
 
-**Last updated:** 2026-07-14
-**Next prompt:** PA (post-alpha) — see LAUNCH.md §8 for PA backlog
+**Last updated:** 2026-07-26
+**Next prompt:** F3 — wire tiered fees into checkout + display (`docs/prompts/F3_fee_wiring.md`)
+
+---
+
+## Active workstream (2026-07-26): usage-based tiered fees + pre-launch gap program
+
+**Business-model change:** no membership; always free to join. Per-side, usage-based
+transaction fees — buyer's rate ← their trailing-365-day PURCHASES, seller's rate ←
+their trailing-365-day SALES (completed, non-reversed orders; excludes cancelled/refunded).
+Tiers: ≥$10k → 2.5% · ≥$5k → 3.5% · ≥$3k → 4% · ≥$1k → 4.5% · <$1k → 5.5%.
+(Supersedes the old flat 2%/2% + $20/yr membership idea.)
+
+**Done — branch `feat/tiered-fees` (gates passed; pending commit):**
+- F1: tiered fee math in `lib/fees.ts` (`FEE_TIERS`, `feeBpsForVolumeCents`, per-side
+  `*At` variants); legacy flat fns retained for migration. 27 unit tests; `pnpm verify` green.
+- F2: `lib/fee-tier.ts` server-only resolver (trailing-365d volume → bps, fail-safe to BASE);
+  migration `0017_tiered_fees.sql` (composite trailing-volume indexes). Inert — live checkout
+  still charges flat 2% until F3.
+- code-reviewer + db-guard: PASS; `fee-tier.ts` tsc-clean under TS 5.9.3.
+
+**Next:** F3 — apply tiered rates to checkout + the ~20 fee-display sites and snapshot the
+bps onto orders. Step-by-step: `docs/prompts/F3_fee_wiring.md`. Ship checkout + display in
+ONE commit (displayed fee must equal charged fee).
+
+**Full program:** `docs/LAUNCH_ROADMAP.md` — phased plan + kickoff prompts for F3 and gap
+features G1–G9 (recs integration, notifications, shipping/tracking, ID verification, auth
+badge, T&S ops, bump, saved-search alerts, follows/reviews) + founder-only items. Gap
+features are scaffolded behind flags in `lib/flags.ts` (all default off). Several PA-backlog
+items below are now folded into these phases (carrier webhook → G3, ID verification → G4,
+saved Searches/Sellers tabs → G8/G9).
 
 ---
 
@@ -96,18 +125,19 @@ None.
 - Add nonce-based CSP to eliminate `'unsafe-inline'` in script-src
 - Validate `images[]` URLs against storage domain allowlist
 - Add UUID validation to admin path params (profileId, commentId)
-- Carrier-scan webhook (auto-confirm delivery)
-- ID verification provider (Stripe Identity or Persona)
+- Carrier-scan webhook (auto-confirm delivery)   → now roadmap G3
+- ID verification provider (Stripe Identity or Persona)   → now roadmap G4
 - Fix `generate_member_codes` RPC: qualify `extensions.gen_random_bytes`
-- Saved page: implement Searches and Sellers tabs (currently stubbed)
+- Saved page: implement Searches and Sellers tabs (currently stubbed)   → now roadmap G8/G9
 - See LAUNCH.md §8 for full PA backlog
 
 ---
 
-## Session start ritual for PA
+## Session start ritual
 
 ```
-Read CLAUDE.md and docs/HANDOFF.md, then read docs/LAUNCH.md for launch checklist status.
+Read CLAUDE.md and docs/HANDOFF.md, then docs/LAUNCH_ROADMAP.md for the current phase.
+For launch checklist status, read docs/LAUNCH.md.
 ```
 
 ---
