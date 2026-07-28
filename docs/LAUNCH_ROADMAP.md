@@ -27,16 +27,31 @@ a blind megachange. Ordered by launch priority. Founder-only items at the bottom
 |----|-------|------|-------|--------|
 | F1 | Tiered fee math | — | code-reviewer | ✅ done (27 tests) |
 | F2 | Fee resolver + indexes | — | db-guard, code-reviewer | ✅ built (this branch) |
-| F3 | Wire tiered fees (checkout + display) | — | db-guard, code-reviewer, ui-verifier | ▶ next |
+| F3 | Wire tiered fees (checkout + display) | — | db-guard, code-reviewer, ui-verifier | money core done; displays next (Step 4) |
 | G1 | recs-engine integration | `RECS_ENABLED` | code-reviewer | pending |
 | G2 | Notifications (email + push) | `NOTIFICATIONS_ENABLED` | code-reviewer | pending |
-| G3 | Shipping labels + tracking | `SHIPPING_LABELS_ENABLED` | db-guard, code-reviewer | pending |
+| G3 | Shipping: carrier delivery webhook | `SHIPPING_LABELS_ENABLED` | db-guard, code-reviewer | PARTIAL — tracking capture built |
 | G4 | ID-verification provider | `VERIFICATION_ENABLED` | db-guard, code-reviewer | pending |
 | G5 | Authenticated badge + review flow | `AUTH_BADGE_ENABLED` | db-guard, code-reviewer | pending |
 | G6 | Trust & safety / moderation ops | — | code-reviewer | pending |
 | G7 | Bump / refresh listings | `BUMP_ENABLED` | db-guard, code-reviewer | pending |
-| G8 | Saved searches + alerts | `SAVED_SEARCH_ALERTS_ENABLED` | db-guard, code-reviewer | pending (needs G2) |
+| G8 | Saved-search alerts | `SAVED_SEARCH_ALERTS_ENABLED` | db-guard, code-reviewer | PARTIAL — storage/save built; needs G2 |
 | G9 | Follows + seller reviews/ratings | `FOLLOWS_ENABLED`, `REVIEWS_ENABLED` | db-guard, code-reviewer | pending |
+
+---
+
+## Scope verification (2026-07-26, against live schema + routes)
+
+- **G3 shipping — PARTIAL.** `orders.carrier`/`tracking_number`/`shipped_at` + `POST
+  /api/orders/[id]/ship` (seller enters carrier+tracking) already exist. Remaining:
+  carrier delivery webhook (shipped→delivered → feeds 3-day auto-release); optional label purchase.
+- **G8 saved-search alerts — PARTIAL.** `saved_searches` table + `POST /api/saved-searches`
+  exist (route notes "notifications are PA"); `price_history` table exists for price-drop
+  detection. Remaining: matcher + alert dispatch (via G2).
+- **Reuse infra:** `price_history` (price-drop + bump's ≥10%-drop rule), `buyer_strikes` +
+  `disputes` + `listing_flags` + admin queue (T&S / G6), `saves` (favorites).
+- **Confirmed greenfield:** G1 recs, G2 notifications, G5 auth badge, G7 bump, G9 follows/reviews
+  (no follows / reviews / notifications tables exist).
 
 ---
 
