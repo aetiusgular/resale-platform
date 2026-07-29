@@ -5,6 +5,7 @@
  * (e.g. default listing order). Never throws to the caller.
  */
 import { recsConfig, feedReady, ingestReady } from './config'
+import { bodySignature } from './hmac'
 import type { FeedResponse, AestheticsResponse, ListingChange } from './types'
 
 export { userKeyFor } from './keys'
@@ -84,16 +85,21 @@ export async function mergeIdentity(deviceKey: string, accountKey: string): Prom
 
 /**
  * POST a listing change to the recs-engine `POST /v1/listings` adapter
- * (added on the recs-engine branch → validates → XADD `listings:changes`).
- * Targets the ingest service by default. Fail-soft: sync failures never block
- * the platform's own listing write.
+ * (validates → XADD `listings:changes`). Targets the ingest service. Auth is an
+ * HMAC of the exact request body under the ingest secret (X-Signature), matching
+ * recs-engine's `expected_body_signature`. The secret stays server-side.
+ * Fail-soft: sync failures never block the platform's own listing write.
  */
 export async function postListingChange(change: ListingChange): Promise<boolean> {
   if (!ingestReady()) return false
+  const body = JSON.stringify(change)
   const res = await timedFetch(`${recsConfig.ingestUrl}/v1/listings`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(change),
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Signature': bodySignature(body, recsConfig.ingestSecret),
+    },
+    body,
   })
   return !!res && res.ok
 }
