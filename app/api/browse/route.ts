@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { formatCents } from '@/lib/fees'
+import { BUMP_ENABLED } from '@/lib/flags'
 import type { BrowseListing } from '@/app/browse/page'
 
 const PAGE_SIZE = 24
@@ -44,7 +45,17 @@ export async function GET(request: NextRequest) {
     case 'price_asc':  query = query.order('price_cents', { ascending: true }).order('id'); break
     case 'price_desc': query = query.order('price_cents', { ascending: false }).order('id'); break
     case 'most_saved': query = query.order('saves_count', { ascending: false }).order('id'); break
-    default:           query = query.order('created_at', { ascending: false }).order('id')
+    default:
+      // G7: when bump is enabled, freshest bump first (NULLS LAST), then recency.
+      // Flag off ⇒ identical to before (created_at DESC). Uses listings_status_bumped_idx.
+      if (BUMP_ENABLED) {
+        query = query
+          .order('bumped_at', { ascending: false, nullsFirst: false })
+          .order('created_at', { ascending: false })
+          .order('id')
+      } else {
+        query = query.order('created_at', { ascending: false }).order('id')
+      }
   }
 
   query = query.range(offset, offset + PAGE_SIZE)
