@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import ModerationActions from './moderation-actions'
+import { COLLUSION_REASON_LABEL } from '@/lib/trust/release-hold'
+import { formatCents } from '@/lib/fees'
 
 export const metadata = { title: 'Admin — Moderation' }
 
@@ -16,6 +18,8 @@ type Flag = { id: string; type: string; evidence: Record<string, unknown>; creat
 type ListingRow = { id: string; title: string; brand: string; status: string; seller_id: string }
 type UserRow = { id: string; username: string; banned: boolean; banned_reason: string | null; upheld_complaints: number; role: string }
 type AuditRow = { id: string; actor_id: string | null; target_type: string; target_id: string; action: string; reason: string | null; created_at: string }
+type HoldFlag = { id: string; order_id: string; buyer_id: string; seller_id: string; reasons: string[]; created_at: string }
+type HoldOrder = { id: string; state: string; transfer_cents: number; transfer_hold_reason: string | null; stripe_transfer_id: string | null }
 
 const FLAG_LABEL: Record<string, string> = {
   duplicate: 'DUPLICATE', keyword_stuffing: 'KEYWORD STUFFING',
@@ -49,6 +53,25 @@ export default async function ModerationConsolePage() {
   if (me?.role !== 'admin') redirect('/')
 
   const service = await createServiceClient()
+
+  // 0) Held payouts (collusion) — real money parked pending review; highest priority.
+  const { data: holdRows } = await service
+    .from('collusion_flags')
+    .select('id, order_id, buyer_id, seller_id, reasons, created_at')
+    .is('resolved_at', null)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  const holds = (holdRows ?? []) as HoldFlag[]
+  const holdOrderIds = holds.map((h) => h.order_id)
+  const { data: holdOrderRows } = holdOrderIds.length
+    ? await service.from('orders').select('id, state, transfer_cents, transfer_hold_reason, stripe_transfer_id').in('id', holdOrderIds)
+    : { data: [] as HoldOrder[] }
+  const holdOrderById = new Map((holdOrderRows ?? []).map((o) => [o.id as string, o as HoldOrder]))
+  const holdUserIds = [...new Set(holds.flatMap((h) => [h.buyer_id, h.seller_id]))]
+  const { data: holdUserRows } = holdUserIds.length
+    ? await service.from('profiles').select('id, username').in('id', holdUserIds)
+    : { data: [] as Array<{ id: string; username: string }> }
+  const holdUserName = new Map((holdUserRows ?? []).map((pr) => [pr.id as string, pr.username as string]))
 
   // 1) Flagged listings — group flags by listing
   const { data: flagsRaw } = await service
@@ -107,6 +130,49 @@ export default async function ModerationConsolePage() {
       </header>
 
       <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '40px 40px 80px', display: 'flex', flexDirection: 'column', gap: '56px' }}>
+
+        {/* Held payouts (collusion) */}
+        <section>
+          <h2 style={{ ...mono(14), fontWeight: 700, letterSpacing: '0.08em', margin: '0 0 8px' }}>HELD PAYOUTS — {holds.length}</h2>
+          <p style={{ ...mono(11, 'var(--color-ink-soft)'), margin: '0 0 20px', maxWidth: '620px', lineHeight: 1.6 }}>
+            Collusion checks parked these transfers. Releasing pays the seller and clears the flag. (Refund/clawback for confirmed collusion is a separate flow.)
+          </p>
+          {holds.length === 0 ? (
+            <div style={mono(12, 'var(--color-ink-soft)')}>NO HELD PAYOUTS</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {holds.map((h) => {
+                const o = holdOrderById.get(h.order_id)
+                return (
+                  <div key={h.id} style={{ border: '1px solid var(--color-alert)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
+                      <Link href={`/orders/${h.order_id}`} style={{ ...mono(13), fontWeight: 700, textDecoration: 'none' }}>ORDER {h.order_id.slice(0, 8)}</Link>
+                      <span style={mono(12)}>{formatCents(o?.transfer_cents ?? 0)} payout</span>
+                      <span style={{ ...mono(11), marginLeft: 'auto', padding: '2px 8px', border: '1px solid var(--color-line)', borderRadius: '2px', textTransform: 'uppercase' }}>{o?.state ?? 'unknown'}</span>
+                    </div>
+                    <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={mono(11, 'var(--color-ink-soft)')}>
+                        buyer <Link href={`/sellers/${holdUserName.get(h.buyer_id) ?? ''}`} style={{ ...mono(11), textDecoration: 'none' }}>@{holdUserName.get(h.buyer_id) ?? '?'}</Link>
+                        {' · '}seller <Link href={`/sellers/${holdUserName.get(h.seller_id) ?? ''}`} style={{ ...mono(11), textDecoration: 'none' }}>@{holdUserName.get(h.seller_id) ?? '?'}</Link>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                        {h.reasons.map((r) => (
+                          <span key={r} style={{ ...mono(10, 'var(--color-bg)'), fontWeight: 700, padding: '2px 8px', borderRadius: '2px', background: 'var(--color-alert)' }}>
+                            {COLLUSION_REASON_LABEL[r] ?? r.toUpperCase()}
+                          </span>
+                        ))}
+                        <span style={{ ...mono(10, 'var(--color-ink-soft)'), marginLeft: 'auto' }}>{ago(h.created_at)}</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-line)' }}>
+                      <ModerationActions targetType="order" targetId={h.order_id} actions={['release']} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
 
         {/* Flagged listings */}
         <section>

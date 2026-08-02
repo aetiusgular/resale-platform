@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Action = 'remove' | 'restore' | 'dismiss' | 'ban' | 'unban'
+type Action = 'remove' | 'restore' | 'dismiss' | 'ban' | 'unban' | 'release'
 type TargetType = 'listing' | 'user' | 'message' | 'comment' | 'order'
 
 const ENDPOINT: Record<Action, string> = {
@@ -18,11 +18,12 @@ const ENDPOINT: Record<Action, string> = {
   dismiss: '/api/admin/moderation',
   ban: '/api/admin/moderation/ban',
   unban: '/api/admin/moderation/unban',
+  release: '/api/admin/moderation/release-hold',
 }
-const NEEDS_REASON: Action[] = ['remove', 'ban', 'dismiss']
+const NEEDS_REASON: Action[] = ['remove', 'ban', 'dismiss', 'release']
 const DESTRUCTIVE: Action[] = ['remove', 'ban']
 const LABEL: Record<Action, string> = {
-  remove: 'Remove', restore: 'Restore', dismiss: 'Dismiss', ban: 'Ban', unban: 'Unban',
+  remove: 'Remove', restore: 'Restore', dismiss: 'Dismiss', ban: 'Ban', unban: 'Unban', release: 'Release payout',
 }
 
 export default function ModerationActions({
@@ -88,8 +89,8 @@ export default function ModerationActions({
                 height: '36px', padding: '0 20px', borderRadius: '2px',
                 cursor: loading ? 'wait' : 'pointer',
                 font: '500 13px var(--font-ui)',
-                background: destructive ? 'var(--color-bg)' : a === 'restore' || a === 'unban' ? 'var(--color-ink)' : 'var(--color-bg)',
-                color: destructive ? 'var(--color-alert)' : a === 'restore' || a === 'unban' ? 'var(--color-bg)' : 'var(--color-ink)',
+                background: destructive ? 'var(--color-bg)' : a === 'restore' || a === 'unban' || a === 'release' ? 'var(--color-ink)' : 'var(--color-bg)',
+                color: destructive ? 'var(--color-alert)' : a === 'restore' || a === 'unban' || a === 'release' ? 'var(--color-bg)' : 'var(--color-ink)',
                 border: `1px solid ${destructive ? 'var(--color-alert)' : 'var(--color-ink)'}`,
                 opacity: loading === a ? 0.6 : 1,
               }}
