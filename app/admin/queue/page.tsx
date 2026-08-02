@@ -100,6 +100,7 @@ export default async function AdminQueuePage() {
         <span style={{ font: '600 14px var(--font-ui)', color: 'var(--color-ink)' }}>
           Review Queue — {items.length} pending
         </span>
+        <Link href="/admin/moderation" style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>MODERATION →</Link>
       </header>
 
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 40px 80px' }}>

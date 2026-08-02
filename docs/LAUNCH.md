@@ -103,3 +103,25 @@ Items NOT in scope for alpha but required before public launch:
 | Verified storefront pages | P2 | Bvug mitigation |
 | BNPL (Affirm/Klarna via Stripe) | P2 | Revenue line |
 | Prepaid shipping labels (Shippo/EasyPost) | P1 | Revenue line |
+
+## 9. Launch-blocker priorities (2026-07-26)
+
+**Must-have before real users + money:**
+- Stripe LIVE cutover (§2) — HUMAN-ONLY.
+- Legal: entity + Terms of Service + Privacy Policy (founder/lawyer).
+- **Seller ID verification via Persona** — buyers require NO ID (Grailed model; avoids
+  conversion loss). Gate point + INFORM-Act high-volume trigger: see revised model in
+  docs/LAUNCH_ROADMAP.md (G4). Reuses the trailing-volume resolver from the fee work.
+- **Account security**: Google OAuth + email + phone (Supabase phone auth) at signup,
+  TOTP 2FA (Supabase MFA). Do NOT ID-gate buyers or general commenting.
+- Notifications (email + push) — offers / sales / new messages (G2).
+- Deploy: Vercel + `supabase db push` + domain (§1–4, 7).
+
+**Strong should-have:**
+- Carrier delivery webhook (auto-confirm delivery → 3-day escrow release) — §8 P0.
+- Trust & safety moderation console (primitives exist: flags, phash, disputes, buyer_strikes).
+
+**Post-launch (ship with flag OFF):** recs (RECS_ENABLED), bump, saved-search alerts,
+follows/reviews, Authenticated badge, real fashion-CLIP.
+
+**Services:** see docs/LAUNCH_SERVICES.md.
