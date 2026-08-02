@@ -862,9 +862,11 @@ export type Database = {
       }
       notification_prefs: {
         Row: {
+          email_alerts: boolean
           email_messages: boolean
           email_offers: boolean
           email_orders: boolean
+          push_alerts: boolean
           push_messages: boolean
           push_offers: boolean
           push_orders: boolean
@@ -872,9 +874,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          email_alerts?: boolean
           email_messages?: boolean
           email_offers?: boolean
           email_orders?: boolean
+          push_alerts?: boolean
           push_messages?: boolean
           push_offers?: boolean
           push_orders?: boolean
@@ -882,9 +886,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          email_alerts?: boolean
           email_messages?: boolean
           email_offers?: boolean
           email_orders?: boolean
+          push_alerts?: boolean
           push_messages?: boolean
           push_offers?: boolean
           push_orders?: boolean
