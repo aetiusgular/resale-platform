@@ -66,6 +66,19 @@ export function fmtRate(bps: number): string {
 }
 
 /**
+ * Of a user's two sides, the one whose rate would worsen most when soon-to-expire
+ * activity rolls off — the side worth warning about. Ties go to the seller side
+ * (more material on a marketplace). Returns null when neither side will drop.
+ */
+export function pickWorseningSide(seller: SideDashboard, buyer: SideDashboard): SideDashboard | null {
+  const dropping = [seller, buyer].filter((s) => s.willDropTier)
+  if (dropping.length === 0) return null
+  // Stable sort: equal deltas keep seller first (listed first).
+  dropping.sort((a, b) => (b.projectedBps - b.activityBps) - (a.projectedBps - a.activityBps))
+  return dropping[0]
+}
+
+/**
  * PURE core: derive a side's dashboard from its trailing counted orders + the
  * stored lock. `orders` should already be the counted-state rows within the
  * window; we defensively re-filter by window and clamp/caps volume so the numbers

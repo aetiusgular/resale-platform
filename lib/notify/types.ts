@@ -9,6 +9,7 @@ export type NotifyEvent =
   | 'delivered'
   | 'dispute'
   | 'message'
+  | 'tier_expiry'
 
 export type NotifyContext = {
   actorName?: string       // username that triggered it (buyer/seller/sender)
@@ -19,6 +20,9 @@ export type NotifyContext = {
   conversationId?: string
   preview?: string         // message snippet
   appUrl?: string          // absolute base for email links
+  tierSide?: 'buyer' | 'seller'  // tier_expiry: which side's rate is at risk
+  fromBps?: number               // tier_expiry: current activity rate (bps)
+  toBps?: number                 // tier_expiry: projected rate after roll-off (bps)
 }
 
 export type NotificationPrefs = {

@@ -42,4 +42,19 @@ describe('renderNotification', () => {
     expect(r.body).toBe('You have a new message.')
     expect(r.url).toBe('/messages')
   })
+
+  it('tier_expiry: names the side, shows the rate move, links to the tier pane', () => {
+    const r = renderNotification('tier_expiry', { tierSide: 'seller', fromBps: 300, toBps: 350 })
+    expect(r.title).toBe('Your fee rate may rise soon')
+    expect(r.body).toContain('seller fee')
+    expect(r.body).toContain('from 3.0% to 3.5%')
+    expect(r.url).toBe('/settings?section=power')
+    expect(r.category).toBe('orders')
+  })
+
+  it('tier_expiry (buyer): uses buyer wording', () => {
+    const r = renderNotification('tier_expiry', { tierSide: 'buyer', fromBps: 400, toBps: 500 })
+    expect(r.body).toContain('buyer fee')
+    expect(r.body).toContain('purchases')
+  })
 })

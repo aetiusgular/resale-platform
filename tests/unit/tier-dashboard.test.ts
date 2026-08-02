@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeSideDashboard, fmtRate, EXPIRY_WARNING_DAYS } from '../../lib/tier-dashboard'
+import { computeSideDashboard, fmtRate, pickWorseningSide, EXPIRY_WARNING_DAYS } from '../../lib/tier-dashboard'
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = 1_700_000_000_000
@@ -119,5 +119,34 @@ describe('computeSideDashboard — expiring-volume warning', () => {
 
   it('EXPIRY_WARNING_DAYS is 14', () => {
     expect(EXPIRY_WARNING_DAYS).toBe(14)
+  })
+})
+
+describe('pickWorseningSide', () => {
+  const expiringSeller = () => computeSideDashboard('seller', [
+    { createdAtMs: ago(30), itemCents: 40_000 },
+    { createdAtMs: ago(60), itemCents: 40_000 },
+    { createdAtMs: ago(360), itemCents: 40_000 },
+  ], null, null, NOW) // 4.0% -> base after roll-off
+  const expiringBuyer = () => computeSideDashboard('buyer', [
+    { createdAtMs: ago(30), itemCents: 40_000 },
+    { createdAtMs: ago(60), itemCents: 40_000 },
+    { createdAtMs: ago(360), itemCents: 40_000 },
+  ], null, null, NOW)
+  const stableBuyer = () => computeSideDashboard('buyer', recent(5, 50_000), null, null, NOW) // 3.0%, nothing expiring
+
+  it('returns null when neither side will drop', () => {
+    expect(pickWorseningSide(stableBuyer(), stableBuyer())).toBeNull()
+  })
+
+  it('returns the dropping side', () => {
+    const w = pickWorseningSide(expiringSeller(), stableBuyer())
+    expect(w?.side).toBe('seller')
+    expect(w?.willDropTier).toBe(true)
+  })
+
+  it('equal rate increase on both sides breaks the tie toward seller', () => {
+    const w = pickWorseningSide(expiringSeller(), expiringBuyer())
+    expect(w?.side).toBe('seller')
   })
 })

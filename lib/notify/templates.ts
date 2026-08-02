@@ -28,6 +28,15 @@ function parts(event: NotifyEvent, ctx: NotifyContext): { title: string; body: s
       return { title: 'Order disputed', body: `A dispute was opened on ${item}. We will review it shortly.`, url: ctx.orderId ? `/orders/${ctx.orderId}` : '/orders' }
     case 'message':
       return { title: ctx.actorName ? `New message from ${who}` : 'New message', body: ctx.preview ? ctx.preview.slice(0, 140) : 'You have a new message.', url: ctx.conversationId ? `/messages/${ctx.conversationId}` : '/messages' }
+    case 'tier_expiry': {
+      const isSeller = ctx.tierSide !== 'buyer'
+      const feeLabel = isSeller ? 'seller fee' : 'buyer fee'
+      const noun = isSeller ? 'sales' : 'purchases'
+      const from = typeof ctx.fromBps === 'number' ? (ctx.fromBps / 100).toFixed(1) : ''
+      const to = typeof ctx.toBps === 'number' ? (ctx.toBps / 100).toFixed(1) : ''
+      const move = from && to ? ` from ${from}% to ${to}%` : ''
+      return { title: 'Your fee rate may rise soon', body: `Some of your ${noun} are about to roll out of your 12-month window. Without new ${noun}, your ${feeLabel} could move${move}.`, url: '/settings?section=power' }
+    }
   }
 }
 

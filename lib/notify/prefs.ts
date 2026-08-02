@@ -16,6 +16,7 @@ const CATEGORY_OF: Record<NotifyEvent, NotifyCategory> = {
   delivered: 'orders',
   dispute: 'orders',
   message: 'messages',
+  tier_expiry: 'orders',
 }
 
 export function categoryOf(event: NotifyEvent): NotifyCategory {
