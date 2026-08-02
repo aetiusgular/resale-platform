@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 import SettingsClient from './settings-client'
-import { NOTIFICATIONS_ENABLED, PHONE_VERIFICATION_ENABLED } from '@/lib/flags'
+import { NOTIFICATIONS_ENABLED, PHONE_VERIFICATION_ENABLED, TIER_DASHBOARD_ENABLED } from '@/lib/flags'
+import { createServiceClientRaw } from '@/lib/supabase/service'
+import { getTierDashboard, type SideDashboard } from '@/lib/tier-dashboard'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -23,6 +25,16 @@ export default async function SettingsPage() {
   const stripeConnectId: string | null = (profile?.stripe_connect_account_id as string) ?? null
   const initialPhone: string | null = (profile?.phone as string) ?? null
   const phoneVerified: boolean = Boolean(profile?.phone_verified_at)
+
+  let buyerTier: SideDashboard | null = null
+  let sellerTier: SideDashboard | null = null
+  if (TIER_DASHBOARD_ENABLED) {
+    const svc = createServiceClientRaw()
+    ;[buyerTier, sellerTier] = await Promise.all([
+      getTierDashboard(svc, user.id, 'buyer'),
+      getTierDashboard(svc, user.id, 'seller'),
+    ])
+  }
 
   const { data: prefsRow } = await supabase
     .from('notification_prefs')
@@ -52,6 +64,9 @@ export default async function SettingsPage() {
           phoneVerificationEnabled={PHONE_VERIFICATION_ENABLED}
           phoneVerified={phoneVerified}
           initialPhone={initialPhone}
+          tierDashboardEnabled={TIER_DASHBOARD_ENABLED}
+          buyerTier={buyerTier}
+          sellerTier={sellerTier}
         />
       </Suspense>
       <MobileTabBar username={username} />

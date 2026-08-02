@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PushSubscribe from '@/app/components/push-subscribe'
 import PhoneVerify from './phone-verify'
+import TierDashboard from './tier-dashboard'
+import type { SideDashboard } from '@/lib/tier-dashboard'
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -30,6 +32,9 @@ interface Props {
   phoneVerificationEnabled: boolean
   phoneVerified: boolean
   initialPhone: string | null
+  tierDashboardEnabled: boolean
+  buyerTier: SideDashboard | null
+  sellerTier: SideDashboard | null
 }
 
 /* ─── Size options ──────────────────────────────────────────────────────── */
@@ -50,6 +55,7 @@ const NAV_SECTIONS = [
       { key: 'my-sizes', label: 'My sizes' },
       { key: 'addresses', label: 'Addresses' },
       { key: 'payments', label: 'Payments' },
+      { key: 'power', label: 'Fees & tiers' },
     ],
   },
   {
@@ -73,7 +79,7 @@ const NAV_SECTIONS = [
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
-export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId, initialPrefs, notificationsEnabled, phoneVerificationEnabled, phoneVerified, initialPhone }: Props) {
+export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId, initialPrefs, notificationsEnabled, phoneVerificationEnabled, phoneVerified, initialPhone, tierDashboardEnabled, buyerTier, sellerTier }: Props) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -145,6 +151,8 @@ export default function SettingsClient({ initialSizes, payoutsEnabled, stripeCon
         return notificationsEnabled ? <NotificationsPane initialPrefs={initialPrefs} /> : <PlaceholderPane label="Notifications" />
       case 'phone':
         return phoneVerificationEnabled ? <PhoneVerify verified={phoneVerified} initialPhone={initialPhone} /> : <PlaceholderPane label="Phone" />
+      case 'power':
+        return tierDashboardEnabled && buyerTier && sellerTier ? <TierDashboard buyer={buyerTier} seller={sellerTier} /> : <PlaceholderPane label="Fees & tiers" />
       default:
         return <PlaceholderPane label={NAV_SECTIONS.flatMap(s => s.items).find(i => i.key === activeSection)?.label ?? activeSection} />
     }

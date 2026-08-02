@@ -37,3 +37,7 @@ export const COLLUSION_HOLD_ENABLED =
   process.env.COLLUSION_HOLD_ENABLED === 'true'
 export const PHONE_VERIFICATION_ENABLED =
   process.env.PHONE_VERIFICATION_ENABLED === 'true'
+
+// ── Fee model v2 §1f: tier dashboards (display only) ──
+export const TIER_DASHBOARD_ENABLED =
+  process.env.TIER_DASHBOARD_ENABLED === 'true'
