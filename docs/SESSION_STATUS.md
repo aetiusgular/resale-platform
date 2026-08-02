@@ -1,12 +1,12 @@
 # Session status — build backlog complete (2026-08-02)
 
 **Branch:** `feat/recs-integration` · **Suite:** `pnpm verify` green — 0 tsc errors,
-**314 unit tests**, 6 pre-existing eslint warnings (non-blocking; see bottom).
+**328 unit tests**, 6 pre-existing eslint warnings (non-blocking; see bottom).
 
 This session closed out the entire **cloud-verifiable** build backlog (bucket 1 + bucket 2).
 Everything below is behind a feature flag, **default off**, so it is safe in production until
 each flag is turned on. Every phase was committed separately and its migration pushed to the
-remote DB (migrations `0023`–`0032` are live).
+remote DB (migrations `0023`–`0033` are live).
 
 ---
 
@@ -96,3 +96,13 @@ Test count over the session: **241 → 314**.
   `git rm --cached tsconfig.tsbuildinfo` + add to `.gitignore`.
 - The 6 eslint warnings are pre-existing (3× `set-state-in-effect` in checkout/community,
   3× `<img>` → `next/image` on checkout/order pages) — worth a cleanup pass, not launch-blocking.
+
+
+## Security hardening (added this session)
+**Security PA backlog (B8) — DONE this session:** `images[]` URL allowlist at the store step
+  (lib/security/image-url, shared with the SSRF guard); in-memory → **pg-based rate limiter**
+  (atomic check_rate_limit RPC, migration 0033 — the old counter was per serverless instance);
+  **UUID validation** on all 7 admin path-param routes (lib/security/uuid); **nonce-based CSP**
+  in middleware (dropped script-src `'unsafe-inline'`; style-src keeps it for React inline
+  styles) — header + prod-build browser smoke-test verified. `generate_member_codes` search-path
+  was already fixed in migration 0015. **This backlog is now cleared.**
