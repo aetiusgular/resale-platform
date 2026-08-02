@@ -13,6 +13,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
+import { collusionHold } from '@/lib/trust/collusion-signals'
+import { COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,9 +35,10 @@ export async function GET(request: NextRequest) {
   // Find released orders with no transfer yet
   const { data: orders } = await service
     .from('orders')
-    .select('id, buyer_id, seller_id, transfer_cents')
+    .select('id, buyer_id, seller_id, transfer_cents, shipping_address')
     .eq('state', 'released')
     .is('stripe_transfer_id', null)
+    .is('transfer_hold_reason', null)
     .limit(50)
 
   if (!orders?.length) {
@@ -56,6 +59,11 @@ export async function GET(request: NextRequest) {
   for (const order of orders) {
     const connectAccountId = sellerMap.get(order.seller_id)
     if (!connectAccountId) { failed++; continue }
+
+    if (COLLUSION_HOLD_ENABLED) {
+      const { held } = await collusionHold(service, order)
+      if (held) { continue }
+    }
 
     try {
       const transfer = await stripe.transfers.create({

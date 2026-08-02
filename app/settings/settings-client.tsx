@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PushSubscribe from '@/app/components/push-subscribe'
+import PhoneVerify from './phone-verify'
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -26,6 +27,9 @@ interface Props {
   stripeConnectId: string | null
   initialPrefs: NotifPrefs
   notificationsEnabled: boolean
+  phoneVerificationEnabled: boolean
+  phoneVerified: boolean
+  initialPhone: string | null
 }
 
 /* ─── Size options ──────────────────────────────────────────────────────── */
@@ -60,6 +64,7 @@ const NAV_SECTIONS = [
     label: 'TRUST',
     items: [
       { key: 'verification', label: 'Verification' },
+      { key: 'phone', label: 'Phone' },
       { key: 'privacy', label: 'Privacy' },
       { key: 'notifications', label: 'Notifications' },
     ],
@@ -68,7 +73,7 @@ const NAV_SECTIONS = [
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
-export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId, initialPrefs, notificationsEnabled }: Props) {
+export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId, initialPrefs, notificationsEnabled, phoneVerificationEnabled, phoneVerified, initialPhone }: Props) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -138,6 +143,8 @@ export default function SettingsClient({ initialSizes, payoutsEnabled, stripeCon
         return <PaymentsPane payoutsEnabled={payoutsEnabled} stripeConnectId={stripeConnectId} />
       case 'notifications':
         return notificationsEnabled ? <NotificationsPane initialPrefs={initialPrefs} /> : <PlaceholderPane label="Notifications" />
+      case 'phone':
+        return phoneVerificationEnabled ? <PhoneVerify verified={phoneVerified} initialPhone={initialPhone} /> : <PlaceholderPane label="Phone" />
       default:
         return <PlaceholderPane label={NAV_SECTIONS.flatMap(s => s.items).find(i => i.key === activeSection)?.label ?? activeSection} />
     }

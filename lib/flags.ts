@@ -31,3 +31,9 @@ export const FOLLOWS_ENABLED =
   process.env.FOLLOWS_ENABLED === 'true'
 export const REVIEWS_ENABLED =
   process.env.REVIEWS_ENABLED === 'true'
+
+// ── Branch 4: anti-fraud ──
+export const COLLUSION_HOLD_ENABLED =
+  process.env.COLLUSION_HOLD_ENABLED === 'true'
+export const PHONE_VERIFICATION_ENABLED =
+  process.env.PHONE_VERIFICATION_ENABLED === 'true'

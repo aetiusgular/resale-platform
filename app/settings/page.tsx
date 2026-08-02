@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 import SettingsClient from './settings-client'
-import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { NOTIFICATIONS_ENABLED, PHONE_VERIFICATION_ENABLED } from '@/lib/flags'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -13,7 +13,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, sizes, payouts_enabled, stripe_connect_account_id')
+    .select('username, sizes, payouts_enabled, stripe_connect_account_id, phone, phone_verified_at')
     .eq('id', user.id)
     .single()
 
@@ -21,6 +21,8 @@ export default async function SettingsPage() {
   const sizes = (profile?.sizes as Record<string, string[]>) ?? {}
   const payoutsEnabled: boolean = (profile?.payouts_enabled as boolean) ?? false
   const stripeConnectId: string | null = (profile?.stripe_connect_account_id as string) ?? null
+  const initialPhone: string | null = (profile?.phone as string) ?? null
+  const phoneVerified: boolean = Boolean(profile?.phone_verified_at)
 
   const { data: prefsRow } = await supabase
     .from('notification_prefs')
@@ -47,6 +49,9 @@ export default async function SettingsPage() {
           stripeConnectId={stripeConnectId}
           initialPrefs={initialPrefs}
           notificationsEnabled={NOTIFICATIONS_ENABLED}
+          phoneVerificationEnabled={PHONE_VERIFICATION_ENABLED}
+          phoneVerified={phoneVerified}
+          initialPhone={initialPhone}
         />
       </Suspense>
       <MobileTabBar username={username} />

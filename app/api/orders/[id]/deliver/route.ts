@@ -9,10 +9,11 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
 import stripe from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
+import { collusionHold } from '@/lib/trust/collusion-signals'
 
 export async function POST(
   _request: NextRequest,
@@ -27,7 +28,7 @@ export async function POST(
 
   const { data: order } = await service
     .from('orders')
-    .select('id, buyer_id, seller_id, listing_id, state, transfer_cents, stripe_payment_intent_id, stripe_transfer_id')
+    .select('id, buyer_id, seller_id, listing_id, state, transfer_cents, stripe_payment_intent_id, stripe_transfer_id, shipping_address')
     .eq('id', orderId)
     .single()
 
@@ -100,6 +101,12 @@ export async function POST(
   // Skip if already transferred (idempotent)
   if (freshOrder?.stripe_transfer_id) {
     return NextResponse.json({ ok: true })
+  }
+
+  // Collusion pre-payout hold (Branch 4): if buyer/seller look like the same person, hold.
+  if (COLLUSION_HOLD_ENABLED) {
+    const { held } = await collusionHold(service, order)
+    if (held) return NextResponse.json({ ok: true, held: true })
   }
 
   // Create Stripe transfer to seller's Connect account

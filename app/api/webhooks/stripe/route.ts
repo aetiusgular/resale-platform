@@ -21,9 +21,9 @@
  */
 import { NextRequest, NextResponse, after } from 'next/server'
 import type Stripe from 'stripe'
-import { constructWebhookEvent } from '@/lib/stripe'
+import stripe, { constructWebhookEvent } from '@/lib/stripe'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
@@ -167,6 +167,25 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     service.from('checkout_sessions').delete().eq('stripe_payment_intent_id', pi.id),
   ])
 
+  // Collusion (Branch 4): accumulate the buyer's card fingerprint + billing for the pre-payout check.
+  if (COLLUSION_HOLD_ENABLED) {
+    after(async () => {
+      try {
+        const pmId = typeof pi.payment_method === 'string' ? pi.payment_method : pi.payment_method?.id
+        if (!pmId) return
+        const pm = await stripe.paymentMethods.retrieve(pmId)
+        const fp = pm.card?.fingerprint
+        if (fp) {
+          await service.from('payment_identities').upsert({
+            user_id: session.buyer_id, kind: 'card', fingerprint: fp,
+            billing_name: pm.billing_details?.name ?? null,
+            billing_zip: pm.billing_details?.address?.postal_code ?? null,
+          }, { onConflict: 'user_id,kind,fingerprint' })
+        }
+      } catch (e) { console.warn('[collusion] card capture failed:', e) }
+    })
+  }
+
   if (NOTIFICATIONS_ENABLED) {
     after(async () => {
       const { data: l } = await service.from('listings').select('title').eq('id', session.listing_id).single()
@@ -201,6 +220,26 @@ async function handleAccountUpdated(event: Stripe.Event, service: ServiceClient)
     .from('profiles')
     .update({ payouts_enabled: account.payouts_enabled ?? false })
     .eq('stripe_connect_account_id', account.id)
+
+  // Collusion (Branch 4): accumulate the seller's payout-bank fingerprint(s).
+  if (COLLUSION_HOLD_ENABLED && account.payouts_enabled) {
+    try {
+      const { data: prof } = await service.from('profiles').select('id').eq('stripe_connect_account_id', account.id).single()
+      const uid = (prof as { id?: string } | null)?.id
+      if (uid) {
+        const ext = await stripe.accounts.listExternalAccounts(account.id, { object: 'bank_account', limit: 10 })
+        for (const ba of ext.data) {
+          const bank = ba as Stripe.BankAccount
+          if (bank.fingerprint) {
+            await service.from('payment_identities').upsert({
+              user_id: uid, kind: 'bank', fingerprint: bank.fingerprint,
+              billing_name: bank.account_holder_name ?? null, billing_zip: null,
+            }, { onConflict: 'user_id,kind,fingerprint' })
+          }
+        }
+      }
+    } catch (e) { console.warn('[collusion] bank capture failed:', e) }
+  }
 }
 
 async function handleChargeRefunded(event: Stripe.Event, service: ServiceClient) {
