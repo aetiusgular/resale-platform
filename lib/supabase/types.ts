@@ -1433,6 +1433,24 @@ export type Database = {
           },
         ]
       }
+      rate_limit_hits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           body: string
@@ -1655,6 +1673,13 @@ export type Database = {
       check_and_auto_flag_comment: {
         Args: { p_comment_id: string }
         Returns: undefined
+      }
+      check_rate_limit: {
+        Args: { p_key: string; p_window_seconds: number }
+        Returns: {
+          hit_count: number
+          window_start_ms: number
+        }[]
       }
       claim_invite_code:
         | { Args: { p_code: string }; Returns: Json }
