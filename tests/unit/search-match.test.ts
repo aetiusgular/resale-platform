@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchesSavedSearch, type MatchableListing, type SavedSearchQuery } from '../../lib/search/match'
+import { matchesSavedSearch, type MatchableListing, type SavedSearchQuery, selectAlertRecipients } from '../../lib/search/match'
 
 const LISTING: MatchableListing = {
   status: 'active',
@@ -88,3 +88,28 @@ describe('matchesSavedSearch', () => {
     expect(match({ sort: 'price_asc' })).toBe(true)
   })
 })
+
+describe('selectAlertRecipients', () => {
+  const listing = {
+    status: 'active', title: 'RAF SIMONS BOMBER', brand: 'RAF SIMONS', category: 'outerwear',
+    department: 'menswear', size: 'M', condition_score: 8, price_cents: 40000,
+    is_price_dropped: false, seller_verified: true,
+  }
+  it('returns distinct matching users, excluding the seller', () => {
+    const searches: { user_id: string; query: Record<string, string> }[] = [
+      { user_id: 'u1', query: { brand: 'raf' } },       // match
+      { user_id: 'u2', query: { max_price: '100' } },   // no match ($400 > $100)
+      { user_id: 'u1', query: { dept: 'menswear' } },   // match again — same user, deduped
+      { user_id: 'seller', query: { brand: 'raf' } },   // seller excluded
+      { user_id: 'u3', query: { dept: 'menswear', size: 'M' } }, // match
+    ]
+    expect(selectAlertRecipients(listing, searches, 'seller').sort()).toEqual(['u1', 'u3'])
+  })
+  it('returns [] when nothing matches', () => {
+    expect(selectAlertRecipients(listing, [{ user_id: 'x', query: { dept: 'womenswear' } }], 'seller')).toEqual([])
+  })
+  it('never matches a non-active listing', () => {
+    expect(selectAlertRecipients({ ...listing, status: 'pending_review' }, [{ user_id: 'u1', query: { brand: 'raf' } }], 'seller')).toEqual([])
+  })
+})
+

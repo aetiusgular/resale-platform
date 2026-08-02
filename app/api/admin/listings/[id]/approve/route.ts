@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createServiceClientRaw } from '@/lib/supabase/service'
+import { SAVED_SEARCH_ALERTS_ENABLED } from '@/lib/flags'
+import { dispatchSavedSearchAlerts } from '@/lib/search/dispatch'
 
 export async function POST(
   _request: NextRequest,
@@ -61,6 +64,13 @@ export async function POST(
   if (error) {
     console.error('[admin/approve] error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // G8: alert users whose saved search matches this now-active listing (non-blocking).
+  if (SAVED_SEARCH_ALERTS_ENABLED) {
+    after(async () => {
+      await dispatchSavedSearchAlerts(createServiceClientRaw(), id, process.env.NEXT_PUBLIC_APP_URL)
+    })
   }
 
   return NextResponse.json({ ok: true })

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
 
-const KEYS = ['email_offers', 'push_offers', 'email_orders', 'push_orders', 'email_messages', 'push_messages'] as const
+const KEYS = ['email_offers', 'push_offers', 'email_orders', 'push_orders', 'email_messages', 'push_messages', 'email_alerts', 'push_alerts'] as const
 
 export async function PUT(req: NextRequest) {
   if (!NOTIFICATIONS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 })

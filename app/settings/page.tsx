@@ -38,7 +38,7 @@ export default async function SettingsPage() {
 
   const { data: prefsRow } = await supabase
     .from('notification_prefs')
-    .select('email_offers, push_offers, email_orders, push_orders, email_messages, push_messages')
+    .select('email_offers, push_offers, email_orders, push_orders, email_messages, push_messages, email_alerts, push_alerts')
     .eq('user_id', user.id)
     .maybeSingle()
   const initialPrefs = {
@@ -48,6 +48,8 @@ export default async function SettingsPage() {
     push_orders: prefsRow?.push_orders ?? true,
     email_messages: prefsRow?.email_messages ?? true,
     push_messages: prefsRow?.push_messages ?? true,
+    email_alerts: prefsRow?.email_alerts ?? true,
+    push_alerts: prefsRow?.push_alerts ?? true,
   }
 
   return (

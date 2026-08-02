@@ -28,6 +28,8 @@ function parts(event: NotifyEvent, ctx: NotifyContext): { title: string; body: s
       return { title: 'Order disputed', body: `A dispute was opened on ${item}. We will review it shortly.`, url: ctx.orderId ? `/orders/${ctx.orderId}` : '/orders' }
     case 'message':
       return { title: ctx.actorName ? `New message from ${who}` : 'New message', body: ctx.preview ? ctx.preview.slice(0, 140) : 'You have a new message.', url: ctx.conversationId ? `/messages/${ctx.conversationId}` : '/messages' }
+    case 'saved_search':
+      return { title: 'New match for your saved search', body: `${item} just listed${ctx.amountCents ? ` for ${money(ctx.amountCents)}` : ''}.`, url: ctx.listingId ? `/listings/${ctx.listingId}` : '/browse' }
     case 'tier_expiry': {
       const isSeller = ctx.tierSide !== 'buyer'
       const feeLabel = isSeller ? 'seller fee' : 'buyer fee'

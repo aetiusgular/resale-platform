@@ -6,6 +6,7 @@ export const DEFAULT_PREFS: NotificationPrefs = {
   email_offers: true, push_offers: true,
   email_orders: true, push_orders: true,
   email_messages: true, push_messages: true,
+  email_alerts: true, push_alerts: true,
 }
 
 const CATEGORY_OF: Record<NotifyEvent, NotifyCategory> = {
@@ -17,6 +18,7 @@ const CATEGORY_OF: Record<NotifyEvent, NotifyCategory> = {
   dispute: 'orders',
   message: 'messages',
   tier_expiry: 'orders',
+  saved_search: 'alerts',
 }
 
 export function categoryOf(event: NotifyEvent): NotifyCategory {

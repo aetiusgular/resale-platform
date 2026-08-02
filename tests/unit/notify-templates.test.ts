@@ -57,4 +57,13 @@ describe('renderNotification', () => {
     expect(r.body).toContain('buyer fee')
     expect(r.body).toContain('purchases')
   })
+
+  it('saved_search: names the item + price, links to the listing, alerts category', () => {
+    const r = renderNotification('saved_search', { itemTitle: 'Raf bomber', amountCents: 40000, listingId: 'l1' })
+    expect(r.title).toBe('New match for your saved search')
+    expect(r.body).toContain('Raf bomber')
+    expect(r.body).toContain('$400.00')
+    expect(r.url).toBe('/listings/l1')
+    expect(r.category).toBe('alerts')
+  })
 })

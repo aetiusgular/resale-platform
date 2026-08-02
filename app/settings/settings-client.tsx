@@ -20,6 +20,7 @@ type NotifPrefs = {
   email_offers: boolean; push_offers: boolean
   email_orders: boolean; push_orders: boolean
   email_messages: boolean; push_messages: boolean
+  email_alerts: boolean; push_alerts: boolean
 }
 
 interface Props {
@@ -561,6 +562,7 @@ const NOTIF_CATEGORIES = [
   { key: 'offers', label: 'Offers', desc: 'New offers and accepted offers' },
   { key: 'orders', label: 'Orders', desc: 'Sales, shipping, delivery, and disputes' },
   { key: 'messages', label: 'Messages', desc: 'New messages from buyers and sellers' },
+  { key: 'alerts', label: 'Saved searches', desc: 'New listings that match a search you saved' },
 ] as const
 
 function NotificationsPane({ initialPrefs }: { initialPrefs: NotifPrefs }) {

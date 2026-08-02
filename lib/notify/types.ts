@@ -1,6 +1,6 @@
 // G2 notification domain types (shared client/server-safe).
 export type NotifyChannel = 'in_app' | 'email' | 'push'
-export type NotifyCategory = 'offers' | 'orders' | 'messages'
+export type NotifyCategory = 'offers' | 'orders' | 'messages' | 'alerts'
 export type NotifyEvent =
   | 'offer_received'
   | 'offer_accepted'
@@ -10,6 +10,7 @@ export type NotifyEvent =
   | 'dispute'
   | 'message'
   | 'tier_expiry'
+  | 'saved_search'
 
 export type NotifyContext = {
   actorName?: string       // username that triggered it (buyer/seller/sender)
@@ -29,6 +30,7 @@ export type NotificationPrefs = {
   email_offers: boolean; push_offers: boolean
   email_orders: boolean; push_orders: boolean
   email_messages: boolean; push_messages: boolean
+  email_alerts: boolean; push_alerts: boolean
 }
 
 export type RenderedNotification = {

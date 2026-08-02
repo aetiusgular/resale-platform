@@ -92,3 +92,22 @@ export function matchesSavedSearch(listing: MatchableListing, query: SavedSearch
 
   return true
 }
+
+/**
+ * Distinct user ids whose saved searches match this listing — the recipients of a
+ * saved-search alert. PURE. The seller is excluded (never alert someone about their own
+ * listing), and a user with several matching searches is notified once (Set-deduped).
+ */
+export function selectAlertRecipients(
+  listing: MatchableListing,
+  savedSearches: ReadonlyArray<{ user_id: string; query: SavedSearchQuery }>,
+  sellerId: string,
+): string[] {
+  const recipients = new Set<string>()
+  for (const s of savedSearches) {
+    if (s.user_id === sellerId) continue
+    if (recipients.has(s.user_id)) continue
+    if (matchesSavedSearch(listing, s.query)) recipients.add(s.user_id)
+  }
+  return [...recipients]
+}
