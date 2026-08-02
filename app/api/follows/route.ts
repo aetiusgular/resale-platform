@@ -8,6 +8,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClientRaw } from '@/lib/supabase/service'
+import { isBanned } from '@/lib/auth/ban'
 import { FOLLOWS_ENABLED } from '@/lib/flags'
 
 async function readTarget(req: NextRequest): Promise<string | null> {
@@ -24,6 +26,9 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (await isBanned(createServiceClientRaw(), user.id)) {
+    return NextResponse.json({ error: 'Your account is suspended.', code: 'banned' }, { status: 403 })
+  }
 
   const followingId = await readTarget(req)
   if (!followingId) return NextResponse.json({ error: 'following_id (string) required' }, { status: 400 })

@@ -91,13 +91,20 @@ export async function middleware(request: NextRequest) {
   // Check if user has a profile + claimed invite code
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, invited_by, role')
+    .select('id, invited_by, role, banned')
     .eq('id', user.id)
     .single()
 
   if (!profile) {
     // No profile yet — send to onboarding/account
     return NextResponse.redirect(new URL('/onboarding/account', request.url))
+  }
+
+  // Ban enforcement (G6): a suspended user is redirected to /banned on any page.
+  // (API routes are guarded separately via assertNotBanned; the gate cookie may delay
+  // page enforcement by up to its TTL for an already-active session — see docs.)
+  if (profile.banned && pathname !== '/banned') {
+    return NextResponse.redirect(new URL('/banned', request.url))
   }
 
   // Has profile but no invite code claimed and not admin → must claim a code first

@@ -19,6 +19,7 @@ import stripe from '@/lib/stripe'
 import { orderAmountsAt } from '@/lib/fees'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { isBanned } from '@/lib/auth/ban'
 
 export async function POST(request: NextRequest) {
   // ── 1. Auth ───────────────────────────────────────────────────────────────
@@ -26,6 +27,11 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── Ban guard (G6): suspended accounts cannot check out ──────────────────
+  if (await isBanned(createServiceClientRaw(), user.id)) {
+    return NextResponse.json({ error: 'Your account is suspended.', code: 'banned' }, { status: 403 })
   }
 
   // ── Rate limit: 10 checkout attempts per user per hour ───────────────────
