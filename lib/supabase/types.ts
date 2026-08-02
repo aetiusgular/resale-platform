@@ -672,6 +672,8 @@ export type Database = {
       }
       listings: {
         Row: {
+          authentication_reasons: string[]
+          authentication_status: string
           brand: string
           bumped_at: string | null
           bumped_price_cents: number | null
@@ -697,6 +699,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          authentication_reasons?: string[]
+          authentication_status?: string
           brand: string
           bumped_at?: string | null
           bumped_price_cents?: number | null
@@ -722,6 +726,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          authentication_reasons?: string[]
+          authentication_status?: string
           brand?: string
           bumped_at?: string | null
           bumped_price_cents?: number | null
