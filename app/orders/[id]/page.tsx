@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import OrderBuyerView from './order-buyer'
 import OrderSellerView from './order-seller'
+import ReviewPrompt from './review-prompt'
+import { REVIEWS_ENABLED } from '@/lib/flags'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -68,6 +70,21 @@ export default async function OrderPage({ params }: PageProps) {
     if (profile?.role !== 'admin') notFound()
   }
 
+  // Post-release review prompt (G9). Eligible = a party to a RELEASED order who has
+  // not yet reviewed in their direction; the post_review RPC remains authoritative.
+  let reviewEligible = false
+  if (REVIEWS_ENABLED && order.state === 'released' && (isBuyer || isSeller)) {
+    const direction = isBuyer ? 'buyer_to_seller' : 'seller_to_buyer'
+    const rsvc = createServiceClientRaw()
+    const { data: existingReview } = await rsvc
+      .from('reviews')
+      .select('id')
+      .eq('order_id', order.id)
+      .eq('direction', direction)
+      .maybeSingle()
+    reviewEligible = !existingReview
+  }
+
   // Fetch listing snapshot for display
   const { data: listing } = await supabase
     .from('listings')
@@ -90,6 +107,7 @@ export default async function OrderPage({ params }: PageProps) {
         order={order}
         listing={listing ?? { title: 'Unknown', brand: '', size: '', images: [] }}
         buyerStats={buyerStats ?? null}
+        reviewPrompt={reviewEligible ? <ReviewPrompt orderId={order.id} counterpartyLabel={buyerStats?.username ?? 'buyer'} /> : null}
       />
     )
   }
@@ -106,6 +124,7 @@ export default async function OrderPage({ params }: PageProps) {
       order={order}
       listing={listing ?? { title: 'Unknown', brand: '', size: '', images: [] }}
       sellerUsername={sellerProfile?.username ?? 'seller'}
+      reviewPrompt={reviewEligible ? <ReviewPrompt orderId={order.id} counterpartyLabel={sellerProfile?.username ?? 'seller'} /> : null}
     />
   )
 }

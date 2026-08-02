@@ -45,6 +45,7 @@ interface Props {
   order: OrderData
   listing: { title: string; brand: string; size: string; images: string[] }
   buyerStats: BuyerStats | null
+  reviewPrompt?: React.ReactNode
 }
 
 const TIMELINE_STATES: OrderState[] = [
@@ -72,7 +73,7 @@ function countdown(to: Date): string {
   return days > 0 ? `${days}D ${hours}H` : `${hours}H`
 }
 
-export default function OrderSellerView({ order, listing, buyerStats }: Props) {
+export default function OrderSellerView({ order, listing, buyerStats, reviewPrompt }: Props) {
   const [loading, setLoading] = useState(false)
   const [shipLoading, setShipLoading] = useState(false)
   const [carrier, setCarrier] = useState('')
@@ -137,6 +138,8 @@ export default function OrderSellerView({ order, listing, buyerStats }: Props) {
           <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>
             Sale status
           </h1>
+
+          {reviewPrompt}
 
           {/* Buyer record */}
           {buyerStats && (

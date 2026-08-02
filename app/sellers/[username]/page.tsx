@@ -9,6 +9,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
+import { aggregateRating } from '@/lib/reviews/rating'
+import { FOLLOWS_ENABLED, REVIEWS_ENABLED } from '@/lib/flags'
+import FollowButton from './follow-button'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 
@@ -69,6 +72,34 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const isVerified = seller.id_verification_status === 'verified'
   const isChecker = seller.verified_checker === true
   const checkerCategory = seller.checker_category as string | null
+
+  // ── G9: reviews (aggregate + list) and follow state, behind flags ─────────
+  const reviewsRaw = REVIEWS_ENABLED
+    ? ((await service
+        .from('reviews')
+        .select('id, stars, body, created_at, reviewer_id')
+        .eq('subject_id', seller.id)
+        .eq('direction', 'buyer_to_seller')
+        .order('created_at', { ascending: false })
+        .limit(50)).data ?? [])
+    : []
+  const rating = aggregateRating((reviewsRaw as Array<{ stars: number }>).map((r) => r.stars))
+  const reviewerIds = [...new Set((reviewsRaw as Array<{ reviewer_id: string }>).map((r) => r.reviewer_id))]
+  const { data: reviewerProfiles } = reviewerIds.length
+    ? await service.from('profiles').select('id, username').in('id', reviewerIds)
+    : { data: [] as Array<{ id: string; username: string }> }
+  const nameById = new Map((reviewerProfiles ?? []).map((rp) => [rp.id as string, rp.username as string]))
+
+  let isFollowing = false
+  if (FOLLOWS_ENABLED) {
+    const { data: myFollow } = await supabase
+      .from('follows')
+      .select('id')
+      .eq('follower_id', user.id)
+      .eq('following_id', seller.id)
+      .maybeSingle()
+    isFollowing = !!myFollow
+  }
 
   const activeTab = tab === 'reviews' ? 'reviews' : 'listings'
 
@@ -131,6 +162,11 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                 AS BUYER · {buyerStats?.purchase_count ?? 0} PURCHASES
                 {buyerStats?.pays_fast ? ' · PAYS FAST' : ''}
               </span>
+              {REVIEWS_ENABLED && rating.count > 0 && (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
+                  RATING · ★ {rating.average?.toFixed(1)} · {rating.count} REVIEW{rating.count === 1 ? '' : 'S'}
+                </span>
+              )}
             </div>
           </div>
 
@@ -149,6 +185,9 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               >
                 Message
               </Link>
+              {FOLLOWS_ENABLED && (
+                <FollowButton sellerId={seller.id as string} initialFollowing={isFollowing} />
+              )}
             </div>
           )}
         </div>
@@ -231,14 +270,41 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
             )}
           </>
         ) : (
-          /* Reviews tab — empty state for alpha */
+          /* Reviews tab — real reviews (G9) or empty state */
           <div style={{ marginTop: '48px' }}>
-            <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.35rem', lineHeight: 1.35, color: 'var(--color-ink)' }}>
-              No reviews yet.
-            </p>
-            <p style={{ marginTop: '12px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              Reviews are written after completed orders.
-            </p>
+            {reviewsRaw.length === 0 ? (
+              <>
+                <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.35rem', lineHeight: 1.35, color: 'var(--color-ink)' }}>
+                  No reviews yet.
+                </p>
+                <p style={{ marginTop: '12px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+                  Reviews are written after completed orders.
+                </p>
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '640px' }}>
+                {(reviewsRaw as Array<{ id: string; stars: number; body: string; created_at: string; reviewer_id: string }>).map((r) => (
+                  <div key={r.id} style={{ border: '1px solid var(--color-line)', borderRadius: '2px', padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ color: 'var(--color-accent)', fontSize: '14px', letterSpacing: '2px' }} aria-label={`${r.stars} out of 5 stars`}>
+                        {'★'.repeat(r.stars)}{'☆'.repeat(5 - r.stars)}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink)' }}>
+                        @{nameById.get(r.reviewer_id) ?? 'user'}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>
+                        {formatTimeAgo(r.created_at)}
+                      </span>
+                    </div>
+                    {r.body && (
+                      <p style={{ marginTop: '8px', fontFamily: 'var(--font-ui)', fontSize: '14px', lineHeight: 1.5, color: 'var(--color-ink)' }}>
+                        {r.body}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
