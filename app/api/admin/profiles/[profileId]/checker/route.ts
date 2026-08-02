@@ -7,6 +7,7 @@
  * verified_checker/checker_category/tier columns.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isUuid } from '@/lib/security/uuid'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 interface RouteContext {
@@ -15,6 +16,7 @@ interface RouteContext {
 
 export async function POST(req: NextRequest, { params }: RouteContext) {
   const { profileId } = await params
+  if (!isUuid(profileId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

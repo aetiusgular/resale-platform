@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { isUuid } from '@/lib/security/uuid'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { SAVED_SEARCH_ALERTS_ENABLED } from '@/lib/flags'
@@ -26,6 +27,7 @@ export async function POST(
   }
 
   const { id } = await params
+  if (!isUuid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   // Use service client to bypass RLS for the status→active transition
   const service = await createServiceClient()

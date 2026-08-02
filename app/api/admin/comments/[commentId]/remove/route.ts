@@ -3,6 +3,7 @@
  * Admin: set comment status to 'removed'.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isUuid } from '@/lib/security/uuid'
 import { createClient } from '@/lib/supabase/server'
 
 interface RouteContext {
@@ -11,6 +12,7 @@ interface RouteContext {
 
 export async function POST(_req: NextRequest, { params }: RouteContext) {
   const { commentId } = await params
+  if (!isUuid(commentId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

@@ -10,6 +10,7 @@
  *            The charge.refunded webhook also calls transition_order (idempotent).
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isUuid } from '@/lib/security/uuid'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
@@ -46,6 +47,7 @@ export async function POST(
   }
 
   const { id: orderId } = await params
+  if (!isUuid(orderId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   const service = createServiceClientRaw()
 
   // Fetch order + dispute

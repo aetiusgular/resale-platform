@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isUuid } from '@/lib/security/uuid'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export async function POST(
@@ -29,6 +30,7 @@ export async function POST(
   }
 
   const { id } = await params
+  if (!isUuid(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   const service = await createServiceClient()
   const { error } = await service
