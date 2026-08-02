@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import PushSubscribe from '@/app/components/push-subscribe'
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -12,11 +13,19 @@ interface SizesMap {
   footwear?: string[]
 }
 
+type NotifPrefs = {
+  email_offers: boolean; push_offers: boolean
+  email_orders: boolean; push_orders: boolean
+  email_messages: boolean; push_messages: boolean
+}
+
 interface Props {
   username: string
   initialSizes: SizesMap
   payoutsEnabled: boolean
   stripeConnectId: string | null
+  initialPrefs: NotifPrefs
+  notificationsEnabled: boolean
 }
 
 /* ─── Size options ──────────────────────────────────────────────────────── */
@@ -59,7 +68,7 @@ const NAV_SECTIONS = [
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
-export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId }: Props) {
+export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId, initialPrefs, notificationsEnabled }: Props) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -127,6 +136,8 @@ export default function SettingsClient({ initialSizes, payoutsEnabled, stripeCon
         return <AddressesPane />
       case 'payments':
         return <PaymentsPane payoutsEnabled={payoutsEnabled} stripeConnectId={stripeConnectId} />
+      case 'notifications':
+        return notificationsEnabled ? <NotificationsPane initialPrefs={initialPrefs} /> : <PlaceholderPane label="Notifications" />
       default:
         return <PlaceholderPane label={NAV_SECTIONS.flatMap(s => s.items).find(i => i.key === activeSection)?.label ?? activeSection} />
     }
@@ -530,6 +541,68 @@ function PaymentsPane({ payoutsEnabled }: { payoutsEnabled: boolean; stripeConne
 }
 
 /* ─── Placeholder pane ──────────────────────────────────────────────────── */
+
+const NOTIF_CATEGORIES = [
+  { key: 'offers', label: 'Offers', desc: 'New offers and accepted offers' },
+  { key: 'orders', label: 'Orders', desc: 'Sales, shipping, delivery, and disputes' },
+  { key: 'messages', label: 'Messages', desc: 'New messages from buyers and sellers' },
+] as const
+
+function NotificationsPane({ initialPrefs }: { initialPrefs: NotifPrefs }) {
+  const [prefs, setPrefs] = useState<NotifPrefs>(initialPrefs)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const dirty = useMemo(() => JSON.stringify(prefs) !== JSON.stringify(initialPrefs), [prefs, initialPrefs])
+
+  const toggle = (k: keyof NotifPrefs) => { setPrefs((p) => ({ ...p, [k]: !p[k] })); setSaved(false) }
+  const save = async () => {
+    setSaving(true)
+    const res = await fetch('/api/notifications/prefs', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prefs) })
+    setSaving(false)
+    if (res.ok) setSaved(true)
+  }
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>Notifications</h1>
+      <p style={{ marginTop: 8, fontSize: 14, color: 'var(--color-ink-soft)', lineHeight: 1.5 }}>
+        In-app notifications are always on. Choose which categories also reach you by email and push.
+      </p>
+      <div style={{ marginTop: 24, border: '1px solid var(--color-line)', borderRadius: 2 }}>
+        <div style={{ display: 'flex', padding: '10px 16px', borderBottom: '1px solid var(--color-line)' }}>
+          <span style={{ flex: 1 }} />
+          <span style={{ width: 72, textAlign: 'center', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>Email</span>
+          <span style={{ width: 72, textAlign: 'center', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>Push</span>
+        </div>
+        {NOTIF_CATEGORIES.map((c) => {
+          const emailKey = `email_${c.key}` as keyof NotifPrefs
+          const pushKey = `push_${c.key}` as keyof NotifPrefs
+          return (
+            <div key={c.key} style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--color-line)' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ font: '600 14px var(--font-ui)', color: 'var(--color-ink)' }}>{c.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-ink-soft)' }}>{c.desc}</div>
+              </div>
+              <label style={{ width: 72, display: 'inline-flex', justifyContent: 'center', minHeight: 44, alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={prefs[emailKey]} onChange={() => toggle(emailKey)} aria-label={`${c.label} email`} style={{ width: 18, height: 18 }} />
+              </label>
+              <label style={{ width: 72, display: 'inline-flex', justifyContent: 'center', minHeight: 44, alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={prefs[pushKey]} onChange={() => toggle(pushKey)} aria-label={`${c.label} push`} style={{ width: 18, height: 18 }} />
+              </label>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <button onClick={save} disabled={!dirty || saving} style={{ height: 40, padding: '0 24px', background: dirty ? 'var(--color-ink)' : 'var(--color-line)', color: dirty ? 'var(--color-bg)' : 'var(--color-ink-soft)', border: 'none', borderRadius: 2, font: '500 14px var(--font-ui)', cursor: dirty && !saving ? 'pointer' : 'default' }}>
+          {saving ? 'Saving\u2026' : 'Save preferences'}
+        </button>
+        {saved && !dirty && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>Saved</span>}
+      </div>
+      <PushSubscribe />
+    </div>
+  )
+}
 
 function PlaceholderPane({ label }: { label: string }) {
   return (

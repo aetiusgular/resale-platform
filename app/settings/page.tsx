@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 import SettingsClient from './settings-client'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -21,6 +22,20 @@ export default async function SettingsPage() {
   const payoutsEnabled: boolean = (profile?.payouts_enabled as boolean) ?? false
   const stripeConnectId: string | null = (profile?.stripe_connect_account_id as string) ?? null
 
+  const { data: prefsRow } = await supabase
+    .from('notification_prefs')
+    .select('email_offers, push_offers, email_orders, push_orders, email_messages, push_messages')
+    .eq('user_id', user.id)
+    .maybeSingle()
+  const initialPrefs = {
+    email_offers: prefsRow?.email_offers ?? true,
+    push_offers: prefsRow?.push_offers ?? true,
+    email_orders: prefsRow?.email_orders ?? true,
+    push_orders: prefsRow?.push_orders ?? true,
+    email_messages: prefsRow?.email_messages ?? true,
+    push_messages: prefsRow?.push_messages ?? true,
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }} className="mobile-bottom-pad">
       <SiteHeader username={username} />
@@ -30,6 +45,8 @@ export default async function SettingsPage() {
           initialSizes={sizes}
           payoutsEnabled={payoutsEnabled}
           stripeConnectId={stripeConnectId}
+          initialPrefs={initialPrefs}
+          notificationsEnabled={NOTIFICATIONS_ENABLED}
         />
       </Suspense>
       <MobileTabBar username={username} />

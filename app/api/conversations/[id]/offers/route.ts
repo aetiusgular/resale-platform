@@ -4,10 +4,12 @@
  * Both buyer and seller can make offers; from_user = caller.
  * Any existing open offer from the caller is voided before creating the new one.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isBanned } from '@/lib/auth/ban'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -101,6 +103,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
     console.error('[offers] insert error:', error)
     return NextResponse.json({ error: 'Failed to create offer' }, { status: 500 })
+  }
+
+  if (NOTIFICATIONS_ENABLED) {
+    const recipientId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
+    after(async () => {
+      const [{ data: actor }, { data: l }] = await Promise.all([
+        service.from('profiles').select('username').eq('id', user.id).single(),
+        service.from('listings').select('title').eq('id', conv.listing_id).single(),
+      ])
+      await notify(service, recipientId, 'offer_received', {
+        actorName: (actor as { username?: string } | null)?.username,
+        itemTitle: (l as { title?: string } | null)?.title,
+        amountCents,
+        conversationId,
+      })
+    })
   }
 
   return NextResponse.json({ offer }, { status: 201 })

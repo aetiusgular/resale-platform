@@ -6,9 +6,11 @@
  * Flow: buyer confirm → delivered → released (immediately, since buyer is confirming)
  * The 3-day auto-release window is only for when the buyer does NOT confirm manually.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 import stripe from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
 
@@ -25,7 +27,7 @@ export async function POST(
 
   const { data: order } = await service
     .from('orders')
-    .select('id, buyer_id, seller_id, state, transfer_cents, stripe_payment_intent_id, stripe_transfer_id')
+    .select('id, buyer_id, seller_id, listing_id, state, transfer_cents, stripe_payment_intent_id, stripe_transfer_id')
     .eq('id', orderId)
     .single()
 
@@ -79,6 +81,13 @@ export async function POST(
     applyTierProgress(service, order.buyer_id, 'buyer'),
     applyTierProgress(service, order.seller_id, 'seller'),
   ])
+
+  if (NOTIFICATIONS_ENABLED) {
+    after(async () => {
+      const { data: l } = await service.from('listings').select('title').eq('id', order.listing_id).single()
+      await notify(service, order.seller_id, 'delivered', { itemTitle: (l as { title?: string } | null)?.title, orderId })
+    })
+  }
 
   // Re-fetch order after release to get current stripe_transfer_id
   // (a concurrent cron run could have issued the transfer between our two RPCs)

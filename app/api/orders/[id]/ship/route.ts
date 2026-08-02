@@ -3,9 +3,11 @@
  * Seller marks order as shipped with carrier + tracking number.
  * (seller_confirmed → shipped)
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +37,7 @@ export async function POST(
 
   const { data: order } = await service
     .from('orders')
-    .select('seller_id, state')
+    .select('seller_id, buyer_id, listing_id, state')
     .eq('id', orderId)
     .single()
 
@@ -61,6 +63,13 @@ export async function POST(
     .from('orders')
     .update({ carrier: carrier.trim(), tracking_number: trackingNumber.trim() })
     .eq('id', orderId)
+
+  if (NOTIFICATIONS_ENABLED) {
+    after(async () => {
+      const { data: l } = await service.from('listings').select('title').eq('id', order.listing_id).single()
+      await notify(service, order.buyer_id, 'shipped', { itemTitle: (l as { title?: string } | null)?.title, orderId })
+    })
+  }
 
   return NextResponse.json({ ok: true })
 }

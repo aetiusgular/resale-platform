@@ -6,9 +6,11 @@
  * Send a message via the send_message() SECURITY DEFINER RPC.
  * Link/payment blocking is applied here before the RPC call.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 import { isBanned } from '@/lib/auth/ban'
 import { filterMessage } from '@/lib/message-filter'
 
@@ -97,6 +99,22 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
     console.error('[messages] send_message RPC error:', error)
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 })
+  }
+
+  if (NOTIFICATIONS_ENABLED) {
+    const svc = createServiceClientRaw()
+    after(async () => {
+      const { data: conv } = await svc.from('conversations').select('buyer_id, seller_id').eq('id', conversationId).single()
+      if (!conv) return
+      const c = conv as { buyer_id: string; seller_id: string }
+      const recipientId = c.buyer_id === user.id ? c.seller_id : c.buyer_id
+      const { data: actor } = await svc.from('profiles').select('username').eq('id', user.id).single()
+      await notify(svc, recipientId, 'message', {
+        actorName: (actor as { username?: string } | null)?.username,
+        preview: filteredBody,
+        conversationId,
+      })
+    })
   }
 
   return NextResponse.json({ message: msg }, { status: 201 })

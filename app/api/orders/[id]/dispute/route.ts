@@ -4,9 +4,11 @@
  * Requires ≥1 photo URL (photos uploaded to Supabase Storage separately).
  * Transitions order: delivered → disputed (freezes auto-release).
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 import { isDisputeWindowOpen } from '@/lib/orders'
 
 export async function POST(
@@ -48,7 +50,7 @@ export async function POST(
 
   const { data: order } = await service
     .from('orders')
-    .select('id, buyer_id, state, delivered_at')
+    .select('id, buyer_id, seller_id, listing_id, state, delivered_at')
     .eq('id', orderId)
     .single()
 
@@ -100,6 +102,13 @@ export async function POST(
     // Roll back the dispute insert if transition fails
     await service.from('disputes').delete().eq('order_id', orderId)
     return NextResponse.json({ error: transitionError.message }, { status: 422 })
+  }
+
+  if (NOTIFICATIONS_ENABLED) {
+    after(async () => {
+      const { data: l } = await service.from('listings').select('title').eq('id', order.listing_id).single()
+      await notify(service, order.seller_id, 'dispute', { itemTitle: (l as { title?: string } | null)?.title, orderId })
+    })
   }
 
   return NextResponse.json({ ok: true })

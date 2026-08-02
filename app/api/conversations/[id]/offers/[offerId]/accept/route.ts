@@ -4,9 +4,11 @@
  * Sets state=accepted and accepted_at=now().
  * The buyer then has 24h to pay via /api/checkout with offerId.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 import { canRespond } from '@/lib/offers'
 import type { Offer, Conversation } from '@/lib/offers'
 
@@ -74,6 +76,22 @@ export async function POST(_req: NextRequest, { params }: RouteContext) {
 
   if (error || !updated) {
     return NextResponse.json({ error: 'Offer no longer open' }, { status: 409 })
+  }
+
+  if (NOTIFICATIONS_ENABLED) {
+    after(async () => {
+      const [{ data: actor }, { data: l }] = await Promise.all([
+        service.from('profiles').select('username').eq('id', user.id).single(),
+        service.from('listings').select('title').eq('id', conv.listing_id).single(),
+      ])
+      await notify(service, offer.from_user, 'offer_accepted', {
+        actorName: (actor as { username?: string } | null)?.username,
+        itemTitle: (l as { title?: string } | null)?.title,
+        amountCents: offer.amount_cents,
+        listingId: conv.listing_id,
+        conversationId,
+      })
+    })
   }
 
   return NextResponse.json({ offer: updated })

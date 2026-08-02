@@ -8,6 +8,8 @@
  */
 import Link from 'next/link'
 import AvatarMenu from './avatar-menu'
+import NotificationBell from './notification-bell'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
 
 interface Props {
   username: string
@@ -95,6 +97,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
         >
           Messages
         </Link>
+        {NOTIFICATIONS_ENABLED && <NotificationBell />}
         <AvatarMenu username={username} initials={initials} />
       </nav>
     </header>

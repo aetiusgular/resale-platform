@@ -19,10 +19,12 @@
  *   account.updated               → update seller payouts_enabled
  *   charge.refunded               → order → refunded
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import type Stripe from 'stripe'
 import { constructWebhookEvent } from '@/lib/stripe'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 
 export const dynamic = 'force-dynamic'
 
@@ -164,6 +166,17 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     service.from('listings').update({ status: 'sold' }).eq('id', session.listing_id),
     service.from('checkout_sessions').delete().eq('stripe_payment_intent_id', pi.id),
   ])
+
+  if (NOTIFICATIONS_ENABLED) {
+    after(async () => {
+      const { data: l } = await service.from('listings').select('title').eq('id', session.listing_id).single()
+      await notify(service, session.seller_id, 'sale', {
+        itemTitle: (l as { title?: string } | null)?.title,
+        amountCents: item_cents,
+        orderId: order!.id,
+      })
+    })
+  }
 }
 
 async function handlePaymentFailed(event: Stripe.Event, service: ServiceClient) {

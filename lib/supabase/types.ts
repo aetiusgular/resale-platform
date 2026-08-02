@@ -794,6 +794,105 @@ export type Database = {
           },
         ]
       }
+      notification_prefs: {
+        Row: {
+          email_messages: boolean
+          email_offers: boolean
+          email_orders: boolean
+          push_messages: boolean
+          push_offers: boolean
+          push_orders: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          email_messages?: boolean
+          email_offers?: boolean
+          email_orders?: boolean
+          push_messages?: boolean
+          push_offers?: boolean
+          push_orders?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          email_messages?: boolean
+          email_offers?: boolean
+          email_orders?: boolean
+          push_messages?: boolean
+          push_offers?: boolean
+          push_orders?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notification_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json
+          id: string
+          read_at: string | null
+          title: string
+          type: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title: string
+          type: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           accepted_at: string | null
@@ -1074,8 +1173,10 @@ export type Database = {
           id: string
           id_verification_status: Database["public"]["Enums"]["id_verification_status"]
           id_verified: boolean
+          id_verified_at: string | null
           invited_by: string | null
           payouts_enabled: boolean
+          persona_inquiry_id: string | null
           quick_setup: Json | null
           role: string
           seller_tier_locked_until: string | null
@@ -1099,8 +1200,10 @@ export type Database = {
           id: string
           id_verification_status?: Database["public"]["Enums"]["id_verification_status"]
           id_verified?: boolean
+          id_verified_at?: string | null
           invited_by?: string | null
           payouts_enabled?: boolean
+          persona_inquiry_id?: string | null
           quick_setup?: Json | null
           role?: string
           seller_tier_locked_until?: string | null
@@ -1124,8 +1227,10 @@ export type Database = {
           id?: string
           id_verification_status?: Database["public"]["Enums"]["id_verification_status"]
           id_verified?: boolean
+          id_verified_at?: string | null
           invited_by?: string | null
           payouts_enabled?: boolean
+          persona_inquiry_id?: string | null
           quick_setup?: Json | null
           role?: string
           seller_tier_locked_until?: string | null
@@ -1148,6 +1253,48 @@ export type Database = {
           {
             foreignKeyName: "profiles_invited_by_fkey"
             columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1301,6 +1448,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      verification_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_name: string | null
+          id: string
+          inquiry_id: string | null
+          payload: Json
+          provider: string
+          reference_id: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_name?: string | null
+          id?: string
+          inquiry_id?: string | null
+          payload?: Json
+          provider?: string
+          reference_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_name?: string | null
+          id?: string
+          inquiry_id?: string | null
+          payload?: Json
+          provider?: string
+          reference_id?: string | null
+          status?: string | null
+        }
+        Relationships: []
       }
       waitlist: {
         Row: {
