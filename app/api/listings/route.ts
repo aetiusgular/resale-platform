@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Rate limit: 30 listing uploads per user per hour ─────────────────────
-  const rl = checkRateLimit(`listing_upload:${user.id}`, 30, 60 * 60 * 1000)
+  const rl = await checkRateLimit(`listing_upload:${user.id}`, 30, 60 * 60 * 1000)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many listing uploads. Please try again later.' },

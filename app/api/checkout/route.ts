@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Rate limit: 10 checkout attempts per user per hour ───────────────────
-  const rl = checkRateLimit(`checkout:${user.id}`, 10, 60 * 60 * 1000)
+  const rl = await checkRateLimit(`checkout:${user.id}`, 10, 60 * 60 * 1000)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many checkout attempts. Please try again later.' },

@@ -5,7 +5,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 export async function POST(request: NextRequest) {
   // Rate limit: 5 waitlist submissions per hour per IP
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  const rl = checkRateLimit(`waitlist:${ip}`, 5, 60 * 60 * 1000)
+  const rl = await checkRateLimit(`waitlist:${ip}`, 5, 60 * 60 * 1000)
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
