@@ -2,21 +2,6 @@ import type { NextConfig } from 'next'
 import path from 'path'
 import { withSentryConfig } from '@sentry/nextjs'
 
-// Content Security Policy — tightened in B8.
-// img-src allows Supabase Storage, Stripe, and PostHog.
-// script-src 'unsafe-eval' required for Next.js dev HMR; removed in production.
-const CSP = [
-  `default-src 'self'`,
-  `script-src 'self' 'unsafe-inline' https://js.stripe.com https://app.posthog.com ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ''}`,
-  `style-src 'self' 'unsafe-inline'`,
-  `img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://q.stripe.com https://b.stripecdn.com https://us.i.posthog.com`,
-  `font-src 'self' https://fonts.gstatic.com`,
-  `connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.stripe.com https://app.posthog.com https://us.i.posthog.com https://*.sentry.io https://o*.ingest.sentry.io`,
-  `frame-src https://js.stripe.com https://hooks.stripe.com`,
-  `form-action 'self'`,
-  `base-uri 'self'`,
-].join('; ')
-
 const nextConfig: NextConfig = {
   // Silence the workspace root warning from multiple lockfiles
   outputFileTracingRoot: path.join(__dirname),
@@ -26,10 +11,6 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: CSP,
-          },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
