@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Action = 'remove' | 'restore' | 'dismiss' | 'ban' | 'unban' | 'release'
+type Action = 'remove' | 'restore' | 'dismiss' | 'ban' | 'unban' | 'release' | 'refund'
 type TargetType = 'listing' | 'user' | 'message' | 'comment' | 'order'
 
 const ENDPOINT: Record<Action, string> = {
@@ -19,11 +19,12 @@ const ENDPOINT: Record<Action, string> = {
   ban: '/api/admin/moderation/ban',
   unban: '/api/admin/moderation/unban',
   release: '/api/admin/moderation/release-hold',
+  refund: '/api/admin/moderation/refund',
 }
-const NEEDS_REASON: Action[] = ['remove', 'ban', 'dismiss', 'release']
-const DESTRUCTIVE: Action[] = ['remove', 'ban']
+const NEEDS_REASON: Action[] = ['remove', 'ban', 'dismiss', 'release', 'refund']
+const DESTRUCTIVE: Action[] = ['remove', 'ban', 'refund']
 const LABEL: Record<Action, string> = {
-  remove: 'Remove', restore: 'Restore', dismiss: 'Dismiss', ban: 'Ban', unban: 'Unban', release: 'Release payout',
+  remove: 'Remove', restore: 'Restore', dismiss: 'Dismiss', ban: 'Ban', unban: 'Unban', release: 'Release payout', refund: 'Refund buyer',
 }
 
 export default function ModerationActions({

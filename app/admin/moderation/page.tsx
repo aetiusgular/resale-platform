@@ -165,7 +165,7 @@ export default async function ModerationConsolePage() {
                       </div>
                     </div>
                     <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-line)' }}>
-                      <ModerationActions targetType="order" targetId={h.order_id} actions={['release']} />
+                      <ModerationActions targetType="order" targetId={h.order_id} actions={['release', 'refund']} />
                     </div>
                   </div>
                 )

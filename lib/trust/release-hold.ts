@@ -37,3 +37,32 @@ export const COLLUSION_REASON_LABEL: Record<string, string> = {
   shared_billing_identity: 'SHARED BILLING IDENTITY',
   ship_to_self: 'SHIP TO SELF',
 }
+
+/**
+ * Moderator-refund preconditions — PURE. A moderator may refund any pre-release order
+ * (funds in escrow) and, additionally, a COLLUSION-HELD 'released' order whose transfer was
+ * blocked (stripe_transfer_id IS NULL AND transfer_hold_reason set) — the buyer's money is
+ * still in escrow. A 'released' order that already paid out (transfer exists) or that isn't a
+ * hold is rejected: that's a clawback/reversal, a separate flow. Terminal states can't refund.
+ */
+export type RefundableOrder = {
+  state: string
+  stripe_transfer_id: string | null
+  transfer_hold_reason: string | null
+}
+
+export function checkModeratorRefund(order: RefundableOrder | null | undefined): ReleaseCheck {
+  if (!order) return { ok: false, error: 'Order not found', status: 404, code: 'not_found' }
+  if (order.state === 'refunded' || order.state === 'cancelled') {
+    return { ok: false, error: `Cannot refund an order in state '${order.state}'.`, status: 422, code: 'not_refundable' }
+  }
+  if (order.state === 'released') {
+    if (order.stripe_transfer_id) {
+      return { ok: false, error: 'Those funds already paid out — a clawback is a separate flow.', status: 422, code: 'already_paid_out' }
+    }
+    if (!order.transfer_hold_reason) {
+      return { ok: false, error: 'This released order is not on hold; releasing funds require a clawback.', status: 422, code: 'released_not_held' }
+    }
+  }
+  return { ok: true }
+}

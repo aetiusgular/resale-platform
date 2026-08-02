@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
+import { checkModeratorRefund } from '@/lib/trust/release-hold'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -34,17 +35,12 @@ export async function POST(req: NextRequest) {
   const service = createServiceClientRaw()
   const { data: order } = await service
     .from('orders')
-    .select('id, state, listing_id, stripe_payment_intent_id')
+    .select('id, state, listing_id, stripe_payment_intent_id, stripe_transfer_id, transfer_hold_reason')
     .eq('id', orderId)
     .single()
   if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-
-  if (['released', 'refunded', 'cancelled'].includes(order.state)) {
-    return NextResponse.json(
-      { error: `Cannot refund an order in state '${order.state}' (released funds require a clawback).`, code: 'not_refundable' },
-      { status: 422 },
-    )
-  }
+  const gate = checkModeratorRefund(order)
+  if (!gate.ok) return NextResponse.json({ error: gate.error, code: gate.code }, { status: gate.status })
 
   // Prevent a double refund if Stripe already has one for this payment intent.
   const existingRefunds = await stripe.refunds.list({ payment_intent: order.stripe_payment_intent_id, limit: 1 })
@@ -85,6 +81,12 @@ export async function POST(req: NextRequest) {
     p_evidence: { refund_pending: refundPending },
   })
   if (logErr) console.error('[moderation/refund] audit log error:', logErr)
+
+  // If this was a collusion-held payout, resolve the flag + clear the hold so it leaves the queue.
+  if (order.transfer_hold_reason) {
+    await service.from('collusion_flags').update({ resolved_at: new Date().toISOString() }).eq('order_id', orderId)
+    await service.from('orders').update({ transfer_hold_reason: null }).eq('id', orderId)
+  }
 
   return NextResponse.json({ ok: true, action_id: actionId ?? null, refundPending })
 }
