@@ -9,6 +9,7 @@ import { VERIFICATION_ENABLED, AUTH_BADGE_ENABLED } from '@/lib/flags'
 import { sellerMustVerify } from '@/lib/idv/risk-resolver'
 import { scanListing } from '@/lib/trust/prohibited-items'
 import { needsAuthenticationReview } from '@/lib/authbadge/screen'
+import { allImageUrlsAllowed, storageHost } from '@/lib/security/image-url'
 import { isBanned } from '@/lib/auth/ban'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 
@@ -140,6 +141,16 @@ export async function POST(request: NextRequest) {
   // ── Perceptual hashing ────────────────────────────────────────────────────
   // Computed before insert so we can check possession dedup pre-insert.
   const imageArr: string[] = Array.isArray(images) ? images : []
+
+  // ── Image-URL allowlist (security) — every stored image must be an HTTPS URL on our
+  // Storage host, so nothing off-platform is hashed (SSRF) or later rendered in <img>.
+  // Fail-OPEN only if the Storage host env is somehow unset (never block all listings on a
+  // misconfiguration); otherwise reject off-host URLs.
+  const imgHost = storageHost()
+  if (imgHost && !allImageUrlsAllowed([...imageArr, possession_photo_url.trim()], imgHost)) {
+    return NextResponse.json({ error: 'Images must be uploaded to the platform.', code: 'invalid_image_url' }, { status: 400 })
+  }
+
   const slotHashes = await hashAllSlots(imageArr, possession_photo_url.trim())
 
   const service = await createServiceClient()

@@ -4,6 +4,7 @@
  */
 import sharp from 'sharp'
 import { blockhash16 } from './phash'
+import { isAllowedImageUrl, storageHost } from './security/image-url'
 import { PHOTO_SLOTS, type PhotoSlot } from './condition'
 
 /**
@@ -12,21 +13,7 @@ import { PHOTO_SLOTS, type PhotoSlot } from './condition'
  * This prevents SSRF against internal metadata endpoints or VPC hosts.
  */
 function isSafeImageUrl(url: string): boolean {
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return false
-  }
-
-  if (parsed.protocol !== 'https:') return false
-
-  // Restrict to the project's Supabase host so only Storage-resident images
-  // can be hashed. This also blocks all RFC-1918 / link-local targets.
-  const supabaseHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').hostname
-  if (!supabaseHost || parsed.hostname !== supabaseHost) return false
-
-  return true
+  return isAllowedImageUrl(url, storageHost())
 }
 
 /**
