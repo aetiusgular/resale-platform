@@ -68,7 +68,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
         price_cents, saves_count, is_price_dropped,
         images, possession_photo_url,
         status, rejection_reason, created_at,
-        seller_id, comments_enabled,
+        seller_id, comments_enabled, authentication_status,
         profiles:seller_id (username, role, id_verification_status)
       `)
       .eq('id', id)
@@ -191,6 +191,11 @@ export default async function ListingDetailPage({ params }: PageProps) {
             <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '16px', color: 'var(--color-ink)' }}>
               {listing.brand} · {listing.size}
             </div>
+            {listing.authentication_status === 'authenticated' && (
+              <div style={{ marginTop: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
+                ✓ AUTHENTICATED
+              </div>
+            )}
 
             {/* Condition + popover */}
             <div style={{ marginTop: '16px', display: 'flex', alignItems: 'baseline', gap: '12px' }}>
