@@ -179,6 +179,72 @@ export type Database = {
           },
         ]
       }
+      collusion_flags: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          order_id: string
+          reasons: string[]
+          resolved_at: string | null
+          seller_id: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          order_id: string
+          reasons?: string[]
+          resolved_at?: string | null
+          seller_id: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          reasons?: string[]
+          resolved_at?: string | null
+          seller_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collusion_flags_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "collusion_flags_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collusion_flags_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collusion_flags_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "collusion_flags_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comment_actions: {
         Row: {
           action: Database["public"]["Enums"]["comment_action_type"]
@@ -1028,6 +1094,7 @@ export type Database = {
           total_cents: number
           tracking_number: string | null
           transfer_cents: number
+          transfer_hold_reason: string | null
           updated_at: string
         }
         Insert: {
@@ -1058,6 +1125,7 @@ export type Database = {
           total_cents: number
           tracking_number?: string | null
           transfer_cents: number
+          transfer_hold_reason?: string | null
           updated_at?: string
         }
         Update: {
@@ -1088,6 +1156,7 @@ export type Database = {
           total_cents?: number
           tracking_number?: string | null
           transfer_cents?: number
+          transfer_hold_reason?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1122,6 +1191,51 @@ export type Database = {
           {
             foreignKeyName: "orders_seller_id_fkey"
             columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_identities: {
+        Row: {
+          billing_name: string | null
+          billing_zip: string | null
+          created_at: string
+          fingerprint: string
+          id: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          billing_name?: string | null
+          billing_zip?: string | null
+          created_at?: string
+          fingerprint: string
+          id?: string
+          kind: string
+          user_id: string
+        }
+        Update: {
+          billing_name?: string | null
+          billing_zip?: string | null
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_identities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "payment_identities_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1177,6 +1291,8 @@ export type Database = {
           invited_by: string | null
           payouts_enabled: boolean
           persona_inquiry_id: string | null
+          phone: string | null
+          phone_verified_at: string | null
           quick_setup: Json | null
           role: string
           seller_tier_locked_until: string | null
@@ -1204,6 +1320,8 @@ export type Database = {
           invited_by?: string | null
           payouts_enabled?: boolean
           persona_inquiry_id?: string | null
+          phone?: string | null
+          phone_verified_at?: string | null
           quick_setup?: Json | null
           role?: string
           seller_tier_locked_until?: string | null
@@ -1231,6 +1349,8 @@ export type Database = {
           invited_by?: string | null
           payouts_enabled?: boolean
           persona_inquiry_id?: string | null
+          phone?: string | null
+          phone_verified_at?: string | null
           quick_setup?: Json | null
           role?: string
           seller_tier_locked_until?: string | null
