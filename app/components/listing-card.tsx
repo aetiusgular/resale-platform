@@ -37,6 +37,7 @@ export type ListingCardData = {
   images: string[]
   created_at: string
   seller: { username: string; id_verification_status: string } | null
+  authentication_status?: string
   original_price_cents: number | null
   price_display: string
 }
@@ -114,10 +115,10 @@ export default function ListingCard({
         {listing.size} · {listing.condition_score}/10
       </div>
 
-      {/* VERIFIED badge — always rendered to reserve height; visible only when verified */}
+      {/* Trust badges — always rendered to reserve height; AUTHENTICATED (item) + VERIFIED (seller) */}
       {!unavailable && (
         <div style={{ marginTop: '8px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-          {isVerified ? 'VERIFIED' : ''}
+          {[listing.authentication_status === 'authenticated' ? 'AUTHENTICATED' : '', isVerified ? 'VERIFIED' : ''].filter(Boolean).join(' · ')}
         </div>
       )}
     </>

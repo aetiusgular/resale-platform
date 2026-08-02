@@ -22,13 +22,14 @@ export async function GET(request: NextRequest) {
   const condMin  = sp.get('cond') ? parseInt(sp.get('cond')!, 10) : null
   const dropped      = sp.get('dropped') === '1'
   const verifiedOnly = sp.get('verified') === '1'
+  const authenticatedOnly = sp.get('authenticated') === '1'
   const sort         = sp.get('sort') ?? 'newest'
   const offset       = sp.get('offset') ? parseInt(sp.get('offset')!, 10) : 0
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from('listings')
-    .select(`id, title, brand, category, department, size, condition_score, price_cents, saves_count, is_price_dropped, images, created_at, profiles:seller_id (username, id_verification_status)`)
+    .select(`id, title, brand, category, department, size, condition_score, price_cents, saves_count, is_price_dropped, authentication_status, images, created_at, profiles:seller_id (username, id_verification_status)`)
     .eq('status', 'active')
 
   if (q)     query = query.textSearch('search_vector', q, { type: 'websearch', config: 'english' })
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
   if (maxPrice !== null) query = query.lte('price_cents', maxPrice)
   if (condMin !== null)  query = query.gte('condition_score', condMin)
   if (dropped) query = query.eq('is_price_dropped', true)
+  if (authenticatedOnly) query = query.eq('authentication_status', 'authenticated')
 
   switch (sort) {
     case 'price_asc':  query = query.order('price_cents', { ascending: true }).order('id'); break
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
   const listings = (rawListings ?? []) as Array<{
     id: string; title: string; brand: string; category: string; department: string
     size: string; condition_score: number; price_cents: number; saves_count: number
-    is_price_dropped: boolean; images: string[]; created_at: string
+    is_price_dropped: boolean; authentication_status: string; images: string[]; created_at: string
     profiles: { username: string; id_verification_status: string } | null
   }>
 
@@ -96,6 +98,7 @@ export async function GET(request: NextRequest) {
     id: l.id, title: l.title, brand: l.brand, category: l.category, department: l.department,
     size: l.size, condition_score: l.condition_score, price_cents: l.price_cents,
     saves_count: l.saves_count, is_price_dropped: l.is_price_dropped,
+    authentication_status: l.authentication_status,
     images: Array.isArray(l.images) ? l.images : [],
     created_at: l.created_at, seller: l.profiles,
     original_price_cents: origPriceMap.get(l.id) ?? null,

@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Action = 'remove' | 'restore' | 'dismiss' | 'ban' | 'unban' | 'release' | 'refund'
+type Action = 'remove' | 'restore' | 'dismiss' | 'ban' | 'unban' | 'release' | 'refund' | 'authenticate' | 'reject_auth'
 type TargetType = 'listing' | 'user' | 'message' | 'comment' | 'order'
 
 const ENDPOINT: Record<Action, string> = {
@@ -20,11 +20,13 @@ const ENDPOINT: Record<Action, string> = {
   unban: '/api/admin/moderation/unban',
   release: '/api/admin/moderation/release-hold',
   refund: '/api/admin/moderation/refund',
+  authenticate: '/api/admin/moderation/authenticate',
+  reject_auth: '/api/admin/moderation/reject-auth',
 }
-const NEEDS_REASON: Action[] = ['remove', 'ban', 'dismiss', 'release', 'refund']
-const DESTRUCTIVE: Action[] = ['remove', 'ban', 'refund']
+const NEEDS_REASON: Action[] = ['remove', 'ban', 'dismiss', 'release', 'refund', 'reject_auth']
+const DESTRUCTIVE: Action[] = ['remove', 'ban', 'refund', 'reject_auth']
 const LABEL: Record<Action, string> = {
-  remove: 'Remove', restore: 'Restore', dismiss: 'Dismiss', ban: 'Ban', unban: 'Unban', release: 'Release payout', refund: 'Refund buyer',
+  remove: 'Remove', restore: 'Restore', dismiss: 'Dismiss', ban: 'Ban', unban: 'Unban', release: 'Release payout', refund: 'Refund buyer', authenticate: 'Authenticate', reject_auth: 'Reject',
 }
 
 export default function ModerationActions({
@@ -90,8 +92,8 @@ export default function ModerationActions({
                 height: '36px', padding: '0 20px', borderRadius: '2px',
                 cursor: loading ? 'wait' : 'pointer',
                 font: '500 13px var(--font-ui)',
-                background: destructive ? 'var(--color-bg)' : a === 'restore' || a === 'unban' || a === 'release' ? 'var(--color-ink)' : 'var(--color-bg)',
-                color: destructive ? 'var(--color-alert)' : a === 'restore' || a === 'unban' || a === 'release' ? 'var(--color-bg)' : 'var(--color-ink)',
+                background: destructive ? 'var(--color-bg)' : a === 'restore' || a === 'unban' || a === 'release' || a === 'authenticate' ? 'var(--color-ink)' : 'var(--color-bg)',
+                color: destructive ? 'var(--color-alert)' : a === 'restore' || a === 'unban' || a === 'release' || a === 'authenticate' ? 'var(--color-bg)' : 'var(--color-ink)',
                 border: `1px solid ${destructive ? 'var(--color-alert)' : 'var(--color-ink)'}`,
                 opacity: loading === a ? 0.6 : 1,
               }}

@@ -18,6 +18,7 @@ type Props = {
   hasMore: boolean
   currentOffset: number
   username: string
+  authBadgeEnabled: boolean
 }
 
 const DEPARTMENTS = ['menswear', 'womenswear', 'unisex']
@@ -94,17 +95,19 @@ function FilterSection({
 
 // ─── Filter rail (shared by desktop sidebar + mobile drawer) ────────────────
 function FilterRail({
-  params, update, filterCounts, userSizes,
+  params, update, filterCounts, userSizes, authBadgeEnabled,
 }: {
   params: URLSearchParams
   update: (key: string, val: string | null) => void
   filterCounts: FilterCounts
   userSizes: Record<string, string>
+  authBadgeEnabled: boolean
 }) {
   const cat     = params.get('cat') ?? ''
   const dept    = params.get('dept') ?? ''
   const cond    = params.get('cond') ?? ''
   const verified = params.get('verified') === '1'
+  const authenticated = params.get('authenticated') === '1'
   const dropped  = params.get('dropped') === '1'
   const hasSizes = Object.keys(userSizes).length > 0
 
@@ -296,6 +299,15 @@ function FilterRail({
       {/* Show only */}
       <FilterSection title="Show only" defaultOpen>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingBottom: '16px' }}>
+          {authBadgeEnabled && (
+          <button
+            onClick={() => update('authenticated', authenticated ? null : '1')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
+          >
+            <Checkbox checked={authenticated} />
+            <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Authenticated</span>
+          </button>
+          )}
           <button
             onClick={() => update('verified', verified ? null : '1')}
             style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
@@ -333,6 +345,7 @@ export default function BrowseClient({
   hasMore: initialHasMore,
   currentOffset,
   username,
+  authBadgeEnabled,
 }: Props) {
   const searchParams = useSearchParams()
   const router       = useRouter()
@@ -361,6 +374,7 @@ export default function BrowseClient({
   const maxPrice = searchParams.get('max_price') ?? ''
   const cond    = searchParams.get('cond') ?? ''
   const verified = searchParams.get('verified') === '1'
+  const authenticated = searchParams.get('authenticated') === '1'
   const dropped  = searchParams.get('dropped') === '1'
   const sort    = searchParams.get('sort') ?? 'newest'
 
@@ -375,6 +389,7 @@ export default function BrowseClient({
   if (maxPrice) activeFilters.push({ label: `Max $${maxPrice}`, key: 'max_price' })
   if (cond)    activeFilters.push({ label: `Condition ${cond}+`, key: 'cond' })
   if (verified) activeFilters.push({ label: 'Verified', key: 'verified' })
+  if (authenticated) activeFilters.push({ label: 'Authenticated', key: 'authenticated' })
   if (dropped)  activeFilters.push({ label: 'Price dropped', key: 'dropped' })
 
   const activeCount = activeFilters.length
@@ -499,6 +514,7 @@ export default function BrowseClient({
     if (maxPrice) query.max_price = maxPrice
     if (cond)    query.cond = cond
     if (verified) query.verified = '1'
+    if (authenticated) query.authenticated = '1'
     if (dropped)  query.dropped = '1'
     if (sort !== 'newest') query.sort = sort
 
@@ -675,6 +691,7 @@ export default function BrowseClient({
               update={updateFilter}
               filterCounts={filterCounts}
               userSizes={userSizes}
+              authBadgeEnabled={authBadgeEnabled}
             />
           </aside>
 
@@ -780,6 +797,7 @@ export default function BrowseClient({
                 update={(k, v) => { updateFilter(k, v); setDrawerOpen(false) }}
                 filterCounts={filterCounts}
                 userSizes={userSizes}
+                authBadgeEnabled={authBadgeEnabled}
               />
             </div>
           </div>

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
+import { AUTH_BADGE_ENABLED } from '@/lib/flags'
 
 export const metadata: Metadata = {
   title: 'Browse — Resale Platform',
@@ -26,6 +27,7 @@ export type BrowseListing = {
   images: string[]
   created_at: string
   seller: { username: string; id_verification_status: string } | null
+  authentication_status: string
   // Derived on server
   original_price_cents: number | null
   price_display: string
@@ -56,6 +58,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   const maxPrice = params.max_price ? Math.round(parseFloat(params.max_price) * 100) : null
   const condMin  = params.cond ? parseInt(params.cond, 10) : null
   const verified = params.verified === '1'
+  const authenticated = params.authenticated === '1'
   const dropped  = params.dropped === '1'
   const sort     = params.sort ?? 'newest'
   const offset   = params.offset ? parseInt(params.offset, 10) : 0
@@ -66,7 +69,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     .from('listings')
     .select(`
       id, title, brand, category, department, size,
-      condition_score, price_cents, saves_count, is_price_dropped,
+      condition_score, price_cents, saves_count, is_price_dropped, authentication_status,
       images, created_at,
       profiles:seller_id (username, id_verification_status)
     `)
@@ -84,6 +87,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   if (condMin !== null)  query = query.gte('condition_score', condMin)
   if (verified) query = query.eq('profiles.id_verification_status', 'verified')
   if (dropped)  query = query.eq('is_price_dropped', true)
+  if (authenticated) query = query.eq('authentication_status', 'authenticated')
 
   switch (sort) {
     case 'price_asc':  query = query.order('price_cents', { ascending: true }).order('id'); break
@@ -114,6 +118,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   if (maxPrice !== null) countQuery = countQuery.lte('price_cents', maxPrice)
   if (condMin !== null)  countQuery = countQuery.gte('condition_score', condMin)
   if (dropped) countQuery = countQuery.eq('is_price_dropped', true)
+  if (authenticated) countQuery = countQuery.eq('authentication_status', 'authenticated')
 
   // ── Run independent queries in parallel ───────────────────────────────────
   const [
@@ -133,7 +138,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   const listings = (rawListings ?? []) as Array<{
     id: string; title: string; brand: string; category: string; department: string
     size: string; condition_score: number; price_cents: number; saves_count: number
-    is_price_dropped: boolean; images: string[]; created_at: string
+    is_price_dropped: boolean; authentication_status: string; images: string[]; created_at: string
     profiles: { username: string; id_verification_status: string } | null
   }>
 
@@ -172,6 +177,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     price_cents: l.price_cents,
     saves_count: l.saves_count,
     is_price_dropped: l.is_price_dropped,
+    authentication_status: l.authentication_status,
     images: Array.isArray(l.images) ? l.images : [],
     created_at: l.created_at,
     seller: l.profiles,
@@ -201,6 +207,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
         hasMore={hasMore}
         currentOffset={offset}
         username={username}
+        authBadgeEnabled={AUTH_BADGE_ENABLED}
       />
     </Suspense>
   )

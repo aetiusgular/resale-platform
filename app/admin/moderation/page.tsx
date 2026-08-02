@@ -20,6 +20,9 @@ type UserRow = { id: string; username: string; banned: boolean; banned_reason: s
 type AuditRow = { id: string; actor_id: string | null; target_type: string; target_id: string; action: string; reason: string | null; created_at: string }
 type HoldFlag = { id: string; order_id: string; buyer_id: string; seller_id: string; reasons: string[]; created_at: string }
 type HoldOrder = { id: string; state: string; transfer_cents: number; transfer_hold_reason: string | null; stripe_transfer_id: string | null }
+type AuthRow = { id: string; title: string; brand: string; price_cents: number; seller_id: string; authentication_reasons: string[] }
+
+const AUTH_REASON_LABEL: Record<string, string> = { high_value: 'HIGH VALUE', flagged: 'FLAGGED' }
 
 const FLAG_LABEL: Record<string, string> = {
   duplicate: 'DUPLICATE', keyword_stuffing: 'KEYWORD STUFFING',
@@ -72,6 +75,20 @@ export default async function ModerationConsolePage() {
     ? await service.from('profiles').select('id, username').in('id', holdUserIds)
     : { data: [] as Array<{ id: string; username: string }> }
   const holdUserName = new Map((holdUserRows ?? []).map((pr) => [pr.id as string, pr.username as string]))
+
+  // 0b) Authentication review queue (G5) — high-value / flagged listings awaiting a decision.
+  const { data: authRows } = await service
+    .from('listings')
+    .select('id, title, brand, price_cents, seller_id, authentication_reasons')
+    .eq('authentication_status', 'pending')
+    .order('price_cents', { ascending: false })
+    .limit(100)
+  const authListings = (authRows ?? []) as AuthRow[]
+  const authSellerIds = [...new Set(authListings.map((a) => a.seller_id))]
+  const { data: authSellerRows } = authSellerIds.length
+    ? await service.from('profiles').select('id, username').in('id', authSellerIds)
+    : { data: [] as Array<{ id: string; username: string }> }
+  const authSellerName = new Map((authSellerRows ?? []).map((pr) => [pr.id as string, pr.username as string]))
 
   // 1) Flagged listings — group flags by listing
   const { data: flagsRaw } = await service
@@ -170,6 +187,37 @@ export default async function ModerationConsolePage() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </section>
+
+        {/* Authentication review (G5) */}
+        <section>
+          <h2 style={{ ...mono(14), fontWeight: 700, letterSpacing: '0.08em', margin: '0 0 20px' }}>AUTHENTICATION — {authListings.length}</h2>
+          {authListings.length === 0 ? (
+            <div style={mono(12, 'var(--color-ink-soft)')}>NO ITEMS AWAITING AUTHENTICATION</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {authListings.map((a) => (
+                <div key={a.id} style={{ border: '1px solid var(--color-line)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
+                    <Link href={`/listings/${a.id}`} style={{ ...mono(13), fontWeight: 700, textDecoration: 'none' }}>{a.title}</Link>
+                    <span style={mono(12, 'var(--color-ink-soft)')}>{a.brand}</span>
+                    <span style={mono(11, 'var(--color-ink-soft)')}>@{authSellerName.get(a.seller_id) ?? '?'}</span>
+                    <span style={{ ...mono(12), marginLeft: 'auto' }}>{formatCents(a.price_cents)}</span>
+                  </div>
+                  <div style={{ padding: '12px 20px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    {(a.authentication_reasons ?? []).map((r) => (
+                      <span key={r} style={{ ...mono(10, 'var(--color-bg)'), fontWeight: 700, padding: '2px 8px', borderRadius: '2px', background: 'var(--color-ink-soft)' }}>
+                        {AUTH_REASON_LABEL[r] ?? r.toUpperCase()}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-line)' }}>
+                    <ModerationActions targetType="listing" targetId={a.id} actions={['authenticate', 'reject_auth']} />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>

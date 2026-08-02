@@ -5,9 +5,10 @@ import { ANTISLOP } from '@/lib/antislop-config'
 import { hashAllSlots } from '@/lib/image-hash'
 import { hammingDistance } from '@/lib/phash'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { VERIFICATION_ENABLED } from '@/lib/flags'
+import { VERIFICATION_ENABLED, AUTH_BADGE_ENABLED } from '@/lib/flags'
 import { sellerMustVerify } from '@/lib/idv/risk-resolver'
 import { scanListing } from '@/lib/trust/prohibited-items'
+import { needsAuthenticationReview } from '@/lib/authbadge/screen'
 import { isBanned } from '@/lib/auth/ban'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 
@@ -332,6 +333,19 @@ export async function POST(request: NextRequest) {
       })
     if (lintFlagErr) {
       console.warn('[api/listings] lint flag insert warning:', lintFlagErr.message)
+    }
+  }
+
+  // ── Authentication pre-screen (G5) — high-value or flagged listings enter the
+  // authentication review queue. Behind AUTH_BADGE_ENABLED; the badge is set by an admin.
+  if (AUTH_BADGE_ENABLED) {
+    const { data: flagRows } = await service.from('listing_flags').select('type').eq('listing_id', listingId)
+    const flagTypes = ((flagRows ?? []) as Array<{ type: string }>).map((r) => r.type)
+    const screen = needsAuthenticationReview({ priceCents: price_cents, flagTypes })
+    if (screen.review) {
+      await service.from('listings')
+        .update({ authentication_status: 'pending', authentication_reasons: screen.reasons })
+        .eq('id', listingId)
     }
   }
 
