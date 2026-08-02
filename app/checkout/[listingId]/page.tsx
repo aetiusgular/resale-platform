@@ -8,7 +8,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { formatCents, orderAmountsAt } from '@/lib/fees'
-import { feeBpsForUser } from '@/lib/fee-tier'
+import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import CheckoutClient from './checkout-client'
 
@@ -68,8 +68,8 @@ export default async function CheckoutPage({ params }: PageProps) {
 
   const service = createServiceClientRaw()
   const [buyerBps, sellerBps] = await Promise.all([
-    feeBpsForUser(service, user.id, 'buyer'),
-    feeBpsForUser(service, listing.seller_id, 'seller'),
+    resolveEffectiveBps(service, user.id, 'buyer'),
+    resolveEffectiveBps(service, listing.seller_id, 'seller'),
   ])
   const amounts = orderAmountsAt(listing.price_cents, buyerBps, sellerBps)
   const image = (listing.images as string[])?.find(Boolean) ?? null

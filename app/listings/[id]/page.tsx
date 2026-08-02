@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { buyerFeeAt, buyerTotalAt, formatCents, BASE_FEE_BPS } from '@/lib/fees'
-import { feeBpsForUser } from '@/lib/fee-tier'
+import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
@@ -112,7 +112,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const frontImage = images[0] ?? null
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
 
-  const buyerBps = user ? await feeBpsForUser(createServiceClientRaw(), user.id, 'buyer') : BASE_FEE_BPS
+  const buyerBps = user ? await resolveEffectiveBps(createServiceClientRaw(), user.id, 'buyer') : BASE_FEE_BPS
   const fee     = buyerFeeAt(listing.price_cents, buyerBps)
   const total   = buyerTotalAt(listing.price_cents, buyerBps)
   const listedAgo = formatTimeAgo(listing.created_at)
