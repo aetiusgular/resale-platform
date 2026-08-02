@@ -6,6 +6,8 @@ import MobileTabBar from '@/app/components/mobile-tabbar'
 import SellForm from './sell-form'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { VERIFICATION_ENABLED } from '@/lib/flags'
+import { sellerMustVerify } from '@/lib/idv/risk-resolver'
 
 export const metadata = { title: 'List an item' }
 
@@ -14,6 +16,20 @@ export default async function SellPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/enter')
+
+  // Seller ID-verification gate (behind VERIFICATION_ENABLED): send a risk-flagged
+  // or high-volume unverified seller to verification instead of the listing form.
+  if (VERIFICATION_ENABLED) {
+    const svc = createServiceClientRaw()
+    const { data: vp } = await svc
+      .from('profiles')
+      .select('id_verification_status')
+      .eq('id', user.id)
+      .single()
+    const verified =
+      (vp as { id_verification_status?: string } | null)?.id_verification_status === 'verified'
+    if (!verified && (await sellerMustVerify(svc, user.id))) redirect('/onboarding/verify?required=sell')
+  }
 
   const { data: profile } = await supabase
     .from('profiles')

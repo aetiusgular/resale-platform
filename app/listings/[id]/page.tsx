@@ -4,11 +4,13 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { buyerFeeAt, buyerTotalAt, formatCents, BASE_FEE_BPS } from '@/lib/fees'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
+import { BUMP_ENABLED } from '@/lib/flags'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
 import SaveButton from './save-button'
 import MessageSellerButton from './message-seller-button'
+import BumpButton from './bump-button'
 import CommunitySection from './community-section'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
@@ -278,6 +280,13 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 </button>
               )}
             </div>
+
+            {/* Seller bump control — own active listing only (G7, behind BUMP_ENABLED) */}
+            {BUMP_ENABLED && isSeller && listing.status === 'active' && (
+              <div style={{ marginTop: '16px' }}>
+                <BumpButton listingId={id} />
+              </div>
+            )}
 
             {/* Seller block */}
             <div style={{ marginTop: '24px', borderTop: '1px solid var(--color-line)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>

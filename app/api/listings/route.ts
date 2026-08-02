@@ -5,6 +5,11 @@ import { ANTISLOP } from '@/lib/antislop-config'
 import { hashAllSlots } from '@/lib/image-hash'
 import { hammingDistance } from '@/lib/phash'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { VERIFICATION_ENABLED } from '@/lib/flags'
+import { sellerMustVerify } from '@/lib/idv/risk-resolver'
+import { scanListing } from '@/lib/trust/prohibited-items'
+import { isBanned } from '@/lib/auth/ban'
+import { createServiceClientRaw } from '@/lib/supabase/service'
 
 // Explicitly use Node.js runtime — sharp requires native bindings not on Edge
 export const runtime = 'nodejs'
@@ -17,6 +22,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // ── Ban guard (G6): suspended accounts cannot create listings ────────────
+  if (await isBanned(createServiceClientRaw(), user.id)) {
+    return NextResponse.json({ error: 'Your account is suspended.', code: 'banned' }, { status: 403 })
+  }
+
   // ── Rate limit: 30 listing uploads per user per hour ─────────────────────
   const rl = checkRateLimit(`listing_upload:${user.id}`, 30, 60 * 60 * 1000)
   if (!rl.allowed) {
@@ -24,6 +34,32 @@ export async function POST(request: NextRequest) {
       { error: 'Too many listing uploads. Please try again later.' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
     )
+  }
+
+  // ── Seller ID-verification gate (G4/G6 item 4) ────────────────────────
+  // Behind VERIFICATION_ENABLED. Holds listing creation when the seller is risk-
+  // flagged (bad ratings / upheld complaints) OR crosses the $5k trailing-sales
+  // INFORM-Act threshold, unless already verified. Fail-OPEN on a transient read
+  // error (matches the resolver's philosophy); the payout path is the harder stop.
+  if (VERIFICATION_ENABLED) {
+    try {
+      const svc = createServiceClientRaw()
+      const { data: vprofile } = await svc
+        .from('profiles')
+        .select('id_verification_status')
+        .eq('id', user.id)
+        .single()
+      const alreadyVerified =
+        (vprofile as { id_verification_status?: string } | null)?.id_verification_status === 'verified'
+      if (!alreadyVerified && (await sellerMustVerify(svc, user.id))) {
+        return NextResponse.json(
+          { error: 'ID verification is required before you can list. Please complete verification.', code: 'verification_required' },
+          { status: 403 },
+        )
+      }
+    } catch (e) {
+      console.warn('[api/listings] verification gate check failed (fail-open):', e)
+    }
   }
 
   const body = await request.json()
@@ -166,6 +202,39 @@ export async function POST(request: NextRequest) {
   }
 
   const listingId = data.id
+
+  // ── Prohibited-items scan (G6) — 'block' hides the listing, 'review' queues it ──
+  // Always on (trust enforcement, not a flag feature). The 'block' tier is narrow
+  // (explicit weapons/ammo) so a fashion listing is never auto-hidden on a graphic
+  // print; softer signals fall to 'review' for a human. Evidence lands in listing_flags.
+  const prohibited = scanListing({
+    title: titleClean,
+    description: descClean,
+    category: category.trim(),
+    brand: brand.trim(),
+  })
+  if (prohibited.length > 0) {
+    const blocked = prohibited.some((m) => m.tier === 'block')
+    const { error: pflagErr } = await service
+      .from('listing_flags')
+      .insert({
+        listing_id: listingId,
+        type: blocked ? 'prohibited_block' : 'prohibited_review',
+        evidence: { matches: prohibited },
+      })
+    if (pflagErr) console.warn('[api/listings] prohibited flag insert warning:', pflagErr.message)
+    if (blocked) {
+      // Hide it (seller-insert RLS forbids non-draft/pending status, so use the service client).
+      await service
+        .from('listings')
+        .update({ status: 'removed', rejection_reason: 'Prohibited items policy — this listing cannot be published.' })
+        .eq('id', listingId)
+      return NextResponse.json(
+        { error: 'This listing can\u2019t be published \u2014 it appears to contain prohibited items. Contact support if you believe this is a mistake.', code: 'prohibited_block' },
+        { status: 422 },
+      )
+    }
+  }
 
   // ── Store image hashes (service role — bypasses RLS) ──────────────────────
   const hashRows = Object.entries(slotHashes).map(([slot, hash]) => ({

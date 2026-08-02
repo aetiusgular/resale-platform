@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe, { appBaseUrl } from '@/lib/stripe'
+import { VERIFICATION_ENABLED } from '@/lib/flags'
+import { sellerMustVerify } from '@/lib/idv/risk-resolver'
 
 export async function GET(_request: NextRequest) {
   const supabase = await createClient()
@@ -21,9 +23,19 @@ export async function GET(_request: NextRequest) {
   // Fetch or create the Stripe Connect account ID for this seller
   const { data: profile } = await service
     .from('profiles')
-    .select('stripe_connect_account_id, username')
+    .select('stripe_connect_account_id, username, id_verification_status')
     .eq('id', user.id)
     .single()
+
+  // Payout gate (behind VERIFICATION_ENABLED): hold Connect onboarding for a risk-
+  // flagged or high-volume seller until ID verification is complete.
+  if (VERIFICATION_ENABLED) {
+    const verified =
+      (profile as { id_verification_status?: string } | null)?.id_verification_status === 'verified'
+    if (!verified && (await sellerMustVerify(service, user.id))) {
+      return NextResponse.redirect(new URL('/onboarding/verify?required=payout', appBaseUrl()))
+    }
+  }
 
   let connectAccountId = profile?.stripe_connect_account_id
 
