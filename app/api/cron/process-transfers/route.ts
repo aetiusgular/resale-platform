@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
+import { applyTierProgress } from '@/lib/tier-progress'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
   // Find released orders with no transfer yet
   const { data: orders } = await service
     .from('orders')
-    .select('id, seller_id, transfer_cents')
+    .select('id, buyer_id, seller_id, transfer_cents')
     .eq('state', 'released')
     .is('stripe_transfer_id', null)
     .limit(50)
@@ -69,6 +70,11 @@ export async function GET(request: NextRequest) {
         .update({ stripe_transfer_id: transfer.id })
         .eq('id', order.id)
       processed++
+      // v2 stateful tiers: auto-released sale upgrades both parties (idempotent).
+      await Promise.all([
+        applyTierProgress(service, order.buyer_id, 'buyer'),
+        applyTierProgress(service, order.seller_id, 'seller'),
+      ])
     } catch (err) {
       console.error(`[process-transfers] Transfer failed for order ${order.id}:`, err)
       failed++

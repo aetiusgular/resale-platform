@@ -17,7 +17,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { orderAmountsAt } from '@/lib/fees'
-import { feeBpsForUser } from '@/lib/fee-tier'
+import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
@@ -139,8 +139,8 @@ export async function POST(request: NextRequest) {
   // Tiered fees: each side rated on its own trailing-365d activity, resolved
   // server-side and snapshotted below (never trust the client, never recompute).
   const [buyerBps, sellerBps] = await Promise.all([
-    feeBpsForUser(service, user.id, 'buyer'),
-    feeBpsForUser(service, listing.seller_id, 'seller'),
+    resolveEffectiveBps(service, user.id, 'buyer'),
+    resolveEffectiveBps(service, listing.seller_id, 'seller'),
   ])
   const amounts = orderAmountsAt(priceCents, buyerBps, sellerBps, offerId ? 0 : undefined)
 

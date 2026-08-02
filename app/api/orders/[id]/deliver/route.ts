@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
+import { applyTierProgress } from '@/lib/tier-progress'
 
 export async function POST(
   _request: NextRequest,
@@ -71,6 +72,13 @@ export async function POST(
     console.error('[deliver] release error:', releaseError)
     return NextResponse.json({ error: releaseError.message }, { status: 422 })
   }
+
+  // v2 stateful tiers: a completed sale can upgrade both parties' tier + relock
+  // 30 days. Idempotent (upgrades only on strict improvement) and non-fatal.
+  await Promise.all([
+    applyTierProgress(service, order.buyer_id, 'buyer'),
+    applyTierProgress(service, order.seller_id, 'seller'),
+  ])
 
   // Re-fetch order after release to get current stripe_transfer_id
   // (a concurrent cron run could have issued the transfer between our two RPCs)
