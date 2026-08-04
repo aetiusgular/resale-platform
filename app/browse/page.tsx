@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
-import { AUTH_BADGE_ENABLED } from '@/lib/flags'
+import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED } from '@/lib/flags'
+import { getFeed } from '@/lib/recs/client'
+import { applyFeedOrder } from '@/lib/recs/rank'
 
 export const metadata: Metadata = {
   title: 'Browse — Resale Platform',
@@ -62,6 +64,18 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   const dropped  = params.dropped === '1'
   const sort     = params.sort ?? 'newest'
   const offset   = params.offset ? parseInt(params.offset, 10) : 0
+
+  // ── Personalized ordering (feed→browse): fail-soft, flag-gated ─────────────
+  // Only the UNFILTERED first page of pure discovery is reranked. Any search,
+  // filter, explicit price/condition, or deeper page keeps the deterministic
+  // default order. The feed fetch runs concurrently with the listing queries.
+  const isDiscoveryView =
+    !q && !dept && !cat && !size && !brand &&
+    minPrice === null && maxPrice === null && condMin === null &&
+    !verified && !authenticated && !dropped &&
+    (sort === 'newest' || sort === 'relevance')
+  const recsEligible = RECS_ENABLED && isDiscoveryView && offset === 0
+  const feedPromise = recsEligible ? getFeed({ userId: user.id }) : Promise.resolve(null)
 
   // ── Build listing query ────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -185,6 +199,12 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     price_display: formatCents(l.price_cents),
   }))
 
+  // Apply the personalized feed order (no-op when disabled/ineligible/unreachable).
+  const feed = await feedPromise
+  const orderedListings = feed
+    ? applyFeedOrder(browseListing, feed.items.map((i) => i.item_id))
+    : browseListing
+
   const filterCounts: FilterCounts = { departments: {}, categories: {} }
   for (const row of deptData ?? []) {
     filterCounts.departments[row.department] = (filterCounts.departments[row.department] ?? 0) + 1
@@ -199,7 +219,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   return (
     <Suspense>
       <BrowseClient
-        initialListings={browseListing}
+        initialListings={orderedListings}
         totalCount={totalCount ?? 0}
         filterCounts={filterCounts}
         initialSavedIds={Array.from(savedSet)}
@@ -208,6 +228,8 @@ export default async function BrowsePage({ searchParams }: PageProps) {
         currentOffset={offset}
         username={username}
         authBadgeEnabled={AUTH_BADGE_ENABLED}
+        userId={user.id}
+        recsTelemetryEnabled={RECS_TELEMETRY_ENABLED}
       />
     </Suspense>
   )

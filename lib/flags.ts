@@ -16,6 +16,11 @@ export const VERIFICATION_ENABLED =
 export const RECS_ENABLED =
   process.env.RECS_ENABLED === 'true'
 
+// Client-side telemetry gate (NEXT_PUBLIC — read in the browser). Keep in step with
+// RECS_ENABLED on the server: when off, the browser emits no recs telemetry at all.
+export const RECS_TELEMETRY_ENABLED =
+  process.env.NEXT_PUBLIC_RECS_ENABLED === 'true'
+
 // ── Pre-launch gap features (see docs/LAUNCH_ROADMAP.md) ─────────────────────
 export const BUMP_ENABLED =
   process.env.BUMP_ENABLED === 'true'

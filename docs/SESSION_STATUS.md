@@ -71,9 +71,15 @@ Test count over the session: **241 → 314**.
    ⏳ *Founder infra*: create Upstash Redis + Qdrant Cloud, set 4 Secret-Manager secrets,
    `./ops/cloudrun/deploy.sh all`, then set `RECS_INGEST_URL`/`RECS_FEED_URL` (the two
    `*.run.app` URLs) + matching token/HMAC in Vercel and flip `RECS_ENABLED=true`.
-   ⏳ *Resale-side wiring (the original "5 steps")*: browse still renders default order and
-   events aren't posted yet — only the HMAC proxy (`lib/recs/*`, `app/api/recs/events`) +
-   mapper exist. Wire feed→browse and event→ingest next (all behind `RECS_ENABLED`).
+   🟡 *Resale-side wiring (the "5 steps")*: ✅ **feed→browse** (`lib/recs/rank.ts`
+   `applyFeedOrder` reranks the unfiltered first page from `getFeed`, fail-soft) and
+   ✅ **event→ingest** telemetry (`lib/recs/telemetry.ts`: uuidv7 envelopes, batching,
+   sendBeacon, impression observer → `/api/recs/events`; wired into browse for impressions,
+   clicks, saves, search; gated by `NEXT_PUBLIC_RECS_ENABLED`) are built + unit-tested.
+   ⏳ Still to wire: **listing lifecycle → index** (`postListingChange` on create/update/
+   sold/delete — without it Qdrant has nothing to rank), **identity merge** on login
+   (`mergeIdentity` device→account), **cold-start seed** on onboarding (`seedUser`), and
+   deeper **feed-native pagination** (current rerank only reorders the fetched page).
    ⚠️ *Quality gate*: engine runs on a **stub encoder** — validates infra end-to-end but recs
    aren't semantic until fashion-CLIP is exported to ONNX and mounted (runbook "Going live").
    Interim cost ≈ $15–40/mo (always-on worker pool + warm feed).

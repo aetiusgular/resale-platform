@@ -50,10 +50,14 @@ type ListingCardProps = {
   timeLabel?: string
   /** If true, the listing is sold/removed — show veil + dimmed text */
   unavailable?: boolean
+  /** recs telemetry: grid position (0-based) for impression/click events */
+  position?: number
+  /** recs telemetry: called on product click, alongside PostHog product_clicked */
+  onProductClick?: (id: string) => void
 }
 
 export default function ListingCard({
-  listing, isSaved, onSaveToggle, timeLabel, unavailable,
+  listing, isSaved, onSaveToggle, timeLabel, unavailable, position, onProductClick,
 }: ListingCardProps) {
   const frontImage = listing.images[0] ?? null
   const isVerified = listing.seller?.id_verification_status === 'verified'
@@ -129,6 +133,8 @@ export default function ListingCard({
       display: 'flex', flexDirection: 'column', cursor: unavailable ? 'default' : 'pointer',
       outline: '1px solid transparent', outlineOffset: '8px', transition: 'outline-color 120ms linear',
     }}
+      data-recs-item-id={listing.id}
+      data-recs-pos={position ?? 0}
       onMouseEnter={e => { if (!unavailable) e.currentTarget.style.outlineColor = 'var(--color-line)' }}
       onMouseLeave={e => (e.currentTarget.style.outlineColor = 'transparent')}
     >
@@ -138,7 +144,7 @@ export default function ListingCard({
         </div>
       ) : (
         <Link href={`/listings/${listing.id}`} style={{ textDecoration: 'none' }}
-          onClick={() => trackEvent('product_clicked', { listing_id: listing.id })}
+          onClick={() => { trackEvent('product_clicked', { listing_id: listing.id }); onProductClick?.(listing.id) }}
         >
           {cardContent}
         </Link>

@@ -5,6 +5,10 @@ import { useState, useTransition, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
+import {
+  recsInit, recsShutdown, observeImpressions,
+  trackClick, trackSave, trackUnsave, trackSearch,
+} from '@/lib/recs/telemetry'
 import AvatarMenu from '@/app/components/avatar-menu'
 import ListingCard from '@/app/components/listing-card'
 import MobileTabBar from '@/app/components/mobile-tabbar'
@@ -19,6 +23,8 @@ type Props = {
   currentOffset: number
   username: string
   authBadgeEnabled: boolean
+  userId: string
+  recsTelemetryEnabled: boolean
 }
 
 const DEPARTMENTS = ['menswear', 'womenswear', 'unisex']
@@ -346,6 +352,8 @@ export default function BrowseClient({
   currentOffset,
   username,
   authBadgeEnabled,
+  userId,
+  recsTelemetryEnabled,
 }: Props) {
   const searchParams = useSearchParams()
   const router       = useRouter()
@@ -364,6 +372,22 @@ export default function BrowseClient({
 
   const allListings = [...initialListings, ...extraListings]
   const nextOffset  = currentOffset + initialListings.length
+
+  // ── recs telemetry: init once; observe impressions as the grid grows ────────
+  useEffect(() => {
+    if (!recsTelemetryEnabled) return
+    recsInit(userId)
+    return () => recsShutdown()
+  }, [recsTelemetryEnabled, userId])
+
+  const shownCount = allListings.length
+  useEffect(() => {
+    if (!recsTelemetryEnabled || shownCount === 0) return
+    // Re-scan on growth so appended cards are observed (fires start for cards
+    // currently ≥50% visible; the engine dedupes downstream).
+    const disconnect = observeImpressions(document)
+    return disconnect
+  }, [recsTelemetryEnabled, shownCount])
 
   const q       = searchParams.get('q') ?? ''
   const dept    = searchParams.get('dept') ?? ''
@@ -451,6 +475,9 @@ export default function BrowseClient({
       })
     } else if (!currentlySaved) {
       trackEvent('listing_saved', { listing_id: listingId })
+      trackSave(listingId)
+    } else {
+      trackUnsave(listingId)
     }
   }
 
@@ -553,6 +580,12 @@ export default function BrowseClient({
               const fd = new FormData(e.currentTarget)
               const qv = (fd.get('q') as string).trim()
               trackEvent('search_performed', { query: qv })
+              const recsFilters: Record<string, string> = {}
+              if (dept) recsFilters.dept = dept
+              if (cat) recsFilters.cat = cat
+              if (size) recsFilters.size = size
+              if (brand) recsFilters.brand = brand
+              trackSearch(qv, recsFilters)
               updateFilter('q', qv || null)
             }}
             style={{ width: '100%', maxWidth: '480px' }}
@@ -714,12 +747,14 @@ export default function BrowseClient({
             ) : (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '40px 24px' }} data-testid="listings-grid">
-                  {allListings.map(l => (
+                  {allListings.map((l, i) => (
                     <ListingCard
                       key={l.id}
                       listing={l}
                       isSaved={isSaved(l.id)}
                       onSaveToggle={handleSaveToggle}
+                      position={i}
+                      onProductClick={(id) => trackClick(id, 'feed')}
                     />
                   ))}
                 </div>
@@ -767,8 +802,8 @@ export default function BrowseClient({
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '32px 16px' }}>
-            {allListings.map(l => (
-              <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} />
+            {allListings.map((l, i) => (
+              <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} position={i} onProductClick={(id) => trackClick(id, 'feed')} />
             ))}
           </div>
         )}
