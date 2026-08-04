@@ -59,8 +59,25 @@ Test count over the session: **241 → 314**.
 
 ## What remains (all external-infra or founder work — none cloud-verifiable here)
 
-1. **Recs G1** — wire the 5 steps against the local `agora/recs-engine` (docker). Dedicated
-   on-computer session. `RECS_ENABLED` off; only the HMAC proxy + mapper exist.
+1. **Recs G1 — Cloud Run hosting (deploy layer BUILT) + resale wiring (TODO).**
+   The engine is a distributed system (2 HTTP services + 4 Redis-Streams workers + Redis +
+   Qdrant), so it needs real managed infra — a laptop `docker run` on the browse hot path
+   (1.5 s fail-soft timeout) would fall over. **Decision: Google Cloud Run** (App Runner is
+   retiring 30 Apr 2026; Azure Container Apps is the equivalent-not-chosen).
+   ✅ *Built this session* in `recs-engine/ops/cloudrun/`: a role-dispatch `entrypoint.sh`
+   (one image → api | feed | worker-all | provision, binds `$PORT`, compose still works),
+   Cloud-Run `Dockerfile`, `deploy.sh` (api/feed **services**, `worker-all` **worker pool**,
+   provision **job**, GCS-FUSE archive volume), `env.example`, and a full `README.md` runbook.
+   ⏳ *Founder infra*: create Upstash Redis + Qdrant Cloud, set 4 Secret-Manager secrets,
+   `./ops/cloudrun/deploy.sh all`, then set `RECS_INGEST_URL`/`RECS_FEED_URL` (the two
+   `*.run.app` URLs) + matching token/HMAC in Vercel and flip `RECS_ENABLED=true`.
+   ⏳ *Resale-side wiring (the original "5 steps")*: browse still renders default order and
+   events aren't posted yet — only the HMAC proxy (`lib/recs/*`, `app/api/recs/events`) +
+   mapper exist. Wire feed→browse and event→ingest next (all behind `RECS_ENABLED`).
+   ⚠️ *Quality gate*: engine runs on a **stub encoder** — validates infra end-to-end but recs
+   aren't semantic until fashion-CLIP is exported to ONNX and mounted (runbook "Going live").
+   Interim cost ≈ $15–40/mo (always-on worker pool + warm feed).
+
 2. **G3 carrier delivery webhook** — shipped→delivered from a carrier (EasyPost/Shippo) to
    feed 3-day auto-release. Tracking capture is done; the webhook is not.
 3. **L1b device fingerprinting** — deferred; needs a platform decision (native app vs. a
