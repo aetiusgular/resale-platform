@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/browser'
+import GoogleButton from '@/app/enter/google-button'
+import { GOOGLE_AUTH_ENABLED } from '@/lib/flags'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,6 +13,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('error') === 'oauth') {
+      setError('Google sign-in failed — please try again.')
+    }
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -60,6 +68,17 @@ export default function LoginPage() {
             opacity: loading || !email || !password ? 0.6 : 1 }}>
           {loading ? 'Logging in…' : 'Log in'}
         </button>
+
+        {GOOGLE_AUTH_ENABLED && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-ink-soft)', fontSize: '12px' }}>
+              <span style={{ flex: 1, height: '1px', background: 'var(--color-line)' }} />
+              OR
+              <span style={{ flex: 1, height: '1px', background: 'var(--color-line)' }} />
+            </div>
+            <GoogleButton next="/browse" />
+          </>
+        )}
 
         <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-ink-soft)' }}>
           new here?{' '}

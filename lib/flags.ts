@@ -38,6 +38,11 @@ export const COLLUSION_HOLD_ENABLED =
 export const PHONE_VERIFICATION_ENABLED =
   process.env.PHONE_VERIFICATION_ENABLED === 'true'
 
+// ── Google OAuth sign-in/up (NEXT_PUBLIC — read in client auth pages). Off until the
+// Google provider is configured in Supabase (see docs/GOOGLE_OAUTH_SETUP.md). ──
+export const GOOGLE_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true'
+
 // ── Fee model v2 §1f: tier dashboards (display only) ──
 export const TIER_DASHBOARD_ENABLED =
   process.env.TIER_DASHBOARD_ENABLED === 'true'
