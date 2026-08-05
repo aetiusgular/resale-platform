@@ -7,11 +7,12 @@
  * edge added in migration 0024; a 'released' order is rejected (that is a clawback, a
  * separate flow). Writes one moderation_actions audit row. code-reviewer: money path.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { checkModeratorRefund } from '@/lib/trust/release-hold'
+import { recsMarkRemoved } from '@/lib/recs/sync'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
 
   // Void the listing (mirrors the dispute-resolution refund path).
   await service.from('listings').update({ status: 'removed', rejection_reason: reason }).eq('id', order.listing_id)
+
+  // Recs G1: drop the voided listing from the index (non-blocking, fail-soft).
+  after(() => recsMarkRemoved(order.listing_id))
 
   let refundPending = false
   if (existingRefunds.data.length === 0) {

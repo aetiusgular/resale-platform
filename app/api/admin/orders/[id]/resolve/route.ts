@@ -9,11 +9,12 @@
  *            then transition DB → refunded, then issue Stripe refund.
  *            The charge.refunded webhook also calls transition_order (idempotent).
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { isUuid } from '@/lib/security/uuid'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
+import { recsMarkRemoved } from '@/lib/recs/sync'
 
 export async function POST(
   request: NextRequest,
@@ -92,6 +93,9 @@ export async function POST(
 
     // Mark listing removed
     await service.from('listings').update({ status: 'removed' }).eq('id', order.listing_id)
+
+    // Recs G1: drop the refunded listing from the index (non-blocking, fail-soft).
+    after(() => recsMarkRemoved(order.listing_id))
 
     // Issue Stripe refund only if none exists yet
     if (existingRefunds.data.length === 0) {

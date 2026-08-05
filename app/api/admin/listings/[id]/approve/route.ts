@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { SAVED_SEARCH_ALERTS_ENABLED } from '@/lib/flags'
 import { dispatchSavedSearchAlerts } from '@/lib/search/dispatch'
+import { recsIndexListing } from '@/lib/recs/sync'
 
 export async function POST(
   _request: NextRequest,
@@ -74,6 +75,11 @@ export async function POST(
       await dispatchSavedSearchAlerts(createServiceClientRaw(), id, process.env.NEXT_PUBLIC_APP_URL)
     })
   }
+
+  // Recs G1: index the now-active listing into recs-engine (non-blocking, fail-soft).
+  after(async () => {
+    await recsIndexListing(createServiceClientRaw(), id, 'created')
+  })
 
   return NextResponse.json({ ok: true })
 }

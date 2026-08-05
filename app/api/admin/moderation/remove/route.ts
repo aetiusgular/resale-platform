@@ -7,9 +7,10 @@
  * money/auth verbs ('refund' on an order, 'ban'/'unban' on a user) are separate handlers
  * that must run the existing money path / an auth mechanism and pass code-reviewer.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { recsMarkRemoved } from '@/lib/recs/sync'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -40,6 +41,9 @@ export async function POST(req: NextRequest) {
     console.error('[moderation/remove] update error:', upErr)
     return NextResponse.json({ error: 'Failed to remove listing' }, { status: 500 })
   }
+
+  // Recs G1: remove the listing from the recs index (non-blocking, fail-soft).
+  after(() => recsMarkRemoved(targetId))
 
   // Audit AFTER the effect. If this fails the removal stands; surface it so a moderator retries.
   const { data: actionId, error: logErr } = await supabase.rpc('record_moderation_action', {

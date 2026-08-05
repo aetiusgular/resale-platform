@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import type Stripe from 'stripe'
 import stripe, { constructWebhookEvent } from '@/lib/stripe'
+import { recsMarkSold, recsMarkRemoved } from '@/lib/recs/sync'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
@@ -167,6 +168,9 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     service.from('checkout_sessions').delete().eq('stripe_payment_intent_id', pi.id),
   ])
 
+  // Recs G1: drop the sold listing from ranking (non-blocking, fail-soft).
+  after(() => recsMarkSold(session.listing_id))
+
   // Collusion (Branch 4): accumulate the buyer's card fingerprint + billing for the pre-payout check.
   if (COLLUSION_HOLD_ENABLED) {
     after(async () => {
@@ -274,4 +278,7 @@ async function handleChargeRefunded(event: Stripe.Event, service: ServiceClient)
     .from('listings')
     .update({ status: 'removed' })
     .eq('id', order.listing_id)
+
+  // Recs G1: drop the refunded listing from the index (non-blocking, fail-soft).
+  after(() => recsMarkRemoved(order.listing_id))
 }
