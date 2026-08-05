@@ -190,6 +190,40 @@ function ids(): TelemetryIds {
   return { deviceId: deviceId(), sessionId: sessionId(), userId: currentUserId }
 }
 
+/** Read the stored device id WITHOUT creating one — merge only folds an EXISTING anon device. */
+export function currentDeviceId(): string | null {
+  if (memDeviceId) return memDeviceId
+  const ls = typeof localStorage !== 'undefined' ? localStorage : null
+  return readStored(ls, DEVICE_KEY)
+}
+
+/**
+ * Fold this device's anonymous taste profile into the now-authenticated account.
+ * Fire-and-forget + fail-soft; runs at most once per (device, account) pair. No-op
+ * when telemetry is disabled or the device has no stored id yet (nothing to merge).
+ * The server route derives the account key from the session and holds the feed token.
+ */
+export function mergeRecsIdentity(userId: string): void {
+  if (!active() || !userId) return
+  const device = currentDeviceId()
+  if (!device) return
+  const ls = typeof localStorage !== 'undefined' ? localStorage : null
+  const marker = `recs_merged:${userId}`
+  if (readStored(ls, marker)) return
+  writeStored(ls, marker, '1')
+  try {
+    void fetch('/api/recs/identity/merge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: device }),
+      keepalive: true,
+      cache: 'no-store',
+    }).catch(() => {})
+  } catch {
+    /* fail-soft: identity merge never surfaces to the UI */
+  }
+}
+
 // Transport: normal flush uses fetch(keepalive); unload uses sendBeacon.
 function send(events: TelemetryEvent[], beacon = false): void {
   if (events.length === 0) return

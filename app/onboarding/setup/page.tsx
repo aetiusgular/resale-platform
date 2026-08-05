@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
 
@@ -20,6 +20,9 @@ export default function SetupPage() {
   const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Cold-start taste picker (recs). Empty until/unless the engine returns options.
+  const [aesthetics, setAesthetics] = useState<{ key: string; display_name: string }[]>([])
+  const [selectedAesthetics, setSelectedAesthetics] = useState<string[]>([])
 
   function toggleSize(cat: SizeCategory, size: string) {
     setSelectedSizes((prev) => {
@@ -29,6 +32,27 @@ export default function SetupPage() {
         : [...current, size]
       return { ...prev, [cat]: next }
     })
+  }
+
+  // Fetch the engine's aesthetic options once. Fail-soft: on off/unreachable the
+  // proxy returns { aesthetics: [] } and the card below renders nothing.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/recs/aesthetics', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { aesthetics: [] }))
+      .then((d: { aesthetics?: { key: string; display_name: string }[] }) => {
+        if (!cancelled && Array.isArray(d.aesthetics)) setAesthetics(d.aesthetics.slice(0, 16))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  function toggleAesthetic(key: string) {
+    setSelectedAesthetics((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    )
   }
 
   async function handleContinue() {
@@ -56,6 +80,15 @@ export default function SetupPage() {
     }
 
     setLoading(false)
+    // Cold-start: seed the picked aesthetics (fire-and-forget, fail-soft — never blocks onboarding).
+    if (selectedAesthetics.length > 0) {
+      void fetch('/api/recs/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aesthetics: selectedAesthetics }),
+        keepalive: true,
+      }).catch(() => {})
+    }
     // Generate codes server-side then navigate
     await generateCodes()
     router.push('/onboarding/codes')
@@ -176,6 +209,64 @@ export default function SetupPage() {
             />
           </div>
         </div>
+
+        {/* MY AESTHETIC (recs cold-start) — only shown when the engine returns options */}
+        {aesthetics.length > 0 && (
+          <div style={{ marginTop: '16px', border: '1px solid var(--color-line)', borderRadius: '2px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--color-line)',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink)' }}>
+                3 · MY AESTHETIC
+              </span>
+            </div>
+            <div style={{ padding: '14px 16px' }}>
+              <div
+                style={{
+                  font: '500 10px var(--font-ui)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-ink-soft)',
+                  marginBottom: '8px',
+                }}
+              >
+                Pick a few to tune your feed
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {aesthetics.map((a) => {
+                  const active = selectedAesthetics.includes(a.key)
+                  return (
+                    <button
+                      key={a.key}
+                      onClick={() => toggleAesthetic(a.key)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        height: '26px',
+                        padding: '0 9px',
+                        border: `1px solid ${active ? 'var(--color-ink)' : 'var(--color-line)'}`,
+                        borderRadius: '2px',
+                        background: active ? 'var(--color-ink)' : 'var(--color-bg)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '11px',
+                        color: active ? 'var(--color-bg)' : 'var(--color-ink)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {a.display_name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--color-alert)' }}>

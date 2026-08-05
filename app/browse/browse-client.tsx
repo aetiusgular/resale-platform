@@ -6,7 +6,7 @@ import Link from 'next/link'
 import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
 import {
-  recsInit, recsShutdown, observeImpressions,
+  recsInit, recsShutdown, observeImpressions, mergeRecsIdentity,
   trackClick, trackSave, trackUnsave, trackSearch,
 } from '@/lib/recs/telemetry'
 import AvatarMenu from '@/app/components/avatar-menu'
@@ -377,6 +377,8 @@ export default function BrowseClient({
   useEffect(() => {
     if (!recsTelemetryEnabled) return
     recsInit(userId)
+    // Identity merge: fold the anon device's taste into this account (once, fail-soft).
+    mergeRecsIdentity(userId)
     return () => recsShutdown()
   }, [recsTelemetryEnabled, userId])
 
