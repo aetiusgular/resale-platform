@@ -1,5 +1,11 @@
 # Session status — build backlog complete (2026-08-02)
 
+> **Update 2026-08-12 — G10 (moderator-gated Legit Check) built on `feat/moderator-lc`.**
+> General comments removed entirely; Legit Check is now moderators-only with 3-recommendation
+> auto-promotion + an auto-auth bot seam. Migration `0036`. Pending native verify + gates —
+> see docs/HANDOFF.md §G10. This supersedes the general-comments/seller-toggle behavior
+> described in the B7 community layer.
+
 **Branch:** `feat/recs-integration` · **Suite:** `pnpm verify` green — 0 tsc errors,
 **328 unit tests**, 6 pre-existing eslint warnings (non-blocking; see bottom).
 

@@ -1,8 +1,33 @@
 # HANDOFF.md
-## Current state: FEE MODEL F1+F2+F3-core built on `feat/tiered-fees`; F3 display half remaining · tracker → docs/LAUNCH_ROADMAP.md
+## Current state: G10 (moderator-gated Legit Check) BUILT on `feat/moderator-lc` — pending native verify + gates. Fee/gap history → docs/SESSION_STATUS.md · tracker → docs/LAUNCH_ROADMAP.md
 
-**Last updated:** 2026-07-26
-**Next prompt:** F3 display half — refactor the ~20 fee-display sites (`docs/prompts/F3_fee_wiring.md`, start at Step 4)
+**Last updated:** 2026-08-12
+**Next prompt:** run the G10 verify + gate battery on-computer (see "## G10" below); fix to green, then merge.
+
+---
+
+## G10 — Moderator-gated Legit Check + community moderator roles (2026-08-12)
+
+**Branch `feat/moderator-lc`. Code written in a cloud session; NOT yet verified —**
+**`pnpm verify`/`build` + db-guard/code-reviewer/ui-verifier must run natively on the Mac.**
+
+What changed:
+- General comments FULLY removed (thread path, seller toggle route+UI, `listings.comments_enabled`).
+- Legit Check is moderators-only: new `profiles.is_moderator`; `post_comment()` gate → moderator/admin.
+- Auto-promotion: `moderator_recommendations` + `recommend_moderator()` (3 distinct still-valid mods → promote).
+  Admin appoint/revoke route; "Recommend as moderator (x/3)" button + MODERATOR badge on /sellers/[username].
+- Auto-auth bot hook: `comments.source`/nullable author + `post_auto_lc()` (service_role only; bot NOT built).
+- Migration `0036_moderator_lc.sql` (bootstraps verified_checker → is_moderator). `moderator_granted` notify (alerts).
+
+**Exact next step — ORDER MATTERS:**
+1. `db-guard` on `supabase/migrations/20240101000036_moderator_lc.sql`, then `supabase db push`.
+2. Regen types (`unset SUPABASE_ACCESS_TOKEN && npx supabase login`; `supabase gen types ...`; `wc -l lib/supabase/types.ts`).
+   tsc WILL fail until types include is_moderator/source/recommend_moderator — regen BEFORE verify.
+3. `git add -A` (stages the removed comments-toggle route; then remove the empty `comments-toggle/` dir + `_to_delete/`).
+4. `pnpm verify` + `pnpm build` → green.
+5. `code-reviewer` on: `post_comment` gate, `recommend_moderator`, `post_auto_lc`, `/api/moderators/recommend`, `/api/admin/profiles/[id]/moderator`.
+6. `ui-verifier` on the listing LC section + the profile MODERATOR badge/button.
+7. Merge. Full spec: `docs/G10_moderator_lc.md`.
 
 ---
 

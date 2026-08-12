@@ -22,6 +22,7 @@ const CATEGORY_OF: Record<NotifyEvent, NotifyCategory> = {
   buyer_reward: 'alerts',
   elite_program: 'alerts',
   admin_elite_lead: 'alerts',
+  moderator_granted: 'alerts',
 }
 
 export function categoryOf(event: NotifyEvent): NotifyCategory {

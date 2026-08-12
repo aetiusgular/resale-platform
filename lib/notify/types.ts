@@ -14,6 +14,7 @@ export type NotifyEvent =
   | 'buyer_reward'
   | 'elite_program'
   | 'admin_elite_lead'
+  | 'moderator_granted'
 
 export type NotifyContext = {
   actorName?: string       // username that triggered it (buyer/seller/sender)

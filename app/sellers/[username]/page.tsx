@@ -12,6 +12,7 @@ import { formatCents } from '@/lib/fees'
 import { aggregateRating } from '@/lib/reviews/rating'
 import { FOLLOWS_ENABLED, REVIEWS_ENABLED } from '@/lib/flags'
 import FollowButton from './follow-button'
+import RecommendModeratorButton from './recommend-moderator-button'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 
@@ -47,8 +48,8 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   // Fetch current user's profile + target seller in parallel
   const service = createServiceClientRaw()
   const [{ data: currentProfile }, { data: seller }] = await Promise.all([
-    supabase.from('profiles').select('username').eq('id', user.id).single(),
-    service.from('profiles').select('id, username, role, id_verification_status, tier, verified_checker, checker_category, created_at').eq('username', username).single(),
+    supabase.from('profiles').select('username, role, is_moderator').eq('id', user.id).single(),
+    service.from('profiles').select('id, username, role, id_verification_status, tier, verified_checker, checker_category, is_moderator, created_at').eq('username', username).single(),
   ])
   const currentUsername: string = (currentProfile?.username as string) ?? ''
 
@@ -72,6 +73,8 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const isVerified = seller.id_verification_status === 'verified'
   const isChecker = seller.verified_checker === true
   const checkerCategory = seller.checker_category as string | null
+  const sellerIsModerator = seller.is_moderator === true
+  const viewerIsModerator = currentProfile?.role === 'admin' || currentProfile?.is_moderator === true
 
   // ── G9: reviews (aggregate + list) and follow state, behind flags ─────────
   const reviewsRaw = REVIEWS_ENABLED
@@ -99,6 +102,29 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
       .eq('following_id', seller.id)
       .maybeSingle()
     isFollowing = !!myFollow
+  }
+
+  // ── G10: moderator recommendation status (only when the viewer can recommend) ──
+  const canRecommendModerator =
+    seller.id !== user.id && viewerIsModerator && !sellerIsModerator && isVerified
+  let modRecCount = 0
+  let viewerRecommended = false
+  if (canRecommendModerator) {
+    const { data: recs } = await service
+      .from('moderator_recommendations')
+      .select('recommender_id')
+      .eq('nominee_id', seller.id)
+    const recommenderIds = (recs ?? []).map((r) => r.recommender_id as string)
+    viewerRecommended = recommenderIds.includes(user.id)
+    if (recommenderIds.length) {
+      const { data: validMods } = await service
+        .from('profiles')
+        .select('id')
+        .in('id', recommenderIds)
+        .eq('is_moderator', true)
+        .eq('banned', false)
+      modRecCount = (validMods ?? []).length
+    }
   }
 
   const activeTab = tab === 'reviews' ? 'reviews' : 'listings'
@@ -141,6 +167,11 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               {isVerified && (
                 <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
                   VERIFIED ID
+                </span>
+              )}
+              {sellerIsModerator && (
+                <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
+                  MODERATOR
                 </span>
               )}
               {isChecker && checkerCategory && (
@@ -187,6 +218,14 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               </Link>
               {FOLLOWS_ENABLED && (
                 <FollowButton sellerId={seller.id as string} initialFollowing={isFollowing} />
+              )}
+              {canRecommendModerator && (
+                <RecommendModeratorButton
+                  nomineeId={seller.id as string}
+                  initialCount={modRecCount}
+                  initialRecommended={viewerRecommended}
+                  threshold={3}
+                />
               )}
             </div>
           )}

@@ -1,8 +1,8 @@
 /**
  * Seed script: creates a system profile, founder invite codes,
  * marks 24 founder accounts id-verified with 3 invite codes each,
- * seeds 2 verified checkers (per B7 design), and creates a demo
- * legit-check thread on the first active listing.
+ * seeds 2 moderators (the ex-"verified checkers"; G10 gates Legit Check to
+ * moderators), and creates a demo legit-check thread on the first active listing.
  *
  * Idempotent — safe to run multiple times (upserts everywhere).
  *
@@ -38,10 +38,11 @@ const FOUNDER_ACCOUNTS: Array<{
   username: string
   verified_checker?: boolean
   checker_category?: string
+  moderator?: boolean
 }> = [
-  // Verified checkers (designated in B7)
-  { username: 'formcheck',              verified_checker: true, checker_category: 'outerwear' },
-  { username: 'archivehound',           verified_checker: true, checker_category: 'denim' },
+  // Moderators (the ex-"verified checkers"; only moderators can post Legit Checks — G10)
+  { username: 'formcheck',              verified_checker: true, checker_category: 'outerwear', moderator: true },
+  { username: 'archivehound',           verified_checker: true, checker_category: 'denim',     moderator: true },
   // Alpha seed list (docs/USER_FEEDBACK.md §6)
   { username: 'tumuhclothes' },
   { username: 'buyselldm' },
@@ -182,6 +183,8 @@ async function main() {
       verified_checker: founder.verified_checker ?? false,
       checker_category: founder.checker_category ?? null,
       tier: founder.verified_checker ? 'gold' : 'bronze',
+      is_moderator: founder.moderator ?? false,
+      moderator_since: founder.moderator ? new Date().toISOString() : null,
     }, { onConflict: 'id' })
 
     if (upsertErr) {
@@ -245,18 +248,19 @@ async function main() {
     else console.log(`[seed] pinned verdict: ${verdict.id}`)
   }
 
-  const tabiId = fixtureIds['tabiwalker']
-  if (tabiId) {
+  // Second moderator (archivehound) weighs in — LC is moderators-only (G10).
+  const archiveId = fixtureIds['archivehound']
+  if (archiveId) {
     for (const body of [
       'seams and bar tacks match my 2004 run. zipper pull font is right.',
       'asked for a macro of the care tag — seller delivered, checks out.',
     ]) {
       const { error: lcErr } = await supabase.from('comments').insert({
-        listing_id: activeListing.id, author_id: tabiId, thread_type: 'lc',
+        listing_id: activeListing.id, author_id: archiveId, thread_type: 'lc',
         body, pinned: false, status: 'visible', redacted: false,
       })
       if (lcErr) console.warn(`[seed] LC comment: ${lcErr.message}`)
-      else console.log('[seed] inserted LC comment by tabiwalker')
+      else console.log('[seed] inserted LC comment by archivehound')
     }
   }
 

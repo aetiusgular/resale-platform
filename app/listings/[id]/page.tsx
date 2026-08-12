@@ -67,7 +67,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
         price_cents, saves_count, is_price_dropped,
         images, possession_photo_url,
         status, rejection_reason, created_at,
-        seller_id, comments_enabled, authentication_status,
+        seller_id, authentication_status,
         profiles:seller_id (username, role, id_verification_status)
       `)
       .eq('id', id)
@@ -79,14 +79,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
   // Profile, save check, and price history — run in parallel after we have user + listing
   let isAdmin = false
   const isSeller = user?.id === listing.seller_id
-  let userProfile: { role?: string; id_verification_status?: string; verified_checker?: boolean; tier?: string } | null = null
+  let userProfile: { role?: string; id_verification_status?: string; verified_checker?: boolean; tier?: string; is_moderator?: boolean } | null = null
   let currentUsername = ''
   let isSaved = false
   let originalPriceCents: number | null = null
 
   if (user) {
     const [profileResult, saveResult, priceResult] = await Promise.all([
-      supabase.from('profiles').select('role, id_verification_status, verified_checker, tier, username').eq('id', user.id).single(),
+      supabase.from('profiles').select('role, id_verification_status, verified_checker, tier, is_moderator, username').eq('id', user.id).single(),
       supabase.from('saves').select('id').eq('user_id', user.id).eq('listing_id', id).maybeSingle(),
       listing.is_price_dropped
         ? supabase.from('price_history').select('old_price_cents').eq('listing_id', id).order('changed_at', { ascending: true }).limit(1).maybeSingle()
@@ -327,17 +327,10 @@ export default async function ListingDetailPage({ params }: PageProps) {
         {listing.status === 'active' && (
           <CommunitySection
             listingId={id}
-            commentsEnabled={listing.comments_enabled ?? true}
-            canComment={
-              userProfile?.id_verification_status === 'verified' ||
-              userProfile?.role === 'admin'
-            }
             canPostLc={
-              userProfile?.verified_checker === true ||
-              userProfile?.tier === 'gold' ||
+              userProfile?.is_moderator === true ||
               userProfile?.role === 'admin'
             }
-            isSeller={isSeller}
           />
         )}
       </div>

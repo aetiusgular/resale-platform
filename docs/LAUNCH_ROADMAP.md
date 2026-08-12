@@ -37,6 +37,7 @@ a blind megachange. Ordered by launch priority. Founder-only items at the bottom
 | G7 | Bump / refresh listings | `BUMP_ENABLED` | db-guard, code-reviewer | pending |
 | G8 | Saved-search alerts | `SAVED_SEARCH_ALERTS_ENABLED` | db-guard, code-reviewer | PARTIAL — storage/save built; needs G2 |
 | G9 | Follows + seller reviews/ratings | `FOLLOWS_ENABLED`, `REVIEWS_ENABLED` | db-guard, code-reviewer | pending |
+| G10 | Moderator-gated Legit Check + moderator roles | — | db-guard, code-reviewer, ui-verifier | BUILT (feat/moderator-lc) — pending native verify+gates |
 
 ---
 
@@ -282,6 +283,30 @@ referenced in the recs payload — confirm/複用.)
 > the two parties — enforce in policy; db-guard), profile follow button + feed of
 > followed sellers' listings, post-release review prompt, aggregate rating on
 > profile/cards. `pnpm verify` green; code-reviewer on the review-eligibility gate.
+
+---
+
+## G10 — Moderator-gated Legit Check + community moderator roles  (2026-08-12)
+
+**Replaces** the general-comments feature. General comments are removed entirely; the
+Legit Check thread becomes **moderators-only**, with moderators earned by peer
+recommendation. No runtime flag (deliberate replacement; DB migration is the switch —
+the branch + gates are the safety). Full spec: `docs/G10_moderator_lc.md`.
+
+**Scope.** `profiles.is_moderator` (service-role/RPC writes only); `post_comment()` LC gate
+→ moderator/admin; general thread + seller toggle + `listings.comments_enabled` removed;
+`moderator_recommendations` + `recommend_moderator()` (3 distinct still-valid moderators →
+auto-promote); admin appoint/revoke route; profile recommend button + MODERATOR badge;
+`comments.source` + `post_auto_lc()` service-role seam for the future auto-auth bot;
+`moderator_granted` notification; migration `0036` seeds verified_checker → is_moderator.
+
+**Acceptance.** General comments gone end-to-end; only moderators/admins post LC (gold /
+verified_checker cannot); 3 distinct mod recommendations promote a verified member and they
+can immediately post; `post_auto_lc` is service_role-only; `pnpm verify` + `pnpm build` green;
+db-guard, code-reviewer, ui-verifier pass.
+
+**Status.** BUILT on `feat/moderator-lc` (cloud session). Pending: native verify + the gate
+battery (see docs/HANDOFF.md §G10 for the exact ordered steps).
 
 ---
 

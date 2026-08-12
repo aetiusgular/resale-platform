@@ -1,23 +1,35 @@
 'use client'
 
+/**
+ * Community section (G10) — Legit Check only.
+ *
+ * General comments were removed. Posting is restricted to moderators/admins (the server
+ * RPC is the source of truth; `canPostLc` only governs whether the input is enabled).
+ * Comments are publicly readable. System verdicts from the future auto-authentication
+ * service arrive as `source: 'auto'` rows (no human author) and render with an
+ * "AUTOMATED AUTHENTICATION" label.
+ */
 import { useState, useEffect, useCallback } from 'react'
 
-type ThreadType = 'lc' | 'general'
 type TierBadge = 'bronze' | 'silver' | 'gold'
+type CommentSource = 'human' | 'auto'
 
 interface CommentRow {
   id: string
-  author_id: string
+  author_id: string | null
   parent_id: string | null
   body: string
   redacted: boolean
   pinned: boolean
+  source: CommentSource
+  verdict: string | null
   created_at: string
   profiles: {
     username: string
     tier: TierBadge
     verified_checker: boolean
     role: string
+    is_moderator: boolean
     checker_category?: string | null
   } | null
   comment_actions: { id: string; action: string }[]
@@ -25,13 +37,8 @@ interface CommentRow {
 
 interface CommunitySectionProps {
   listingId: string
-  commentsEnabled: boolean
-  /** true = current viewer can post in LC (verified_checker or gold or admin) */
+  /** true = current viewer may post in LC (moderator or admin). */
   canPostLc: boolean
-  /** true = current viewer is id-verified or admin */
-  canComment: boolean
-  /** true = viewing user is the seller */
-  isSeller: boolean
 }
 
 const TIER_BORDER: Record<TierBadge, string> = {
@@ -58,40 +65,25 @@ function agreeCount(actions: { action: string }[]): number {
   return actions.filter(a => a.action === 'agree').length
 }
 
-export default function CommunitySection({
-  listingId,
-  commentsEnabled,
-  canPostLc,
-  canComment,
-  isSeller,
-}: CommunitySectionProps) {
-  const [tab, setTab]               = useState<ThreadType>('lc')
-  const [lcComments, setLcComments] = useState<CommentRow[] | null>(null)
-  const [genComments, setGenComments] = useState<CommentRow[] | null>(null)
-  const [inputBody, setInputBody]   = useState('')
-  const [posting, setPosting]       = useState(false)
-  const [postError, setPostError]   = useState('')
-  const [agreedIds, setAgreedIds]   = useState<Set<string>>(new Set())
+export default function CommunitySection({ listingId, canPostLc }: CommunitySectionProps) {
+  const [comments, setComments] = useState<CommentRow[] | null>(null)
+  const [inputBody, setInputBody] = useState('')
+  const [posting, setPosting]     = useState(false)
+  const [postError, setPostError] = useState('')
+  const [agreedIds, setAgreedIds] = useState<Set<string>>(new Set())
 
-  const fetchTab = useCallback(async (t: ThreadType) => {
-    const res = await fetch(`/api/listings/${listingId}/comments?tab=${t}`)
+  const fetchComments = useCallback(async () => {
+    const res = await fetch(`/api/listings/${listingId}/comments?tab=lc`)
     if (!res.ok) return
     const data = await res.json()
-    if (t === 'lc') setLcComments(data.comments ?? [])
-    else            setGenComments(data.comments ?? [])
+    setComments(data.comments ?? [])
   }, [listingId])
 
-  useEffect(() => { fetchTab('lc') }, [fetchTab])
-  useEffect(() => {
-    if (commentsEnabled) fetchTab('general')
-  }, [fetchTab, commentsEnabled])
+  useEffect(() => { fetchComments() }, [fetchComments])
 
-  const currentComments = tab === 'lc' ? lcComments : genComments
-  const pinned = currentComments?.filter(c => c.pinned) ?? []
-  const threads = currentComments?.filter(c => !c.pinned) ?? []
-
-  const lcCount  = lcComments?.length ?? 0
-  const genCount = genComments?.length ?? 0
+  const pinned  = comments?.filter(c => c.pinned) ?? []
+  const threads = comments?.filter(c => !c.pinned) ?? []
+  const lcCount = comments?.length ?? 0
 
   async function handlePost() {
     if (!inputBody.trim()) return
@@ -100,7 +92,7 @@ export default function CommunitySection({
     const res = await fetch(`/api/listings/${listingId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: inputBody.trim(), thread_type: tab }),
+      body: JSON.stringify({ body: inputBody.trim(), thread_type: 'lc' }),
     })
     setPosting(false)
     if (!res.ok) {
@@ -109,22 +101,19 @@ export default function CommunitySection({
       return
     }
     setInputBody('')
-    await fetchTab(tab)
+    await fetchComments()
   }
 
   async function handleAgree(commentId: string) {
     if (agreedIds.has(commentId)) return
     await fetch(`/api/listings/${listingId}/comments/${commentId}/agree`, { method: 'POST' })
     setAgreedIds(prev => new Set([...prev, commentId]))
-    await fetchTab(tab)
+    await fetchComments()
   }
 
   async function handleFlag(commentId: string) {
     await fetch(`/api/listings/${listingId}/comments/${commentId}/flag`, { method: 'POST' })
   }
-
-  const canPostCurrent = tab === 'lc' ? canPostLc : (canComment && commentsEnabled)
-  const inputPlaceholder = tab === 'lc' ? 'add a legit check' : 'add a comment'
 
   return (
     <div style={{ marginTop: '96px', maxWidth: '840px' }}>
@@ -132,46 +121,26 @@ export default function CommunitySection({
         The community weighs in.
       </h2>
 
-      {/* Tab bar */}
-      <div style={{ marginTop: '24px', display: 'flex', alignItems: 'baseline', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
-        <button
-          onClick={() => setTab('lc')}
-          style={{ position: 'relative', padding: '12px 0', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: tab === 'lc' ? 'var(--color-ink)' : 'var(--color-ink-soft)', cursor: 'pointer', background: 'none', border: 'none', minHeight: '44px', boxSizing: 'border-box' }}
-        >
+      {/* Section label (LC-only) */}
+      <div style={{ marginTop: '24px', display: 'flex', alignItems: 'baseline', borderBottom: '1px solid var(--color-line)' }}>
+        <span style={{ position: 'relative', padding: '12px 0', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', minHeight: '44px', display: 'inline-flex', alignItems: 'center', boxSizing: 'border-box' }}>
           Legit check ({lcCount})
-          {tab === 'lc' && <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />}
-        </button>
-
-        {commentsEnabled && (
-          <button
-            onClick={() => setTab('general')}
-            style={{ position: 'relative', padding: '12px 0', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: tab === 'general' ? 'var(--color-ink)' : 'var(--color-ink-soft)', cursor: 'pointer', background: 'none', border: 'none', minHeight: '44px', boxSizing: 'border-box' }}
-          >
-            Comments ({genCount})
-            {tab === 'general' && <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />}
-          </button>
-        )}
-
-        {/* Seller status indicator on general tab */}
-        {tab === 'general' && commentsEnabled && (
-          <span style={{ marginLeft: 'auto', paddingBottom: '12px', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
-            SELLER HAS COMMENTS ON
-          </span>
-        )}
+          <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />
+        </span>
       </div>
 
-      {/* Pinned verdict card */}
+      {/* Pinned verdict card(s) */}
       {pinned.map(c => (
         <PinnedCard key={c.id} comment={c} />
       ))}
 
-      {/* Comment threads */}
+      {/* Threads */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {currentComments === null ? (
+        {comments === null ? (
           <div style={{ padding: '20px 0', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)', letterSpacing: '0.08em' }}>LOADING…</div>
         ) : threads.length === 0 ? (
           <div style={{ padding: '20px 0', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)', letterSpacing: '0.08em' }}>
-            {tab === 'lc' ? 'NO LEGIT CHECKS YET.' : 'NO COMMENTS YET.'}
+            NO LEGIT CHECKS YET.
           </div>
         ) : (
           threads.map(c => (
@@ -188,7 +157,7 @@ export default function CommunitySection({
 
       {/* Input area */}
       <div style={{ marginTop: '24px' }}>
-        {canPostCurrent ? (
+        {canPostLc ? (
           <>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
@@ -196,7 +165,7 @@ export default function CommunitySection({
                 value={inputBody}
                 onChange={e => setInputBody(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost() } }}
-                placeholder={inputPlaceholder}
+                placeholder="add a legit check"
                 maxLength={2000}
                 disabled={posting}
                 style={{ flex: 1, height: '44px', border: '1px solid var(--color-line)', borderRadius: '2px', padding: '0 12px', boxSizing: 'border-box', fontSize: '14px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none', opacity: posting ? 0.6 : 1 }}
@@ -210,7 +179,7 @@ export default function CommunitySection({
               </button>
             </div>
             <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              ID-verified members only · new accounts limited to 2 comments/day
+              Moderators only · legit checks are public.
             </div>
           </>
         ) : (
@@ -218,14 +187,10 @@ export default function CommunitySection({
             <div
               style={{ height: '44px', border: '1px solid var(--color-line)', borderRadius: '2px', display: 'flex', alignItems: 'center', padding: '0 12px', boxSizing: 'border-box', fontSize: '14px', color: 'var(--color-ink-soft)', opacity: 0.5, cursor: 'not-allowed' }}
             >
-              {inputPlaceholder}
+              add a legit check
             </div>
             <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              {tab === 'lc'
-                ? 'ID-verified members only · new accounts limited to 2 comments/day'
-                : !canComment
-                  ? 'ID-verified members only · new accounts limited to 2 comments/day'
-                  : 'ID-verified members only · new accounts limited to 2 comments/day'}
+              Legit checks are posted by verified moderators.
             </div>
           </>
         )}
@@ -235,15 +200,38 @@ export default function CommunitySection({
           </div>
         )}
       </div>
-
-      {/* Seller toggle (only visible to listing's seller) */}
-      {isSeller && <SellerToggle listingId={listingId} commentsEnabled={commentsEnabled} />}
     </div>
   )
 }
 
-function PinnedCard({ comment }: { comment: CommentRow }) {
+function AuthorLine({ comment }: { comment: CommentRow }) {
+  if (comment.source === 'auto') {
+    return (
+      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
+        AUTOMATED AUTHENTICATION
+      </span>
+    )
+  }
   const author = comment.profiles
+  const tier = (author?.tier ?? 'bronze') as TierBadge
+  return (
+    <>
+      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink)' }}>
+        @{author?.username ?? '—'}
+      </span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', height: '20px', padding: '0 6px', border: `1px solid ${TIER_BORDER[tier]}`, borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: TIER_COLOR[tier] }}>
+        {tier.charAt(0).toUpperCase() + tier.slice(1)}
+      </span>
+      {author?.is_moderator && (
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
+          MODERATOR
+        </span>
+      )}
+    </>
+  )
+}
+
+function PinnedCard({ comment }: { comment: CommentRow }) {
   return (
     <div
       data-testid="pinned-verdict-card"
@@ -266,17 +254,12 @@ function PinnedCard({ comment }: { comment: CommentRow }) {
           </>
         )}
       </div>
-      {author && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-          — @{author.username}
-          {author.verified_checker && (
-            <span style={{ fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>VERIFIED CHECKER</span>
-          )}
-          {author.checker_category && (
-            <span>· {author.checker_category.toUpperCase()}</span>
-          )}
-        </div>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+        — <AuthorLine comment={comment} />
+        {comment.source === 'human' && comment.profiles?.checker_category && (
+          <span>· {comment.profiles.checker_category.toUpperCase()}</span>
+        )}
+      </div>
     </div>
   )
 }
@@ -292,8 +275,6 @@ function CommentRow({
   onAgree: () => void
   onFlag: () => void
 }) {
-  const author = comment.profiles
-  const tier   = (author?.tier ?? 'bronze') as TierBadge
   const agrees = agreeCount(comment.comment_actions)
 
   return (
@@ -303,19 +284,7 @@ function CommentRow({
     >
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink)' }}>
-          @{author?.username ?? '—'}
-        </span>
-        {/* Tier badge */}
-        <span style={{ display: 'inline-flex', alignItems: 'center', height: '20px', padding: '0 6px', border: `1px solid ${TIER_BORDER[tier]}`, borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: TIER_COLOR[tier] }}>
-          {tier.charAt(0).toUpperCase() + tier.slice(1)}
-        </span>
-        {/* Verified checker microtag */}
-        {author?.verified_checker && (
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-            VERIFIED CHECKER
-          </span>
-        )}
+        <AuthorLine comment={comment} />
         <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
           {relativeTime(comment.created_at)}
         </span>
@@ -354,42 +323,6 @@ function CommentRow({
           Flag
         </button>
       </div>
-    </div>
-  )
-}
-
-function SellerToggle({ listingId, commentsEnabled }: { listingId: string; commentsEnabled: boolean }) {
-  const [enabled, setEnabled] = useState(commentsEnabled)
-  const [saving, setSaving]   = useState(false)
-
-  async function toggle() {
-    setSaving(true)
-    const next = !enabled
-    const res = await fetch(`/api/listings/${listingId}/comments-toggle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: next }),
-    })
-    setSaving(false)
-    if (res.ok) setEnabled(next)
-  }
-
-  return (
-    <div style={{ marginTop: '32px', paddingTop: '20px', borderTop: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
-        GENERAL COMMENTS
-      </span>
-      <button
-        onClick={toggle}
-        disabled={saving}
-        data-testid="comments-toggle"
-        style={{ height: '28px', padding: '0 14px', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', background: enabled ? 'var(--color-ink)' : 'var(--color-bg)', color: enabled ? 'var(--color-bg)' : 'var(--color-ink-soft)', border: '1px solid var(--color-ink)', borderRadius: '2px', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.6 : 1 }}
-      >
-        {enabled ? 'On' : 'Off'}
-      </button>
-      <span style={{ fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-        LC thread is always visible
-      </span>
     </div>
   )
 }
