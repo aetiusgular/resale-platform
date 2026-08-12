@@ -36,7 +36,17 @@ export async function checkEliteEligibility(service: ServiceClient, sellerId: st
       .select('id')
       .single()
     if (flagged && NOTIFICATIONS_ENABLED) {
+      // Seller: congratulate + set expectations.
       await notify(service, sellerId, 'elite_program', {})
+      // Admins: surface the lead for founder outreach.
+      const { data: sp } = await service.from('profiles').select('username').eq('id', sellerId).single()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const username = (sp as any)?.username as string | undefined
+      const { data: admins } = await service.from('profiles').select('id').eq('role', 'admin')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const a of (((admins as any[]) ?? []))) {
+        await notify(service, a.id as string, 'admin_elite_lead', { actorName: username, amountCents: volumeCents })
+      }
     }
   } catch { /* fail-soft */ }
 }

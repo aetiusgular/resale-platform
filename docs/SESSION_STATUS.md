@@ -72,12 +72,16 @@ Test count over the session: **241 → 314**.
    `orderAmountsAt` discount), redeemed on webhook success, restored on failure. Flag `BUYER_REWARDS_ENABLED`.
 ✅ **C. Elite seller program** — `lib/seller-program.ts`: trailing gross sales > $25k atomically flips
    `profiles.elite_program_eligible` (once) + notifies the seller (`elite_program` event). Wired into
-   all 3 settlement paths.
+   all 3 settlement paths. Admins are also alerted (`admin_elite_lead` → every role='admin'
+   profile) so the outreach lead surfaces, not just the seller's congrats notice.
 ✅ **D. Boosted posts** — `lib/boosts.ts` (5 tests), `boosts` table, `/api/boosts` purchase (standalone
    Stripe PI, 100% platform revenue), webhook activation (`kind:'boost'` → `listings.boosted_until`),
    browse promotion via pure `applyBoostOrder` (≤2/page, "PROMOTED" badge), seller `/boost/[listingId]`
    Stripe page + owner CTA. Packages 3-day $6 · 7-day $12 · 14-day $20. Flag `NEXT_PUBLIC_BOOSTED_POSTS_ENABLED`.
-   Migration `20240101000034_fee_v3_rewards_boosts.sql` (run `npx supabase db push`).
+   Migration `20240101000034_fee_v3_rewards_boosts.sql`. NOTE: no "PROMOTED" badge on browse
+   (boosted listings float silently to the top so buyers aren't dissuaded). Expiry sweep:
+   `GET /api/cron/boost-expiry` (CRON_SECRET) retires ended boosts + clears `boosted_until` —
+   register it with the scheduler (hourly) alongside `process-transfers`/`tier-expiry`.
 
 
 1. **Recs G1 — Cloud Run hosting (deploy layer BUILT) + resale wiring (TODO).**

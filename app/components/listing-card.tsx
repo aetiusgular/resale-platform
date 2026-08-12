@@ -54,12 +54,10 @@ type ListingCardProps = {
   position?: number
   /** recs telemetry: called on product click, alongside PostHog product_clicked */
   onProductClick?: (id: string) => void
-  /** paid boost: show a PROMOTED tag on the card */
-  promoted?: boolean
 }
 
 export default function ListingCard({
-  listing, isSaved, onSaveToggle, timeLabel, unavailable, position, onProductClick, promoted,
+  listing, isSaved, onSaveToggle, timeLabel, unavailable, position, onProductClick,
 }: ListingCardProps) {
   const frontImage = listing.images[0] ?? null
   const isVerified = listing.seller?.id_verification_status === 'verified'
@@ -93,7 +91,6 @@ export default function ListingCard({
 
       {/* Meta — fixed-height lines so cards in same row align pixel-perfect */}
       <div style={{ marginTop: '12px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
-        {promoted && !unavailable && <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>PROMOTED · </span>}
         {timeLabel ?? formatTimeAgo(listing.created_at)}
       </div>
       <div

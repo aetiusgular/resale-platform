@@ -43,6 +43,8 @@ function parts(event: NotifyEvent, ctx: NotifyContext): { title: string; body: s
       return { title: `You earned ${ctx.rewardPct ?? ''}% off`, body: `You've hit ${ctx.milestoneLabel ?? 'a spending milestone'} in the last year — a one-time ${ctx.rewardPct ?? ''}% discount is waiting and applies automatically at your next checkout.`, url: '/browse' }
     case 'elite_program':
       return { title: 'You\'ve unlocked the Elite Seller Program', body: 'Your sales have crossed our Elite threshold. Our team will reach out with perks like boosted listings and lower fees — keep an eye on your inbox.', url: '/settings?section=power' }
+    case 'admin_elite_lead':
+      return { title: `Elite seller lead: ${who}`, body: `${who} just crossed the $25k Elite threshold${ctx.amountCents ? ` (${money(ctx.amountCents)} trailing sales)` : ''}. Reach out about the Elite Seller Program.`, url: ctx.actorName ? `/sellers/${ctx.actorName}` : '/admin' }
   }
 }
 
