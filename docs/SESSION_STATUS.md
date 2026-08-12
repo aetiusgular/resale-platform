@@ -79,9 +79,12 @@ Test count over the session: **241 → 314**.
    browse promotion via pure `applyBoostOrder` (≤2/page, "PROMOTED" badge), seller `/boost/[listingId]`
    Stripe page + owner CTA. Packages 3-day $6 · 7-day $12 · 14-day $20. Flag `NEXT_PUBLIC_BOOSTED_POSTS_ENABLED`.
    Migration `20240101000034_fee_v3_rewards_boosts.sql`. NOTE: no "PROMOTED" badge on browse
-   (boosted listings float silently to the top so buyers aren't dissuaded). Expiry sweep:
-   `GET /api/cron/boost-expiry` (CRON_SECRET) retires ended boosts + clears `boosted_until` —
-   register it with the scheduler (hourly) alongside `process-transfers`/`tier-expiry`.
+   (boosted listings float silently to the top so buyers aren't dissuaded). Expiry sweep is
+   SELF-SCHEDULED in-repo via **pg_cron** (`expire_boosts()`, migration 0035, hourly) — no
+   external scheduler needed, matching auto_release/checkout-cleanup. `GET /api/cron/boost-expiry`
+   (CRON_SECRET) is an optional on-demand trigger over the same SQL function. (By contrast
+   `process-transfers`/`tier-expiry` are HTTP + externally scheduled since they call Stripe / the
+   notify system — registering those remains a founder task.)
 
 
 1. **Recs G1 — Cloud Run hosting (deploy layer BUILT) + resale wiring (TODO).**
