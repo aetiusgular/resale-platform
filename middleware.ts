@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { INVITE_ONLY_ENABLED } from '@/lib/flags'
 
 // Routes accessible without a session (listing detail is public read for active listings)
 const PUBLIC_PATHS = ['/enter', '/enter/waitlist', '/onboarding/account', '/styleguide', '/listings']
@@ -146,8 +147,11 @@ export async function middleware(request: NextRequest) {
     return applyCsp(NextResponse.redirect(new URL('/banned', request.url)))
   }
 
-  // Has profile but no invite code claimed and not admin → must claim a code first
-  if (!profile.invited_by && profile.role !== 'admin') {
+  // Invite gate — ONLY enforced when INVITE_ONLY_ENABLED. The platform is open by
+  // default: a profile that never claimed a code is a normal member and passes
+  // straight through (and gets the gate cookie below like anyone else). Flip
+  // INVITE_ONLY_ENABLED=true to require every new account to claim a code first.
+  if (INVITE_ONLY_ENABLED && !profile.invited_by && profile.role !== 'admin') {
     if (!isPublicPath) {
       return applyCsp(NextResponse.redirect(new URL('/enter', request.url)))
     }

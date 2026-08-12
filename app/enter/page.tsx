@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/browser'
 import { normalizeCode, isValidCodeFormat } from '@/lib/invite-codes'
+import { INVITE_ONLY_ENABLED_PUBLIC } from '@/lib/flags'
 
 type EnterError = 'code not found' | 'code already used' | 'cannot claim your own code' | 'invalid format' | string
 
@@ -26,6 +27,12 @@ export default function EnterPage() {
   async function handleEnter(e: React.FormEvent) {
     e.preventDefault()
     const normalized = normalizeCode(code)
+
+    // Open platform (default): an empty code just goes straight to account creation.
+    if (!INVITE_ONLY_ENABLED_PUBLIC && normalized.length === 0) {
+      router.push('/onboarding/account')
+      return
+    }
 
     if (!isValidCodeFormat(normalized)) {
       setError('invalid format')
@@ -168,7 +175,7 @@ export default function EnterPage() {
                   color: hasError ? 'var(--color-alert)' : 'var(--color-ink-soft)',
                 }}
               >
-                Invite code
+                {INVITE_ONLY_ENABLED_PUBLIC ? 'Invite code' : 'Invite code (optional)'}
               </span>
               <input
                 ref={inputRef}
@@ -228,20 +235,33 @@ export default function EnterPage() {
               transition: 'opacity 120ms linear',
             }}
           >
-            {loading ? 'Checking…' : 'Enter'}
+            {loading ? 'Checking…' : INVITE_ONLY_ENABLED_PUBLIC ? 'Enter' : 'Create account'}
           </button>
         </form>
 
-        <Link
-          href="/enter/waitlist"
-          style={{
-            marginTop: '20px',
-            fontSize: '13px',
-            color: 'var(--color-ink)',
-          }}
-        >
-          no code? join the waitlist
-        </Link>
+        {INVITE_ONLY_ENABLED_PUBLIC ? (
+          <Link
+            href="/enter/waitlist"
+            style={{
+              marginTop: '20px',
+              fontSize: '13px',
+              color: 'var(--color-ink)',
+            }}
+          >
+            no code? join the waitlist
+          </Link>
+        ) : (
+          <p
+            style={{
+              marginTop: '20px',
+              fontSize: '13px',
+              color: 'var(--color-ink-soft)',
+              maxWidth: '360px',
+            }}
+          >
+            No invite needed — leave the code blank to create an account, or enter one to credit whoever referred you.
+          </p>
+        )}
 
         <Link
           href="/enter/login"

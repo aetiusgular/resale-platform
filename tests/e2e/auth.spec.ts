@@ -16,22 +16,21 @@ test.describe('Gate — unauthenticated', () => {
     await page.goto('/enter')
     await expect(page.getByText('A quieter market for the things worth keeping.')).toBeVisible()
     await expect(page.getByRole('textbox')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Enter' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible()
   })
 
   test('invalid format shows error', async ({ page }) => {
     await page.goto('/enter')
     const input = page.getByRole('textbox')
     await input.fill('BADCODE')
-    await page.getByRole('button', { name: 'Enter' }).click()
+    await page.getByRole('button', { name: 'Create account' }).click()
     await expect(page.getByText('codes look like XXXX-XXXX')).toBeVisible()
   })
 
-  test('no code link goes to waitlist', async ({ page }) => {
+  test('no code — create account goes to signup', async ({ page }) => {
     await page.goto('/enter')
-    await page.getByText('no code? join the waitlist').click()
-    await expect(page).toHaveURL(/\/enter\/waitlist$/)
-    await expect(page.getByText("We'll let you know when a spot opens up.")).toBeVisible()
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await expect(page).toHaveURL(/\/onboarding\/account$/)
   })
 
   test('waitlist form submits email', async ({ page }) => {
@@ -58,7 +57,7 @@ test.describe('Gate — /enter page error states', () => {
     const input = page.getByRole('textbox')
     // Submit a properly formatted but non-existent code (no session → goes to signup flow)
     await input.fill('AAAA-BBBB')
-    await page.getByRole('button', { name: 'Enter' }).click()
+    await page.getByRole('button', { name: 'Create account' }).click()
     // Without a session it should redirect to /onboarding/account with code param
     await expect(page).toHaveURL(/\/onboarding\/account/)
   })

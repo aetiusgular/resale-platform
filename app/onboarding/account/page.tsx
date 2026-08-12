@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
 import { normalizeCode } from '@/lib/invite-codes'
 import GoogleButton from '@/app/enter/google-button'
-import { GOOGLE_AUTH_ENABLED } from '@/lib/flags'
+import { GOOGLE_AUTH_ENABLED, INVITE_ONLY_ENABLED_PUBLIC } from '@/lib/flags'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Supa = any
@@ -162,8 +162,9 @@ function AccountForm() {
     }
     await claimCodeIfPresent(supabase)
     setLoading(false)
-    // With a code they're fully in; without one, the middleware routes them to claim one.
-    router.push(codeParam ? '/onboarding/verify' : '/enter')
+    // With a code — or when the platform is open (default) — they're fully in. Only
+    // invite-only mode sends a codeless Google user back to /enter to claim one first.
+    router.push(codeParam || !INVITE_ONLY_ENABLED_PUBLIC ? '/onboarding/verify' : '/enter')
     router.refresh()
   }
 
