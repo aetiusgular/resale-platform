@@ -2,10 +2,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { buyerFeeAt, buyerTotalAt, formatCents, BASE_FEE_BPS } from '@/lib/fees'
-import { resolveEffectiveBps } from '@/lib/tier-progress'
+import { formatCents } from '@/lib/fees'
+import { BOOSTED_POSTS_ENABLED } from '@/lib/flags'
 import { BUMP_ENABLED } from '@/lib/flags'
-import { createServiceClientRaw } from '@/lib/supabase/service'
 import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
 import SaveButton from './save-button'
@@ -114,9 +113,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const frontImage = images[0] ?? null
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
 
-  const buyerBps = user ? await resolveEffectiveBps(createServiceClientRaw(), user.id, 'buyer') : BASE_FEE_BPS
-  const fee     = buyerFeeAt(listing.price_cents, buyerBps)
-  const total   = buyerTotalAt(listing.price_cents, buyerBps)
+  // Fee Model v3: buyers pay no platform fee — the listed price is what they pay.
+  const total   = listing.price_cents
   const listedAgo = formatTimeAgo(listing.created_at)
 
   return (
@@ -223,8 +221,13 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 )}
               </div>
               <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                buyer fee {buyerBps / 100}% · {formatCents(fee)} — total {formatCents(total)} · that&apos;s it.
+                no buyer fee — you pay the listed price. that&apos;s it.
               </div>
+              {isSeller && listing.status === 'active' && BOOSTED_POSTS_ENABLED && (
+                <Link href={`/boost/${listing.id}`} style={{ display: 'inline-block', marginTop: '10px', fontSize: '13px', color: 'var(--color-accent)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+                  Boost this listing →
+                </Link>
+              )}
             </div>
 
             {/* TRUST STRIP */}

@@ -59,6 +59,27 @@ Test count over the session: **241 → 314**.
 
 ## What remains (all external-infra or founder work — none cloud-verifiable here)
 
+### 💵 Fee Model v3 (2026-08) — IN PROGRESS
+✅ **Core fee math (live money code, verified: tsc green + 24 fee tests pass).** Zero buyer
+   fee; seller-only tiers **8% → 7% ($1k/3 orders) → 5.5% ($5k/10) → 3.5% ($10k/15)** (both-gates
+   kept); **sub-$100 orders capped at 5%** (`effectiveSellerBps`, elite keeps lower); $0.30 floor;
+   seller rate inclusive of Stripe/PayPal. `orderAmountsAt` now `(price, sellerBps, shipping?,
+   buyerDiscount?)` → zero buyer fee + platform-funded discount. Updated: `lib/fees.ts`,
+   `fees.test.ts`, checkout route + preview, listing detail, order-buyer display.
+✅ **B. Buyer milestone rewards** — `lib/rewards.ts` (+ pure `rewards-core.ts`, 6 tests): one-time
+   5/10/15% coupon (cap $50/$150/$300) at $1k/$5k/$10k rolling-year, re-earnable yearly. Issued on
+   order settlement (all 3 completion paths), reserved+applied at checkout (platform-funded via
+   `orderAmountsAt` discount), redeemed on webhook success, restored on failure. Flag `BUYER_REWARDS_ENABLED`.
+✅ **C. Elite seller program** — `lib/seller-program.ts`: trailing gross sales > $25k atomically flips
+   `profiles.elite_program_eligible` (once) + notifies the seller (`elite_program` event). Wired into
+   all 3 settlement paths.
+✅ **D. Boosted posts** — `lib/boosts.ts` (5 tests), `boosts` table, `/api/boosts` purchase (standalone
+   Stripe PI, 100% platform revenue), webhook activation (`kind:'boost'` → `listings.boosted_until`),
+   browse promotion via pure `applyBoostOrder` (≤2/page, "PROMOTED" badge), seller `/boost/[listingId]`
+   Stripe page + owner CTA. Packages 3-day $6 · 7-day $12 · 14-day $20. Flag `NEXT_PUBLIC_BOOSTED_POSTS_ENABLED`.
+   Migration `20240101000034_fee_v3_rewards_boosts.sql` (run `npx supabase db push`).
+
+
 1. **Recs G1 — Cloud Run hosting (deploy layer BUILT) + resale wiring (TODO).**
    The engine is a distributed system (2 HTTP services + 4 Redis-Streams workers + Redis +
    Qdrant), so it needs real managed infra — a laptop `docker run` on the browse hot path
@@ -76,10 +97,15 @@ Test count over the session: **241 → 314**.
    ✅ **event→ingest** telemetry (`lib/recs/telemetry.ts`: uuidv7 envelopes, batching,
    sendBeacon, impression observer → `/api/recs/events`; wired into browse for impressions,
    clicks, saves, search; gated by `NEXT_PUBLIC_RECS_ENABLED`) are built + unit-tested.
-   ⏳ Still to wire: **listing lifecycle → index** (`postListingChange` on create/update/
-   sold/delete — without it Qdrant has nothing to rank), **identity merge** on login
-   (`mergeIdentity` device→account), **cold-start seed** on onboarding (`seedUser`), and
-   deeper **feed-native pagination** (current rerank only reorders the fetched page).
+   ✅ **listing lifecycle → index** (`lib/recs/sync.ts` via `after()`: `created` on
+   approve→active, `sold` on the Stripe webhook, `deleted` on moderation remove) — this is
+   what gives the feed something to rank.
+   ⏳ Still to wire: **identity merge** on login (`mergeIdentity` device→account) and
+   **cold-start seed** at onboarding (`seedUser`); deeper **feed-native pagination** (the
+   rerank only reorders the fetched page); and a one-time **backfill** of already-active
+   listings when RECS flips on (re-approve, or `recs-engine/scripts/backfill.py`) — new
+   approvals index automatically, but pre-existing active listings won't until backfilled.
+   (No listing edit/delete routes exist yet; wire `updated`/`deleted` there when added.)
    ⚠️ *Quality gate*: engine runs on a **stub encoder** — validates infra end-to-end but recs
    aren't semantic until fashion-CLIP is exported to ONNX and mounted (runbook "Going live").
    Interim cost ≈ $15–40/mo (always-on worker pool + warm feed).

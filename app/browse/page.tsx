@@ -4,9 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
-import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED } from '@/lib/flags'
+import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED } from '@/lib/flags'
 import { getFeed } from '@/lib/recs/client'
 import { applyFeedOrder } from '@/lib/recs/rank'
+import { applyBoostOrder } from '@/lib/boosts'
 
 export const metadata: Metadata = {
   title: 'Browse — Resale Platform',
@@ -33,6 +34,7 @@ export type BrowseListing = {
   // Derived on server
   original_price_cents: number | null
   price_display: string
+  promoted: boolean
 }
 
 export type FilterCounts = {
@@ -84,7 +86,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     .select(`
       id, title, brand, category, department, size,
       condition_score, price_cents, saves_count, is_price_dropped, authentication_status,
-      images, created_at,
+      images, created_at, boosted_until,
       profiles:seller_id (username, id_verification_status)
     `)
     .eq('status', 'active')
@@ -111,7 +113,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
       if (q) { query = query.order('id'); break } // ts_rank applied automatically
       // fallthrough to newest if no query
       /* falls through */
-    default:           query = query.order('created_at', { ascending: false }).order('id')
+    default:           query = query.order('boosted_until', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).order('id')
   }
 
   query = query.range(offset, offset + PAGE_SIZE)
@@ -153,6 +155,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     id: string; title: string; brand: string; category: string; department: string
     size: string; condition_score: number; price_cents: number; saves_count: number
     is_price_dropped: boolean; authentication_status: string; images: string[]; created_at: string
+    boosted_until: string | null
     profiles: { username: string; id_verification_status: string } | null
   }>
 
@@ -197,6 +200,8 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     seller: l.profiles,
     original_price_cents: origPriceMap.get(l.id) ?? null,
     price_display: formatCents(l.price_cents),
+    // eslint-disable-next-line react-hooks/purity -- server component render; boost freshness at request time
+    promoted: !!l.boosted_until && new Date(l.boosted_until).getTime() > Date.now(),
   }))
 
   // Apply the personalized feed order (no-op when disabled/ineligible/unreachable).
@@ -204,6 +209,8 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   const orderedListings = feed
     ? applyFeedOrder(browseListing, feed.items.map((i) => i.item_id))
     : browseListing
+  // Paid boosts win the top slots (capped) — applied after any recs re-ranking.
+  const finalListings = BOOSTED_POSTS_ENABLED ? applyBoostOrder(orderedListings) : orderedListings
 
   const filterCounts: FilterCounts = { departments: {}, categories: {} }
   for (const row of deptData ?? []) {
@@ -219,7 +226,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   return (
     <Suspense>
       <BrowseClient
-        initialListings={orderedListings}
+        initialListings={finalListings}
         totalCount={totalCount ?? 0}
         filterCounts={filterCounts}
         initialSavedIds={Array.from(savedSet)}

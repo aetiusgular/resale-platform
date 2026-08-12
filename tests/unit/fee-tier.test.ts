@@ -71,18 +71,18 @@ describe('trailingVolumeCents — UNCAPPED gross (compliance / INFORM Act)', () 
 })
 
 describe('feeBpsForUser — gate integration', () => {
-  it('a single $10k order cannot buy a tier (cap + count gate) → base 5.0%', async () => {
-    expect(await feeBpsForUser(fakeService([{ item_cents: 1_000_000 }]), 'u', 'seller' as FeeSide)).toBe(500)
+  it('a single $10k order cannot buy a tier (cap + count gate) → base 8.0%', async () => {
+    expect(await feeBpsForUser(fakeService([{ item_cents: 1_000_000 }]), 'u', 'seller' as FeeSide)).toBe(800)
   })
-  it('15 genuine $2k orders → $10k capped volume + 15 orders → elite 2.0%', async () => {
+  it('15 genuine $2k orders → capped $30k volume + 15 orders → elite 3.5%', async () => {
     const rows = Array.from({ length: 15 }, () => ({ item_cents: 200_000 }))
-    expect(await feeBpsForUser(fakeService(rows), 'u', 'seller' as FeeSide)).toBe(200)
+    expect(await feeBpsForUser(fakeService(rows), 'u', 'seller' as FeeSide)).toBe(350)
   })
-  it('$10k volume on 14 orders → tier-4 3.0% (count gate drop)', async () => {
+  it('$28k volume on 14 orders → $5k tier 5.5% (top count gate drop, 14<15)', async () => {
     const rows = Array.from({ length: 14 }, () => ({ item_cents: 200_000 }))
-    expect(await feeBpsForUser(fakeService(rows), 'u', 'buyer' as FeeSide)).toBe(300)
+    expect(await feeBpsForUser(fakeService(rows), 'u', 'buyer' as FeeSide)).toBe(550)
   })
-  it('no orders → base 5.0%', async () => {
-    expect(await feeBpsForUser(fakeService([]), 'u', 'buyer' as FeeSide)).toBe(500)
+  it('no orders → base 8.0%', async () => {
+    expect(await feeBpsForUser(fakeService([]), 'u', 'buyer' as FeeSide)).toBe(800)
   })
 })

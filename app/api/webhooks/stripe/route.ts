@@ -23,6 +23,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import type Stripe from 'stripe'
 import stripe, { constructWebhookEvent } from '@/lib/stripe'
 import { recsMarkSold, recsMarkRemoved } from '@/lib/recs/sync'
+import { redeemReservedReward, restoreReward } from '@/lib/rewards'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
@@ -84,6 +85,12 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
   const pi = event.data.object as Stripe.PaymentIntent
   const meta = pi.metadata as Record<string, string>
 
+  // Boost purchases (Fee Model v3) are standalone platform charges (no order/escrow).
+  if (meta.kind === 'boost') {
+    await handleBoostSucceeded(pi, service)
+    return
+  }
+
   // Validate required metadata IDs (set server-side at PI creation — immutable)
   for (const key of ['listing_id', 'buyer_id', 'seller_id'] as const) {
     if (!meta[key]) throw new Error(`Missing PI metadata: ${key}`)
@@ -93,7 +100,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
   // This prevents fee manipulation via Stripe Dashboard metadata edits.
   const { data: session } = await service
     .from('checkout_sessions')
-    .select('item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, buyer_fee_bps, seller_fee_bps, buyer_id, seller_id, listing_id')
+    .select('item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, discount_cents, reward_id, buyer_fee_bps, seller_fee_bps, buyer_id, seller_id, listing_id')
     .eq('stripe_payment_intent_id', pi.id)
     .single()
 
@@ -108,7 +115,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     throw new Error(`No checkout_session for PI ${pi.id} and no existing order`)
   }
 
-  const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, buyer_fee_bps, seller_fee_bps } = session
+  const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, discount_cents, buyer_fee_bps, seller_fee_bps } = session
   const transfer_cents = item_cents - seller_fee_cents
 
   // Verify PI amount matches session total (tamper check)
@@ -138,6 +145,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
       shipping_cents,
       total_cents,
       transfer_cents,
+      discount_cents,
       stripe_payment_intent_id: pi.id,
       shipping_address:         buyerProfile?.shipping_address ?? null,
       state:                    'paid_held',
@@ -170,6 +178,9 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
 
   // Recs G1: drop the sold listing from ranking (non-blocking, fail-soft).
   after(() => recsMarkSold(session.listing_id))
+
+  // Fee Model v3: mark the buyer's reserved reward redeemed against this order (fail-soft).
+  if (session.reward_id) after(() => redeemReservedReward(service, session.reward_id as string, order!.id))
 
   // Collusion (Branch 4): accumulate the buyer's card fingerprint + billing for the pre-payout check.
   if (COLLUSION_HOLD_ENABLED) {
@@ -207,6 +218,11 @@ async function handlePaymentFailed(event: Stripe.Event, service: ServiceClient) 
   const listingId = pi.metadata?.listing_id
   if (!listingId) return
 
+  // Restore any reserved buyer reward so a failed payment doesn't consume it.
+  const { data: sess } = await service.from('checkout_sessions').select('reward_id').eq('stripe_payment_intent_id', pi.id).single()
+  const rid = (sess as { reward_id?: string | null } | null)?.reward_id
+  if (rid) await restoreReward(service, rid)
+
   await Promise.all([
     service.from('listings')
       .update({ status: 'active' })
@@ -216,6 +232,30 @@ async function handlePaymentFailed(event: Stripe.Event, service: ServiceClient) 
       .delete()
       .eq('stripe_payment_intent_id', pi.id),
   ])
+}
+
+// Fee Model v3: activate a paid boost when its standalone charge succeeds. Idempotent.
+async function handleBoostSucceeded(pi: Stripe.PaymentIntent, service: ServiceClient) {
+  const { data: boost } = await service
+    .from('boosts')
+    .select('id, listing_id, duration_days, status')
+    .eq('stripe_payment_intent_id', pi.id)
+    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const b = boost as any
+  if (!b || b.status !== 'pending') return
+  const now = Date.now()
+  const endsIso = new Date(now + b.duration_days * 86_400_000).toISOString()
+  const { data: activated } = await service
+    .from('boosts')
+    .update({ status: 'active', starts_at: new Date(now).toISOString(), ends_at: endsIso })
+    .eq('id', b.id)
+    .eq('status', 'pending')
+    .select('id')
+    .single()
+  if (activated) {
+    await service.from('listings').update({ boosted_until: endsIso }).eq('id', b.listing_id)
+  }
 }
 
 async function handleAccountUpdated(event: Stripe.Event, service: ServiceClient) {

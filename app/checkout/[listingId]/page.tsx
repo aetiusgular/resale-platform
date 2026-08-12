@@ -67,11 +67,9 @@ export default async function CheckoutPage({ params }: PageProps) {
     .single()
 
   const service = createServiceClientRaw()
-  const [buyerBps, sellerBps] = await Promise.all([
-    resolveEffectiveBps(service, user.id, 'buyer'),
-    resolveEffectiveBps(service, listing.seller_id, 'seller'),
-  ])
-  const amounts = orderAmountsAt(listing.price_cents, buyerBps, sellerBps)
+  // Fee Model v3: buyers pay no platform fee; only the seller rate is tiered.
+  const sellerBps = await resolveEffectiveBps(service, listing.seller_id, 'seller')
+  const amounts = orderAmountsAt(listing.price_cents, sellerBps)
   const image = (listing.images as string[])?.find(Boolean) ?? null
 
   return (
@@ -144,8 +142,8 @@ export default async function CheckoutPage({ params }: PageProps) {
               <span>{formatCents(amounts.item_cents)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
-              <span>BUYER FEE {buyerBps / 100}%</span>
-              <span>{formatCents(amounts.buyer_fee_cents)}</span>
+              <span>BUYER FEE</span>
+              <span>FREE</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
               <span>SHIPPING</span>

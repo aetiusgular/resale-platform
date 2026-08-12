@@ -17,6 +17,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { orderAmountsAt } from '@/lib/fees'
+import { reserveBestReward, restoreReward } from '@/lib/rewards'
+import { BUYER_REWARDS_ENABLED } from '@/lib/flags'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { isBanned } from '@/lib/auth/ban'
@@ -142,13 +144,15 @@ export async function POST(request: NextRequest) {
     verifiedOfferId = offerRow.id
   }
 
-  // Tiered fees: each side rated on its own trailing-365d activity, resolved
-  // server-side and snapshotted below (never trust the client, never recompute).
-  const [buyerBps, sellerBps] = await Promise.all([
-    resolveEffectiveBps(service, user.id, 'buyer'),
-    resolveEffectiveBps(service, listing.seller_id, 'seller'),
-  ])
-  const amounts = orderAmountsAt(priceCents, buyerBps, sellerBps, offerId ? 0 : undefined)
+  // Fee Model v3: buyers pay NO platform fee — only the seller rate is tiered
+  // (resolved server-side from the seller's own trailing-365d activity, then
+  // snapshotted below; never trust the client, never recompute a historical fee).
+  const sellerBps = await resolveEffectiveBps(service, listing.seller_id, 'seller')
+  const buyerBps = 0
+  // Fee Model v3: apply the buyer's best milestone reward (platform-funded, fail-soft).
+  // Reserved now, redeemed on payment success, restored if this checkout rolls back.
+  const reward = BUYER_REWARDS_ENABLED ? await reserveBestReward(service, user.id, priceCents) : null
+  const amounts = orderAmountsAt(priceCents, sellerBps, offerId ? 0 : undefined, reward?.discountCents ?? 0)
 
   // ── 6. Atomically lock listing + create checkout_session ─────────────────
   // UPDATE ... WHERE status = 'active' is atomic — if two requests race, only
@@ -185,6 +189,7 @@ export async function POST(request: NextRequest) {
         shipping_cents:   String(amounts.shipping_cents),
         total_cents:      String(amounts.total_cents),
         transfer_cents:   String(amounts.transfer_cents),
+        discount_cents:   String(amounts.discount_cents),
         ...(verifiedOfferId ? { offer_id: verifiedOfferId } : {}),
         // Shipping address stored for fulfillment reference (no name/email — no PII)
         ...(shippingAddress && typeof shippingAddress === 'object' ? {
@@ -202,6 +207,7 @@ export async function POST(request: NextRequest) {
       .from('listings')
       .update({ status: 'active' })
       .eq('id', listingId)
+    if (reward) await restoreReward(service, reward.rewardId)
     console.error('[checkout] Stripe error:', stripeError)
     return NextResponse.json({ error: 'Payment provider error' }, { status: 502 })
   }
@@ -219,6 +225,8 @@ export async function POST(request: NextRequest) {
       seller_fee_cents:         amounts.seller_fee_cents,
       shipping_cents:           amounts.shipping_cents,
       total_cents:              amounts.total_cents,
+      discount_cents:           amounts.discount_cents,
+      reward_id:                reward?.rewardId ?? null,
       buyer_fee_bps:            buyerBps,
       seller_fee_bps:           sellerBps,
     })
@@ -228,6 +236,7 @@ export async function POST(request: NextRequest) {
     // (race condition after our lock — should be rare but handle it)
     await stripe.paymentIntents.cancel(paymentIntent.id)
     await service.from('listings').update({ status: 'active' }).eq('id', listingId)
+    if (reward) await restoreReward(service, reward.rewardId)
     return NextResponse.json({ error: 'Listing is no longer available' }, { status: 409 })
   }
 
@@ -243,6 +252,7 @@ export async function POST(request: NextRequest) {
       buyer_fee_cents:  amounts.buyer_fee_cents,
       buyer_fee_bps:    buyerBps,
       shipping_cents:   amounts.shipping_cents,
+      discount_cents:   amounts.discount_cents,
       total_cents:      amounts.total_cents,
     },
   })

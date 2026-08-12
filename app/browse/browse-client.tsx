@@ -757,6 +757,7 @@ export default function BrowseClient({
                       onSaveToggle={handleSaveToggle}
                       position={i}
                       onProductClick={(id) => trackClick(id, 'feed')}
+                      promoted={l.promoted}
                     />
                   ))}
                 </div>
@@ -805,7 +806,7 @@ export default function BrowseClient({
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '32px 16px' }}>
             {allListings.map((l, i) => (
-              <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} position={i} onProductClick={(id) => trackClick(id, 'feed')} />
+              <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} position={i} onProductClick={(id) => trackClick(id, 'feed')} promoted={l.promoted} />
             ))}
           </div>
         )}

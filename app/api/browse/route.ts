@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
     created_at: l.created_at, seller: l.profiles,
     original_price_cents: origPriceMap.get(l.id) ?? null,
     price_display: formatCents(l.price_cents),
+    promoted: false, // load-more pages don't surface boosts (page 1 only)
   }))
 
   // Fetch user's saves for these listings

@@ -13,6 +13,9 @@ import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
 import stripe from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
+import { issueBuyerRewards } from '@/lib/rewards'
+import { checkEliteEligibility } from '@/lib/seller-program'
+import { BUYER_REWARDS_ENABLED } from '@/lib/flags'
 import { collusionHold } from '@/lib/trust/collusion-signals'
 
 export async function POST(
@@ -81,6 +84,11 @@ export async function POST(
   await Promise.all([
     applyTierProgress(service, order.buyer_id, 'buyer'),
     applyTierProgress(service, order.seller_id, 'seller'),
+  ])
+  // Fee Model v3: grant buyer milestone rewards + check elite-seller threshold (fail-soft).
+  await Promise.all([
+    BUYER_REWARDS_ENABLED ? issueBuyerRewards(service, order.buyer_id) : Promise.resolve([]),
+    checkEliteEligibility(service, order.seller_id),
   ])
 
   if (NOTIFICATIONS_ENABLED) {

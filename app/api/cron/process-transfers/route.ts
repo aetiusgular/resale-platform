@@ -13,6 +13,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
+import { issueBuyerRewards } from '@/lib/rewards'
+import { checkEliteEligibility } from '@/lib/seller-program'
+import { BUYER_REWARDS_ENABLED } from '@/lib/flags'
 import { collusionHold } from '@/lib/trust/collusion-signals'
 import { COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 
@@ -82,6 +85,11 @@ export async function GET(request: NextRequest) {
       await Promise.all([
         applyTierProgress(service, order.buyer_id, 'buyer'),
         applyTierProgress(service, order.seller_id, 'seller'),
+      ])
+      // Fee Model v3: grant buyer milestone rewards + check elite-seller threshold (fail-soft).
+      await Promise.all([
+        BUYER_REWARDS_ENABLED ? issueBuyerRewards(service, order.buyer_id) : Promise.resolve([]),
+        checkEliteEligibility(service, order.seller_id),
       ])
     } catch (err) {
       console.error(`[process-transfers] Transfer failed for order ${order.id}:`, err)

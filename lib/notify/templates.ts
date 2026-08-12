@@ -39,6 +39,10 @@ function parts(event: NotifyEvent, ctx: NotifyContext): { title: string; body: s
       const move = from && to ? ` from ${from}% to ${to}%` : ''
       return { title: 'Your fee rate may rise soon', body: `Some of your ${noun} are about to roll out of your 12-month window. Without new ${noun}, your ${feeLabel} could move${move}.`, url: '/settings?section=power' }
     }
+    case 'buyer_reward':
+      return { title: `You earned ${ctx.rewardPct ?? ''}% off`, body: `You've hit ${ctx.milestoneLabel ?? 'a spending milestone'} in the last year — a one-time ${ctx.rewardPct ?? ''}% discount is waiting and applies automatically at your next checkout.`, url: '/browse' }
+    case 'elite_program':
+      return { title: 'You\'ve unlocked the Elite Seller Program', body: 'Your sales have crossed our Elite threshold. Our team will reach out with perks like boosted listings and lower fees — keep an eye on your inbox.', url: '/settings?section=power' }
   }
 }
 

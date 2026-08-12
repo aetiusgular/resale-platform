@@ -21,6 +21,14 @@ export const RECS_ENABLED =
 export const RECS_TELEMETRY_ENABLED =
   process.env.NEXT_PUBLIC_RECS_ENABLED === 'true'
 
+// ── Fee Model v3 add-ons ─────────────────────────────────────────────────────
+// Buyer milestone rewards (loyalty coupons at $1k/$5k/$10k rolling-year purchases).
+export const BUYER_REWARDS_ENABLED =
+  process.env.BUYER_REWARDS_ENABLED === 'true'
+// Paid boosted/promoted listings. NEXT_PUBLIC so the seller UI can gate its entry point.
+export const BOOSTED_POSTS_ENABLED =
+  process.env.NEXT_PUBLIC_BOOSTED_POSTS_ENABLED === 'true'
+
 // ── Pre-launch gap features (see docs/LAUNCH_ROADMAP.md) ─────────────────────
 export const BUMP_ENABLED =
   process.env.BUMP_ENABLED === 'true'

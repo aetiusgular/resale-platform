@@ -11,6 +11,8 @@ export type NotifyEvent =
   | 'message'
   | 'tier_expiry'
   | 'saved_search'
+  | 'buyer_reward'
+  | 'elite_program'
 
 export type NotifyContext = {
   actorName?: string       // username that triggered it (buyer/seller/sender)
@@ -24,6 +26,8 @@ export type NotifyContext = {
   tierSide?: 'buyer' | 'seller'  // tier_expiry: which side's rate is at risk
   fromBps?: number               // tier_expiry: current activity rate (bps)
   toBps?: number                 // tier_expiry: projected rate after roll-off (bps)
+  rewardPct?: number             // buyer_reward: discount percent earned
+  milestoneLabel?: string        // buyer_reward: the spend milestone reached (e.g. "$1,000")
 }
 
 export type NotificationPrefs = {

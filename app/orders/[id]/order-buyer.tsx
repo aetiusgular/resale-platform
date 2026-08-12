@@ -227,7 +227,9 @@ export default function OrderBuyerView({ order, listing, sellerUsername, reviewP
             </div>
             <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 7 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink)' }}><span>PRICE</span><span>{formatCents(order.item_cents)}</span></div>
+              {order.buyer_fee_cents > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-ink-soft)' }}><span>BUYER FEE</span><span>{formatCents(order.buyer_fee_cents)}</span></div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-ink-soft)' }}><span>SHIPPING</span><span>{formatCents(order.shipping_cents)}</span></div>
               <div style={{ borderTop: '1px solid var(--color-line)', marginTop: 3, paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, color: 'var(--color-ink)' }}><span>TOTAL</span><span>{formatCents(order.total_cents)}</span></div>
             </div>
