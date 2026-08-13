@@ -43,7 +43,7 @@ describe('FEE_TIERS + BASE_FEE_BPS (v3: 8→7→5.5→3.5)', () => {
   it('base is 8.0% and tiers descend 350→800 with volume + order gates', () => {
     expect(BASE_FEE_BPS).toBe(800)
     expect(FEE_TIERS.map(t => t.bps)).toEqual([350, 550, 700, 800])
-    expect(FEE_TIERS.map(t => t.minVolumeCents)).toEqual([1_000_000, 500_000, 100_000, 0])
+    expect(FEE_TIERS.map(t => t.minVolumeCents)).toEqual([2_500_000, 1_000_000, 300_000, 0])
     expect(FEE_TIERS.map(t => t.minOrders)).toEqual([15, 10, 3, 0])
   })
   it('richest-first: volume strictly decreasing, bps non-decreasing, base floor at 0', () => {
@@ -57,18 +57,18 @@ describe('FEE_TIERS + BASE_FEE_BPS (v3: 8→7→5.5→3.5)', () => {
 })
 
 describe('feeBpsForActivity — volume AND order-count gate (both-gates kept)', () => {
-  it('elite requires BOTH $10k and 15 orders', () => {
-    expect(feeBpsForActivity(1_000_000, 15)).toBe(350)
-    expect(feeBpsForActivity(1_000_000, 14)).toBe(550) // count short → drop a tier
-    expect(feeBpsForActivity(1_000_000, 9)).toBe(700)
-    expect(feeBpsForActivity(1_000_000, 2)).toBe(800)  // too few orders → base
+  it('elite requires BOTH $25k and 15 orders', () => {
+    expect(feeBpsForActivity(2_500_000, 15)).toBe(350)
+    expect(feeBpsForActivity(2_500_000, 14)).toBe(550) // count short → drop a tier
+    expect(feeBpsForActivity(2_500_000, 9)).toBe(700)
+    expect(feeBpsForActivity(2_500_000, 2)).toBe(800)  // too few orders → base
   })
   it('each tier enforces its own volume + count gate', () => {
-    expect(feeBpsForActivity(500_000, 10)).toBe(550)
-    expect(feeBpsForActivity(100_000, 3)).toBe(700)
-    expect(feeBpsForActivity(500_000, 3)).toBe(700)  // $5k but 3 orders → $1k tier only
+    expect(feeBpsForActivity(1_000_000, 10)).toBe(550)
+    expect(feeBpsForActivity(300_000, 3)).toBe(700)
+    expect(feeBpsForActivity(1_000_000, 3)).toBe(700)  // $10k but 3 orders → $3k tier only
     expect(feeBpsForActivity(50_000, 99)).toBe(800)  // orders high, volume too low
-    expect(feeBpsForActivity(100_000, 99)).toBe(700)
+    expect(feeBpsForActivity(300_000, 99)).toBe(700)
   })
   it('garbage volume → BASE; negative/NaN count treated as 0', () => {
     expect(feeBpsForActivity(-1, 15)).toBe(BASE_FEE_BPS)
@@ -82,12 +82,12 @@ describe('feeBpsForActivity — volume AND order-count gate (both-gates kept)', 
 describe('feeBpsForVolumeCents — deprecated volume-only shim (ignores order gate)', () => {
   it('maps the v3 volume bands assuming unlimited orders', () => {
     expect(feeBpsForVolumeCents(0)).toBe(800)
-    expect(feeBpsForVolumeCents(99_999)).toBe(800)
-    expect(feeBpsForVolumeCents(100_000)).toBe(700)
-    expect(feeBpsForVolumeCents(499_999)).toBe(700)
-    expect(feeBpsForVolumeCents(500_000)).toBe(550)
-    expect(feeBpsForVolumeCents(999_999)).toBe(550)
-    expect(feeBpsForVolumeCents(1_000_000)).toBe(350)
+    expect(feeBpsForVolumeCents(299_999)).toBe(800)
+    expect(feeBpsForVolumeCents(300_000)).toBe(700)
+    expect(feeBpsForVolumeCents(999_999)).toBe(700)
+    expect(feeBpsForVolumeCents(1_000_000)).toBe(550)
+    expect(feeBpsForVolumeCents(2_499_999)).toBe(550)
+    expect(feeBpsForVolumeCents(2_500_000)).toBe(350)
     expect(feeBpsForVolumeCents(5_000_000)).toBe(350)
   })
   it('falls back to BASE for negative / non-finite volume', () => {

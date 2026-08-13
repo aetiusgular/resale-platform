@@ -6,7 +6,7 @@
  * FEE MODEL v3 (2026-08): SELLER-ONLY usage-based tiers; buyers pay NO platform fee.
  *   - BUYER  → pays item + shipping only (minus any loyalty-reward discount).
  *   - SELLER → trailing-365d SALES volume + order count set the rate:
- *       base 8.0%  ·  ≥$1k & 3 orders 7.0%  ·  ≥$5k & 10 orders 5.5%  ·  ≥$10k & 15 orders 3.5%
+ *       base 8.0%  ·  ≥$3k & 3 orders 7.0%  ·  ≥$10k & 10 orders 5.5%  ·  ≥$25k & 15 orders 3.5%
  *     A tier requires BOTH volume AND completed orders (anti wash-trading). The seller
  *     rate is INCLUSIVE of Stripe/PayPal processing (the platform absorbs it). Orders
  *     under $100 are capped at a 5% seller fee. A $0.30 floor (MIN_FEE_CENTS) protects
@@ -20,12 +20,12 @@
 /**
  * Fee tiers, richest-first. A tier applies only when trailing volume ≥
  * `minVolumeCents` AND completed-order count ≥ `minOrders` (both gates).
- * $10k & 15 orders→3.5% · $5k & 10→5.5% · $1k & 3→7.0% · base→8.0%
+ * $25k & 15 orders→3.5% · $10k & 10→5.5% · $3k & 3→7.0% · base→8.0%
  */
 export const FEE_TIERS: ReadonlyArray<{ minVolumeCents: number; minOrders: number; bps: number }> = [
-  { minVolumeCents: 1_000_000, minOrders: 15, bps: 350 }, // ≥ $10,000 & ≥15 orders → 3.5%
-  { minVolumeCents:   500_000, minOrders: 10, bps: 550 }, // ≥ $5,000  & ≥10 orders → 5.5%
-  { minVolumeCents:   100_000, minOrders:  3, bps: 700 }, // ≥ $1,000  & ≥3  orders → 7.0%
+  { minVolumeCents: 2_500_000, minOrders: 15, bps: 350 }, // ≥ $25,000 & ≥15 orders → 3.5%
+  { minVolumeCents: 1_000_000, minOrders: 10, bps: 550 }, // ≥ $10,000 & ≥10 orders → 5.5%
+  { minVolumeCents:   300_000, minOrders:  3, bps: 700 }, // ≥ $3,000  & ≥3  orders → 7.0%
   { minVolumeCents:         0, minOrders:  0, bps: 800 }, // base                   → 8.0%
 ]
 

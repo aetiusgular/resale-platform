@@ -67,7 +67,7 @@ Test count over the session: **241 → 314**.
 
 ### 💵 Fee Model v3 (2026-08) — IN PROGRESS
 ✅ **Core fee math (live money code, verified: tsc green + 24 fee tests pass).** Zero buyer
-   fee; seller-only tiers **8% → 7% ($1k/3 orders) → 5.5% ($5k/10) → 3.5% ($10k/15)** (both-gates
+   fee; seller-only tiers **8% → 7% ($3k/3 orders) → 5.5% ($10k/10) → 3.5% ($25k/15)** (both-gates
    kept); **sub-$100 orders capped at 5%** (`effectiveSellerBps`, elite keeps lower); $0.30 floor;
    seller rate inclusive of Stripe/PayPal. `orderAmountsAt` now `(price, sellerBps, shipping?,
    buyerDiscount?)` → zero buyer fee + platform-funded discount. Updated: `lib/fees.ts`,

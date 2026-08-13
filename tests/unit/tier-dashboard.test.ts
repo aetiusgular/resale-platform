@@ -16,24 +16,24 @@ describe('fmtRate', () => {
 })
 
 describe('computeSideDashboard — tiers & progress', () => {
-  it('new user: base 8.0%, next tier 7.0% needs $1000 & 3 orders', () => {
+  it('new user: base 8.0%, next tier 7.0% needs $3000 & 3 orders', () => {
     const d = computeSideDashboard('seller', [], null, null, NOW)
     expect(d.activityBps).toBe(800)
     expect(d.effectiveBps).toBe(800)
     expect(d.current.bps).toBe(800)
     expect(d.next?.bps).toBe(700)
-    expect(d.volumeToNextCents).toBe(100_000)
+    expect(d.volumeToNextCents).toBe(300_000)
     expect(d.ordersToNext).toBe(3)
     expect(d.locked).toBe(false)
   })
 
-  it('mid tier: $6000 over 12 orders -> 5.5%, next 3.5% needs +$4000 & +3 orders', () => {
-    const d = computeSideDashboard('seller', recent(12, 50_000), null, null, NOW) // 12 x $500 = $6000
-    expect(d.volumeCents).toBe(600_000)
+  it('mid tier: $12000 over 12 orders -> 5.5%, next 3.5% needs +$13000 & +3 orders', () => {
+    const d = computeSideDashboard('seller', recent(12, 100_000), null, null, NOW) // 12 x $1000 = $12000
+    expect(d.volumeCents).toBe(1_200_000)
     expect(d.orderCount).toBe(12)
     expect(d.activityBps).toBe(550)
     expect(d.next?.bps).toBe(350)
-    expect(d.volumeToNextCents).toBe(400_000)
+    expect(d.volumeToNextCents).toBe(1_300_000)
     expect(d.ordersToNext).toBe(3)
   })
 
@@ -42,7 +42,7 @@ describe('computeSideDashboard — tiers & progress', () => {
     const d = computeSideDashboard('buyer', recent(5, 200_000), null, null, NOW)
     expect(d.activityBps).toBe(700)
     expect(d.next?.bps).toBe(550)
-    expect(d.volumeToNextCents).toBe(0) // already past the $5000 volume gate
+    expect(d.volumeToNextCents).toBe(0) // already past the $10000 volume gate
     expect(d.ordersToNext).toBe(5)      // 10 - 5
   })
 
@@ -53,8 +53,8 @@ describe('computeSideDashboard — tiers & progress', () => {
     expect(d.activityBps).toBe(800)     // 1 order fails every gate above base
   })
 
-  it('top tier: $12k over 20 orders -> 3.5%, no next tier', () => {
-    const d = computeSideDashboard('seller', recent(20, 60_000), null, null, NOW) // 20 x $600 = $12k
+  it('top tier: $30k over 20 orders -> 3.5%, no next tier', () => {
+    const d = computeSideDashboard('seller', recent(20, 150_000), null, null, NOW) // 20 x $1500 = $30k
     expect(d.activityBps).toBe(350)
     expect(d.next).toBeNull()
     expect(d.volumeToNextCents).toBe(0)
@@ -77,7 +77,7 @@ describe('computeSideDashboard — lock', () => {
   })
 
   it('lock no better than activity is not flagged as a benefit', () => {
-    const d = computeSideDashboard('seller', recent(20, 60_000), 350, NOW + 5 * DAY, NOW) // activity already 350
+    const d = computeSideDashboard('seller', recent(20, 150_000), 350, NOW + 5 * DAY, NOW) // activity already 350
     expect(d.activityBps).toBe(350)
     expect(d.effectiveBps).toBe(350)
     expect(d.locked).toBe(false)
@@ -86,17 +86,17 @@ describe('computeSideDashboard — lock', () => {
 
 describe('computeSideDashboard — expiring-volume warning', () => {
   it('flags a tier drop when soon-to-expire orders roll off', () => {
-    // 3 orders x $400 = $1200 over 3 orders -> 4.0%. One order is 360d old (expires within 14d).
+    // 3 orders x $1200 = $3600 over 3 orders -> 7.0%. One order is 360d old (expires within 14d).
     const orders = [
-      { createdAtMs: ago(30), itemCents: 40_000 },
-      { createdAtMs: ago(60), itemCents: 40_000 },
-      { createdAtMs: ago(360), itemCents: 40_000 },
+      { createdAtMs: ago(30), itemCents: 120_000 },
+      { createdAtMs: ago(60), itemCents: 120_000 },
+      { createdAtMs: ago(360), itemCents: 120_000 },
     ]
     const d = computeSideDashboard('seller', orders, null, null, NOW)
-    expect(d.activityBps).toBe(700)          // $1200 & 3 orders -> $1k tier
+    expect(d.activityBps).toBe(700)          // $3600 & 3 orders -> $3k tier
     expect(d.expiringOrderCount).toBe(1)
-    expect(d.expiringVolumeCents).toBe(40_000)
-    expect(d.projectedBps).toBe(800)         // after roll-off: $800 & 2 orders -> base
+    expect(d.expiringVolumeCents).toBe(120_000)
+    expect(d.projectedBps).toBe(800)         // after roll-off: $2400 & 2 orders -> base
     expect(d.willDropTier).toBe(true)
   })
 
@@ -124,14 +124,14 @@ describe('computeSideDashboard — expiring-volume warning', () => {
 
 describe('pickWorseningSide', () => {
   const expiringSeller = () => computeSideDashboard('seller', [
-    { createdAtMs: ago(30), itemCents: 40_000 },
-    { createdAtMs: ago(60), itemCents: 40_000 },
-    { createdAtMs: ago(360), itemCents: 40_000 },
-  ], null, null, NOW) // 4.0% -> base after roll-off
+    { createdAtMs: ago(30), itemCents: 120_000 },
+    { createdAtMs: ago(60), itemCents: 120_000 },
+    { createdAtMs: ago(360), itemCents: 120_000 },
+  ], null, null, NOW) // 7.0% -> base after roll-off
   const expiringBuyer = () => computeSideDashboard('buyer', [
-    { createdAtMs: ago(30), itemCents: 40_000 },
-    { createdAtMs: ago(60), itemCents: 40_000 },
-    { createdAtMs: ago(360), itemCents: 40_000 },
+    { createdAtMs: ago(30), itemCents: 120_000 },
+    { createdAtMs: ago(60), itemCents: 120_000 },
+    { createdAtMs: ago(360), itemCents: 120_000 },
   ], null, null, NOW)
   const stableBuyer = () => computeSideDashboard('buyer', recent(5, 50_000), null, null, NOW) // 3.0%, nothing expiring
 
