@@ -86,12 +86,14 @@ async function main() {
     email: sellerEmail,
     capabilities: { transfers: { requested: true } },
     business_type: 'individual',
-    business_profile: { mcc: '5691', url: 'https://example.com', product_description: 'e2e test seller' },
+    // accessible.stripe.com = Stripe's documented test token for successful URL
+    // validation (example.com is rejected with url_invalid on current API versions).
+    business_profile: { mcc: '5691', url: 'https://accessible.stripe.com', product_description: 'e2e test seller' },
     individual: {
       first_name: 'Test',
       last_name: 'Seller',
       email: sellerEmail,
-      phone: '000 000 0000',
+      phone: '0000000000', // documented test token: successful phone validation
       dob: { day: 1, month: 1, year: 1990 },
       ssn_last_4: '0000',
       address: { line1: 'address_full_match', city: 'San Francisco', state: 'CA', postal_code: '94103', country: 'US' },
