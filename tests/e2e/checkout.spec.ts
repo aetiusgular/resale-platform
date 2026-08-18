@@ -33,12 +33,28 @@ function serviceClient() {
 }
 
 async function signIn(page: Page, email: string, password: string) {
+  // Fail loudly instead of timing out on the disabled submit button: the form's
+  // submit is disabled while either field is empty, so blank TEST_* env produces
+  // an opaque 30s page.click timeout otherwise.
+  if (!email || !password) {
+    throw new Error(
+      'TEST_* credentials missing — run `node scripts/seed-e2e-fixtures.mjs` and add the printed block to .env.local',
+    )
+  }
   // /enter became the invite/waitlist landing when open registration shipped (c050434);
   // the email+password form lives at /enter/login now.
   await page.goto('/enter/login')
-  await page.fill('[name="email"], input[type="email"]', email)
-  await page.fill('[name="password"], input[type="password"]', password)
-  await page.click('button[type="submit"]')
+  const submit = page.locator('button[type="submit"]')
+  await submit.waitFor({ state: 'visible' })
+  // Dev-mode hydration race: filling before React hydrates leaves the controlled
+  // inputs empty (and the submit disabled). Fill-and-verify until the button arms.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await page.fill('input[type="email"]', email)
+    await page.fill('input[type="password"]', password)
+    if (await submit.isEnabled()) break
+    await page.waitForTimeout(500)
+  }
+  await submit.click()
   await page.waitForURL(/\/(browse|onboarding)/, { timeout: 10000 })
 }
 
