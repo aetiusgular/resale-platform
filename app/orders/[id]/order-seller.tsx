@@ -24,6 +24,7 @@ interface OrderData {
   transfer_cents: number
   carrier: string | null
   tracking_number: string | null
+  shipping_label_url: string | null
   paid_at: string | null
   seller_confirmed_at: string | null
   shipped_at: string | null
@@ -204,6 +205,20 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
 
             {/* Ship action */}
             {currentState === 'seller_confirmed' && (
+              order.shipping_label_url ? (
+                <form onSubmit={handleShip} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', borderBottom: '1px solid var(--color-line)', paddingBottom: 8 }}>
+                    Prepaid label ready
+                  </div>
+                  <a href={order.shipping_label_url} target="_blank" rel="noopener noreferrer" style={{ height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-ink)', borderRadius: 2, font: '500 14px var(--font-ui)', color: 'var(--color-ink)', textDecoration: 'none' }}>
+                    Print shipping label →
+                  </a>
+                  <span style={{ fontSize: 12, color: 'var(--color-ink-soft)' }}>Shipping was paid by the buyer. Print the label, drop it off, then mark shipped.</span>
+                  <button type="submit" disabled={shipLoading} style={{ height: 44, background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: 2, font: '500 14px var(--font-ui)', cursor: shipLoading ? 'not-allowed' : 'pointer' }}>
+                    {shipLoading ? 'Saving…' : 'Mark as shipped'}
+                  </button>
+                </form>
+              ) : (
               <form onSubmit={handleShip} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', borderBottom: '1px solid var(--color-line)', paddingBottom: 8 }}>
                   Mark as shipped
@@ -214,6 +229,7 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
                   {shipLoading ? 'Saving…' : 'Mark as shipped'}
                 </button>
               </form>
+              )
             )}
 
             {/* Payout info + PROTECTED card (delivered/released) */}

@@ -38,6 +38,7 @@ export default async function OrderPage({ params }: PageProps) {
       transfer_cents,
       carrier,
       tracking_number,
+      shipping_label_url,
       shipping_address,
       stripe_transfer_id,
       paid_at,

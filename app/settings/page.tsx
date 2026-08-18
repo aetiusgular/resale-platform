@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 import SettingsClient from './settings-client'
+import type { AddressValue } from './address-form'
 import { NOTIFICATIONS_ENABLED, PHONE_VERIFICATION_ENABLED, TIER_DASHBOARD_ENABLED } from '@/lib/flags'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { getTierDashboard, type SideDashboard } from '@/lib/tier-dashboard'
@@ -15,7 +16,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username, sizes, payouts_enabled, stripe_connect_account_id, phone, phone_verified_at')
+    .select('username, sizes, payouts_enabled, stripe_connect_account_id, phone, phone_verified_at, shipping_address, ship_from_address')
     .eq('id', user.id)
     .single()
 
@@ -66,6 +67,8 @@ export default async function SettingsPage() {
           phoneVerificationEnabled={PHONE_VERIFICATION_ENABLED}
           phoneVerified={phoneVerified}
           initialPhone={initialPhone}
+          initialShippingAddress={(profile?.shipping_address as AddressValue | null) ?? null}
+          initialShipFromAddress={(profile?.ship_from_address as AddressValue | null) ?? null}
           tierDashboardEnabled={TIER_DASHBOARD_ENABLED}
           buyerTier={buyerTier}
           sellerTier={sellerTier}

@@ -186,6 +186,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
       fee_mode,
       stripe_payment_intent_id: pi.id,
       shipping_address:         buyerProfile?.shipping_address ?? null,
+      ship_to_address:          buyerProfile?.shipping_address ?? null, // G12: complete label recipient
       state:                    'paid_held',
       paid_at:                  new Date().toISOString(),
     })

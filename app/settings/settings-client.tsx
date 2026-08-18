@@ -6,6 +6,7 @@ import Link from 'next/link'
 import PushSubscribe from '@/app/components/push-subscribe'
 import PhoneVerify from './phone-verify'
 import TierDashboard from './tier-dashboard'
+import AddressForm, { type AddressValue } from './address-form'
 import type { SideDashboard } from '@/lib/tier-dashboard'
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -36,6 +37,8 @@ interface Props {
   tierDashboardEnabled: boolean
   buyerTier: SideDashboard | null
   sellerTier: SideDashboard | null
+  initialShippingAddress: AddressValue | null
+  initialShipFromAddress: AddressValue | null
 }
 
 /* ─── Size options ──────────────────────────────────────────────────────── */
@@ -80,7 +83,7 @@ const NAV_SECTIONS = [
 
 /* ─── Component ─────────────────────────────────────────────────────────── */
 
-export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId, initialPrefs, notificationsEnabled, phoneVerificationEnabled, phoneVerified, initialPhone, tierDashboardEnabled, buyerTier, sellerTier }: Props) {
+export default function SettingsClient({ initialSizes, payoutsEnabled, stripeConnectId, initialPrefs, notificationsEnabled, phoneVerificationEnabled, phoneVerified, initialPhone, tierDashboardEnabled, buyerTier, sellerTier, initialShippingAddress, initialShipFromAddress }: Props) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -145,7 +148,7 @@ export default function SettingsClient({ initialSizes, payoutsEnabled, stripeCon
       case 'my-sizes':
         return <MySizesPane sizes={sizes} toggleSize={toggleSize} isDirty={isDirty} saving={saving} onSave={saveSizes} />
       case 'addresses':
-        return <AddressesPane />
+        return <AddressesPane shipping={initialShippingAddress} shipFrom={initialShipFromAddress} />
       case 'payments':
         return <PaymentsPane payoutsEnabled={payoutsEnabled} stripeConnectId={stripeConnectId} />
       case 'notifications':
@@ -414,41 +417,25 @@ function MySizesPane({
 
 /* ─── Addresses pane ────────────────────────────────────────────────────── */
 
-function AddressesPane() {
+function AddressesPane({ shipping, shipFrom }: { shipping: AddressValue | null; shipFrom: AddressValue | null }) {
   return (
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>
         Addresses
       </h1>
-      <div style={{ marginTop: 24, maxWidth: 560 }}>
-        <div style={{
-          border: '1px solid var(--color-line)', borderRadius: 2,
-          padding: '20px 16px',
-          display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start',
-        }}>
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 11,
-            letterSpacing: '0.08em', color: 'var(--color-ink-soft)',
-          }}>NO ADDRESSES SAVED</span>
-          <span style={{ fontSize: 12, color: 'var(--color-ink-soft)' }}>
-            add a shipping address here and it will pre-fill at checkout.
-          </span>
-          <button
-            disabled
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              whiteSpace: 'nowrap', height: 44, padding: '0 24px',
-              background: 'var(--color-bg)', color: 'var(--color-ink)',
-              border: '1px solid var(--color-ink)', borderRadius: 2,
-              font: '500 14px var(--font-ui)', letterSpacing: '-0.01em',
-              cursor: 'not-allowed', opacity: 0.5,
-            }}
-          >Add address</button>
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontSize: 10,
-            letterSpacing: '0.08em', color: 'var(--color-ink-soft)',
-          }}>COMING SOON</span>
-        </div>
+      <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 40 }}>
+        <AddressForm
+          kind="shipping"
+          label="Shipping address"
+          hint="Where your purchases are delivered. Pre-fills at checkout."
+          initial={shipping}
+        />
+        <AddressForm
+          kind="ship_from"
+          label="Return address (for sellers)"
+          hint="Your ship-from address. Used to generate prepaid labels when you sell."
+          initial={shipFrom}
+        />
       </div>
     </div>
   )
