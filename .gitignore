@@ -24,3 +24,7 @@ audit-findings.json
 
 # quarantine for files removed in a cloud session (FUSE mount blocks rm)
 _to_delete/
+
+tsconfig.tsbuildinfo
+.cowork_write_test
+.playwright-mcp/
