@@ -8,6 +8,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { formatCents, orderAmountsAt } from '@/lib/fees'
+import { floorShippingCents } from '@/lib/shipping'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import CheckoutClient from './checkout-client'
@@ -26,7 +27,7 @@ export default async function CheckoutPage({ params }: PageProps) {
   // Fetch the listing (visible if active OR pending_escrow for the current buyer)
   const { data: listing } = await supabase
     .from('listings')
-    .select('id, title, brand, category, size, price_cents, images, seller_id, status')
+    .select('id, title, brand, category, size, price_cents, shipping_cents, images, seller_id, status')
     .eq('id', listingId)
     .single()
 
@@ -69,7 +70,7 @@ export default async function CheckoutPage({ params }: PageProps) {
   const service = createServiceClientRaw()
   // Fee Model v3: buyers pay no platform fee; only the seller rate is tiered.
   const sellerBps = await resolveEffectiveBps(service, listing.seller_id, 'seller')
-  const amounts = orderAmountsAt(listing.price_cents, sellerBps)
+  const amounts = orderAmountsAt(listing.price_cents, sellerBps, listing.shipping_cents ?? floorShippingCents(listing.category))
   const image = (listing.images as string[])?.find(Boolean) ?? null
 
   return (

@@ -12,6 +12,8 @@ import { needsAuthenticationReview } from '@/lib/authbadge/screen'
 import { allImageUrlsAllowed, storageHost } from '@/lib/security/image-url'
 import { isBanned } from '@/lib/auth/ban'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { quoteShippingCents } from '@/lib/shipping'
+import { makeEasypostRater } from '@/lib/shipping-easypost'
 
 // Explicitly use Node.js runtime — sharp requires native bindings not on Edge
 export const runtime = 'nodejs'
@@ -188,6 +190,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // ── System-derived shipping (sellers cannot set it) ───────────────────────
+  // Category → parcel preset → max(worst-zone quote, floor) + $2. The EasyPost rater is
+  // dormant (returns null → floor) while SHIPPING_LABELS_ENABLED=false. TODO: pass the
+  // seller's ship-from ZIP into makeEasypostRater(...) when label infra is enabled so the
+  // live worst-zone quote replaces the floor.
+  const shipping = await quoteShippingCents(category.trim(), makeEasypostRater(null))
+
   // ── Insert listing ────────────────────────────────────────────────────────
   const { data, error } = await supabase
     .from('listings')
@@ -196,6 +205,8 @@ export async function POST(request: NextRequest) {
       title:     titleClean,
       brand:     brand.trim().toUpperCase(),
       category:  category.trim(),
+      shipping_cents:  shipping.cents,
+      shipping_source: shipping.source,
       size:      size.trim().toUpperCase(),
       description: descClean,
       condition_score,

@@ -117,6 +117,9 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
 
   const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, discount_cents, buyer_fee_bps, seller_fee_bps } = session
   const transfer_cents = item_cents - seller_fee_cents
+  // G11: fee-model label snapshot. Money fields come from the validated session above;
+  // fee_mode is descriptive and rides in immutable PI metadata set at checkout.
+  const fee_mode = meta.fee_mode === 'welcome' ? 'welcome' : 'tier'
 
   // Verify PI amount matches session total (tamper check)
   if (pi.amount !== total_cents) {
@@ -146,6 +149,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
       total_cents,
       transfer_cents,
       discount_cents,
+      fee_mode,
       stripe_payment_intent_id: pi.id,
       shipping_address:         buyerProfile?.shipping_address ?? null,
       state:                    'paid_held',

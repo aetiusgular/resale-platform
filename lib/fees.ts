@@ -130,7 +130,7 @@ export function buyerTotalAt(priceCents: number, buyerBps: number): number {
 export function orderAmountsAt(
   priceCents: number,
   sellerBps: number,
-  shippingCents: number = SHIPPING_CENTS,
+  shippingCents: number,
   buyerDiscountCents: number = 0,
 ): {
   item_cents:       number
@@ -165,8 +165,6 @@ export function formatCents(cents: number): string {
   })
 }
 
-/** Fixed shipping cost for alpha (buyer-paid, $12). */
-export const SHIPPING_CENTS = 1200
 
 // ─── G11: onboarding welcome ramp (first 10 sales = 0% commission) ────────────
 

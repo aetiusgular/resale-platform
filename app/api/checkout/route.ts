@@ -16,7 +16,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
-import { orderAmountsAt } from '@/lib/fees'
+import { orderAmountsAt, resolveFeeMode, welcomeSellerFeeCents, STRIPE_PCT_BPS } from '@/lib/fees'
+import { floorShippingCents } from '@/lib/shipping'
 import { reserveBestReward, restoreReward } from '@/lib/rewards'
 import { BUYER_REWARDS_ENABLED } from '@/lib/flags'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
   // ── 3. Fetch listing (must be active or pending_escrow if offer-based) ───
   const { data: listing } = await service
     .from('listings')
-    .select('id, title, brand, price_cents, seller_id, status, images')
+    .select('id, title, brand, category, price_cents, shipping_cents, seller_id, status, images')
     .eq('id', listingId)
     .single()
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
   // ── 4. Check seller payouts_enabled ──────────────────────────────────────
   const { data: seller } = await service
     .from('profiles')
-    .select('payouts_enabled, stripe_connect_account_id')
+    .select('payouts_enabled, stripe_connect_account_id, lifetime_sales_count')
     .eq('id', listing.seller_id)
     .single()
 
@@ -149,10 +150,26 @@ export async function POST(request: NextRequest) {
   // snapshotted below; never trust the client, never recompute a historical fee).
   const sellerBps = await resolveEffectiveBps(service, listing.seller_id, 'seller')
   const buyerBps = 0
+  // G11 welcome ramp: a seller's first 10 non-cancelled sales are 0% commission (seller
+  // covers Stripe processing only); sale 11+ uses the tier rate above. Snapshotted per order.
+  const feeMode = resolveFeeMode(seller?.lifetime_sales_count ?? 0)
+  // Shipping is system-derived and stored on the listing (sellers cannot set it). Offer
+  // checkouts carry no shipping line (unchanged); regular checkouts use the listing's stored
+  // shipping, falling back to the category floor for any legacy listing without one.
+  const shippingCents = offerId ? 0 : (listing.shipping_cents ?? floorShippingCents(listing.category))
   // Fee Model v3: apply the buyer's best milestone reward (platform-funded, fail-soft).
   // Reserved now, redeemed on payment success, restored if this checkout rolls back.
   const reward = BUYER_REWARDS_ENABLED ? await reserveBestReward(service, user.id, priceCents) : null
-  const amounts = orderAmountsAt(priceCents, sellerBps, offerId ? 0 : undefined, reward?.discountCents ?? 0)
+  let amounts = orderAmountsAt(priceCents, sellerBps, shippingCents, reward?.discountCents ?? 0)
+  if (feeMode === 'welcome') {
+    // 0% platform commission: the seller fee is the estimated Stripe processing cost only
+    // (2.9% + $0.30 on item + shipping), capped at item. Buyer total is unchanged.
+    const welcomeFee = welcomeSellerFeeCents(priceCents, shippingCents)
+    amounts = { ...amounts, seller_fee_cents: welcomeFee, transfer_cents: priceCents - welcomeFee }
+  }
+  // Snapshot the seller "rate" for display/audit: processing estimate in welcome mode,
+  // resolved tier bps otherwise. (Money fields are the amounts above, validated at webhook.)
+  const sellerFeeBpsSnapshot = feeMode === 'welcome' ? STRIPE_PCT_BPS : sellerBps
 
   // ── 6. Atomically lock listing + create checkout_session ─────────────────
   // UPDATE ... WHERE status = 'active' is atomic — if two requests race, only
@@ -183,6 +200,7 @@ export async function POST(request: NextRequest) {
         listing_id:       listingId,
         buyer_id:         user.id,
         seller_id:        listing.seller_id,
+        fee_mode:         feeMode,
         item_cents:       String(amounts.item_cents),
         buyer_fee_cents:  String(amounts.buyer_fee_cents),
         seller_fee_cents: String(amounts.seller_fee_cents),
@@ -228,7 +246,7 @@ export async function POST(request: NextRequest) {
       discount_cents:           amounts.discount_cents,
       reward_id:                reward?.rewardId ?? null,
       buyer_fee_bps:            buyerBps,
-      seller_fee_bps:           sellerBps,
+      seller_fee_bps:           sellerFeeBpsSnapshot,
     })
 
   if (sessionError) {

@@ -39,6 +39,127 @@ export type Database = {
   }
   public: {
     Tables: {
+      boosts: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          duration_days: number
+          ends_at: string | null
+          id: string
+          listing_id: string
+          package: string
+          seller_id: string
+          starts_at: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          duration_days: number
+          ends_at?: string | null
+          id?: string
+          listing_id: string
+          package: string
+          seller_id: string
+          starts_at?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          duration_days?: number
+          ends_at?: string | null
+          id?: string
+          listing_id?: string
+          package?: string
+          seller_id?: string
+          starts_at?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boosts_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boosts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "boosts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buyer_rewards: {
+        Row: {
+          buyer_id: string
+          cap_cents: number
+          discount_bps: number
+          expires_at: string
+          granted_at: string
+          id: string
+          milestone_cents: number
+          order_id: string | null
+          redeemed_at: string | null
+          reserved_payment_intent_id: string | null
+          status: string
+        }
+        Insert: {
+          buyer_id: string
+          cap_cents: number
+          discount_bps: number
+          expires_at?: string
+          granted_at?: string
+          id?: string
+          milestone_cents: number
+          order_id?: string | null
+          redeemed_at?: string | null
+          reserved_payment_intent_id?: string | null
+          status?: string
+        }
+        Update: {
+          buyer_id?: string
+          cap_cents?: number
+          discount_bps?: number
+          expires_at?: string
+          granted_at?: string
+          id?: string
+          milestone_cents?: number
+          order_id?: string | null
+          redeemed_at?: string | null
+          reserved_payment_intent_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_rewards_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "buyer_rewards_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buyer_strikes: {
         Row: {
           created_at: string
@@ -101,9 +222,11 @@ export type Database = {
           buyer_fee_cents: number
           buyer_id: string
           created_at: string
+          discount_cents: number
           expires_at: string
           item_cents: number
           listing_id: string
+          reward_id: string | null
           seller_fee_bps: number | null
           seller_fee_cents: number
           seller_id: string
@@ -116,9 +239,11 @@ export type Database = {
           buyer_fee_cents: number
           buyer_id: string
           created_at?: string
+          discount_cents?: number
           expires_at?: string
           item_cents: number
           listing_id: string
+          reward_id?: string | null
           seller_fee_bps?: number | null
           seller_fee_cents: number
           seller_id: string
@@ -131,9 +256,11 @@ export type Database = {
           buyer_fee_cents?: number
           buyer_id?: string
           created_at?: string
+          discount_cents?: number
           expires_at?: string
           item_cents?: number
           listing_id?: string
+          reward_id?: string | null
           seller_fee_bps?: number | null
           seller_fee_cents?: number
           seller_id?: string
@@ -293,7 +420,7 @@ export type Database = {
       }
       comments: {
         Row: {
-          author_id: string
+          author_id: string | null
           body: string
           created_at: string
           id: string
@@ -301,11 +428,13 @@ export type Database = {
           parent_id: string | null
           pinned: boolean
           redacted: boolean
+          source: Database["public"]["Enums"]["comment_source"]
           status: Database["public"]["Enums"]["comment_status"]
           thread_type: Database["public"]["Enums"]["thread_type"]
+          verdict: string | null
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
           body: string
           created_at?: string
           id?: string
@@ -313,11 +442,13 @@ export type Database = {
           parent_id?: string | null
           pinned?: boolean
           redacted?: boolean
+          source?: Database["public"]["Enums"]["comment_source"]
           status?: Database["public"]["Enums"]["comment_status"]
           thread_type: Database["public"]["Enums"]["thread_type"]
+          verdict?: string | null
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
           body?: string
           created_at?: string
           id?: string
@@ -325,8 +456,10 @@ export type Database = {
           parent_id?: string | null
           pinned?: boolean
           redacted?: boolean
+          source?: Database["public"]["Enums"]["comment_source"]
           status?: Database["public"]["Enums"]["comment_status"]
           thread_type?: Database["public"]["Enums"]["thread_type"]
+          verdict?: string | null
         }
         Relationships: [
           {
@@ -674,11 +807,11 @@ export type Database = {
         Row: {
           authentication_reasons: string[]
           authentication_status: string
+          boosted_until: string | null
           brand: string
           bumped_at: string | null
           bumped_price_cents: number | null
           category: string
-          comments_enabled: boolean
           condition_notes: Json
           condition_score: number
           created_at: string
@@ -693,6 +826,8 @@ export type Database = {
           saves_count: number
           search_vector: unknown
           seller_id: string
+          shipping_cents: number | null
+          shipping_source: string
           size: string
           status: Database["public"]["Enums"]["listing_status"]
           title: string
@@ -701,11 +836,11 @@ export type Database = {
         Insert: {
           authentication_reasons?: string[]
           authentication_status?: string
+          boosted_until?: string | null
           brand: string
           bumped_at?: string | null
           bumped_price_cents?: number | null
           category: string
-          comments_enabled?: boolean
           condition_notes?: Json
           condition_score: number
           created_at?: string
@@ -720,6 +855,8 @@ export type Database = {
           saves_count?: number
           search_vector?: unknown
           seller_id: string
+          shipping_cents?: number | null
+          shipping_source?: string
           size: string
           status?: Database["public"]["Enums"]["listing_status"]
           title: string
@@ -728,11 +865,11 @@ export type Database = {
         Update: {
           authentication_reasons?: string[]
           authentication_status?: string
+          boosted_until?: string | null
           brand?: string
           bumped_at?: string | null
           bumped_price_cents?: number | null
           category?: string
-          comments_enabled?: boolean
           condition_notes?: Json
           condition_score?: number
           created_at?: string
@@ -747,6 +884,8 @@ export type Database = {
           saves_count?: number
           search_vector?: unknown
           seller_id?: string
+          shipping_cents?: number | null
+          shipping_source?: string
           size?: string
           status?: Database["public"]["Enums"]["listing_status"]
           title?: string
@@ -860,6 +999,56 @@ export type Database = {
           {
             foreignKeyName: "moderation_actions_actor_id_fkey"
             columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderator_recommendations: {
+        Row: {
+          created_at: string
+          id: string
+          nominee_id: string
+          recommender_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nominee_id: string
+          recommender_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nominee_id?: string
+          recommender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderator_recommendations_nominee_id_fkey"
+            columns: ["nominee_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "moderator_recommendations_nominee_id_fkey"
+            columns: ["nominee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderator_recommendations_recommender_id_fkey"
+            columns: ["recommender_id"]
+            isOneToOne: false
+            referencedRelation: "buyer_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "moderator_recommendations_recommender_id_fkey"
+            columns: ["recommender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1086,7 +1275,9 @@ export type Database = {
           carrier: string | null
           created_at: string
           delivered_at: string | null
+          discount_cents: number
           disputed_at: string | null
+          fee_mode: string
           id: string
           item_cents: number
           listing_id: string
@@ -1117,7 +1308,9 @@ export type Database = {
           carrier?: string | null
           created_at?: string
           delivered_at?: string | null
+          discount_cents?: number
           disputed_at?: string | null
+          fee_mode?: string
           id?: string
           item_cents: number
           listing_id: string
@@ -1148,7 +1341,9 @@ export type Database = {
           carrier?: string | null
           created_at?: string
           delivered_at?: string | null
+          discount_cents?: number
           disputed_at?: string | null
+          fee_mode?: string
           id?: string
           item_cents?: number
           listing_id?: string
@@ -1296,11 +1491,16 @@ export type Database = {
           created_at: string
           current_buyer_tier_bps: number | null
           current_seller_tier_bps: number | null
+          elite_program_eligible: boolean
+          elite_program_notified_at: string | null
           id: string
           id_verification_status: Database["public"]["Enums"]["id_verification_status"]
           id_verified: boolean
           id_verified_at: string | null
           invited_by: string | null
+          is_moderator: boolean
+          lifetime_sales_count: number
+          moderator_since: string | null
           payouts_enabled: boolean
           persona_inquiry_id: string | null
           phone: string | null
@@ -1325,11 +1525,16 @@ export type Database = {
           created_at?: string
           current_buyer_tier_bps?: number | null
           current_seller_tier_bps?: number | null
+          elite_program_eligible?: boolean
+          elite_program_notified_at?: string | null
           id: string
           id_verification_status?: Database["public"]["Enums"]["id_verification_status"]
           id_verified?: boolean
           id_verified_at?: string | null
           invited_by?: string | null
+          is_moderator?: boolean
+          lifetime_sales_count?: number
+          moderator_since?: string | null
           payouts_enabled?: boolean
           persona_inquiry_id?: string | null
           phone?: string | null
@@ -1354,11 +1559,16 @@ export type Database = {
           created_at?: string
           current_buyer_tier_bps?: number | null
           current_seller_tier_bps?: number | null
+          elite_program_eligible?: boolean
+          elite_program_notified_at?: string | null
           id?: string
           id_verification_status?: Database["public"]["Enums"]["id_verification_status"]
           id_verified?: boolean
           id_verified_at?: string | null
           invited_by?: string | null
+          is_moderator?: boolean
+          lifetime_sales_count?: number
+          moderator_since?: string | null
           payouts_enabled?: boolean
           persona_inquiry_id?: string | null
           phone?: string | null
@@ -1685,11 +1895,21 @@ export type Database = {
         | { Args: { p_code: string }; Returns: Json }
         | { Args: { p_code: string; p_user_id: string }; Returns: Json }
       expire_and_void_offers: { Args: never; Returns: undefined }
+      expire_boosts: { Args: never; Returns: undefined }
       generate_member_codes: {
         Args: { p_count?: number; p_user_id: string }
         Returns: string[]
       }
       is_admin: { Args: never; Returns: boolean }
+      post_auto_lc: {
+        Args: {
+          p_body: string
+          p_listing_id: string
+          p_pinned?: boolean
+          p_verdict?: string
+        }
+        Returns: string
+      }
       post_comment: {
         Args: {
           p_body: string
@@ -1704,6 +1924,7 @@ export type Database = {
         Args: { p_body?: string; p_order_id: string; p_stars: number }
         Returns: string
       }
+      recommend_moderator: { Args: { p_nominee_id: string }; Returns: Json }
       record_moderation_action: {
         Args: {
           p_action: string
@@ -1736,10 +1957,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      toggle_listing_comments: {
-        Args: { p_enabled: boolean; p_listing_id: string }
-        Returns: undefined
-      }
       transition_order: {
         Args: {
           p_order_id: string
@@ -1753,6 +1970,7 @@ export type Database = {
     }
     Enums: {
       comment_action_type: "agree" | "flag"
+      comment_source: "human" | "auto"
       comment_status: "visible" | "removed" | "flagged"
       event_source: "webhook" | "admin" | "cron" | "user"
       id_verification_status: "unverified" | "pending" | "verified"
@@ -1914,6 +2132,7 @@ export const Constants = {
   public: {
     Enums: {
       comment_action_type: ["agree", "flag"],
+      comment_source: ["human", "auto"],
       comment_status: ["visible", "removed", "flagged"],
       event_source: ["webhook", "admin", "cron", "user"],
       id_verification_status: ["unverified", "pending", "verified"],

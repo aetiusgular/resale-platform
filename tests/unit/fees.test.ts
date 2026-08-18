@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatCents,
-  SHIPPING_CENTS,
   FEE_TIERS,
   BASE_FEE_BPS,
   BUYER_FEE_BPS,
@@ -28,12 +27,6 @@ describe('formatCents', () => {
   it('fractional cents', () => {
     expect(formatCents(150)).toBe('$1.50')
     expect(formatCents(99)).toBe('$0.99')
-  })
-})
-
-describe('SHIPPING_CENTS', () => {
-  it('is 1200 (fixed $12 for alpha)', () => {
-    expect(SHIPPING_CENTS).toBe(1200)
   })
 })
 
@@ -135,7 +128,7 @@ describe('MIN_FEE_CENTS floor ($0.30, seller side)', () => {
   it('fee is capped at item price → payout never negative', () => {
     expect(sellerFeeAt(25, 500)).toBe(25)
     expect(sellerPayoutAt(25, 500)).toBe(0)
-    const a = orderAmountsAt(25, 800)
+    const a = orderAmountsAt(25, 800, 1200)
     expect(a.seller_fee_cents).toBe(25)  // sub-$100 → 5% cap, then floored/capped to price
     expect(a.transfer_cents).toBe(0)
     expect(a.transfer_cents).toBeGreaterThanOrEqual(0)
@@ -144,7 +137,7 @@ describe('MIN_FEE_CENTS floor ($0.30, seller side)', () => {
 
 describe('orderAmountsAt (v3: zero buyer fee, sub-$100 cap, platform-funded discount)', () => {
   it('$1,000 item at base 8% seller rate', () => {
-    const a = orderAmountsAt(100000, 800)
+    const a = orderAmountsAt(100000, 800, 1200)
     expect(a.item_cents).toBe(100000)
     expect(a.buyer_fee_cents).toBe(0)
     expect(a.seller_fee_cents).toBe(8000)
@@ -154,19 +147,19 @@ describe('orderAmountsAt (v3: zero buyer fee, sub-$100 cap, platform-funded disc
     expect(a.transfer_cents).toBe(92000) // price - seller fee
   })
   it('$1,000 item at elite 3.5% seller rate', () => {
-    const a = orderAmountsAt(100000, 350)
+    const a = orderAmountsAt(100000, 350, 1200)
     expect(a.seller_fee_cents).toBe(3500)
     expect(a.transfer_cents).toBe(96500)
     expect(a.total_cents).toBe(101200)
   })
   it('sub-$100 order is charged 5% (base seller) not 8%', () => {
-    const a = orderAmountsAt(5000, 800) // $50 item
+    const a = orderAmountsAt(5000, 800, 1200) // $50 item
     expect(a.seller_fee_cents).toBe(250) // 5% of $50
     expect(a.transfer_cents).toBe(4750)
     expect(a.total_cents).toBe(6200)     // 5000 + 1200
   })
   it('sub-$100 order for an elite seller keeps the lower 3.5%', () => {
-    const a = orderAmountsAt(5000, 350)
+    const a = orderAmountsAt(5000, 350, 1200)
     expect(a.seller_fee_cents).toBe(175)
     expect(a.transfer_cents).toBe(4825)
   })
