@@ -33,7 +33,9 @@ function serviceClient() {
 }
 
 async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/enter')
+  // /enter became the invite/waitlist landing when open registration shipped (c050434);
+  // the email+password form lives at /enter/login now.
+  await page.goto('/enter/login')
   await page.fill('[name="email"], input[type="email"]', email)
   await page.fill('[name="password"], input[type="password"]', password)
   await page.click('button[type="submit"]')
