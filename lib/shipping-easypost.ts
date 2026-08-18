@@ -26,7 +26,7 @@ const EASYPOST_SHIPMENTS_URL = 'https://api.easypost.com/v2/shipments'
 export const WORST_ZONE_DEST_ZIP = '98109' // Seattle, WA — far NW corner of CONUS
 
 /** Ground services we quote against (cheapest wins). No expedited/air. */
-const GROUND_SERVICES = new Set(['GroundAdvantage', 'Ground', 'UPSGround', 'SurePost'])
+export const GROUND_SERVICES = new Set(['GroundAdvantage', 'Ground', 'UPSGround', 'SurePost'])
 
 /** True only when the flag is on and a provider key is present. */
 export function easypostConfigured(): boolean {
