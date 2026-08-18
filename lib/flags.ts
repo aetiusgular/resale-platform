@@ -51,6 +51,17 @@ export const COLLUSION_HOLD_ENABLED =
 export const PHONE_VERIFICATION_ENABLED =
   process.env.PHONE_VERIFICATION_ENABLED === 'true'
 
+// ── G11 identity locks (phone + payout-bank hard lock + card soft flag) ──────
+// Anti-abuse anchor that replaced Persona ID verification at signup. The payout BANK
+// fingerprint is hard-locked to one account (payouts blocked on a duplicate); the buyer
+// CARD fingerprint is soft (a card seen on many accounts flags the order for moderation,
+// never blocks — shared household cards are legitimate). Off by default like every other
+// gap feature; turn on at launch. Phone uniqueness is already enforced in-DB.
+export const IDENTITY_LOCKS_ENABLED =
+  process.env.IDENTITY_LOCKS_ENABLED === 'true'
+// A buyer card seen on at least this many OTHER accounts flags the order for moderation.
+export const IDENTITY_CARD_MAX_OTHER_ACCOUNTS = 2
+
 // ── Google OAuth sign-in/up (NEXT_PUBLIC — read in client auth pages). Off until the
 // Google provider is configured in Supabase (see docs/GOOGLE_OAUTH_SETUP.md). ──
 export const GOOGLE_AUTH_ENABLED =
