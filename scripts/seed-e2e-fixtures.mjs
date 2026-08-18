@@ -2,21 +2,35 @@
  * Seed the @live e2e fixture accounts (tests/e2e/checkout.spec.ts prerequisites).
  * DEV/STAGING ONLY — refuses to run in production, mirrors scripts/seed-founders.ts.
  *
- * Creates (or resets the password of) three auth users + their profile rows:
+ * Plain Node (no tsx needed) and SELF-LOADS .env.local (dotenv-style parse) —
+ * no shell `source` required (zsh chokes on dotenv values containing & / ?).
+ *
+ *   node scripts/seed-e2e-fixtures.mjs
+ *
+ * Creates (or resets the password of) the fixture auth users + profile rows:
  *   TEST_BUYER_EMAIL / TEST_ADMIN_EMAIL — created if missing (fresh generated passwords)
  *   TEST_SELLER_EMAIL                   — MUST already exist (it owns the Stripe test
  *                                         Connect account + seed listings); password reset
  * then picks an ACTIVE listing owned by the seller as TEST_LISTING_ID and prints the
- * exact env lines to append to .env.local. Idempotent: re-running rotates passwords and
- * re-prints the block.
- *
- *   set -a; source .env.local; set +a
- *   pnpm tsx scripts/seed-e2e-fixtures.ts
- *
- * Requires env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TEST_SELLER_EMAIL.
+ * exact block to paste into .env.local. Idempotent: re-running rotates passwords.
  */
 import { randomBytes } from 'node:crypto'
-import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
+import { readFileSync } from 'node:fs'
+import { createClient } from '@supabase/supabase-js'
+
+// Dotenv-style load of .env.local (already-set env wins; quotes stripped).
+try {
+  for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
+    if (line.trimStart().startsWith('#')) continue
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/)
+    if (!m) continue
+    const value = m[2].replace(/^(['"])(.*)\1$/, '$2')
+    if (process.env[m[1]] === undefined) process.env[m[1]] = value
+  }
+} catch {
+  console.error('Run from the repo root (no .env.local found).')
+  process.exit(1)
+}
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -27,16 +41,15 @@ if (process.env.NODE_ENV === 'production') {
   process.exit(1)
 }
 if (!url || !serviceKey || !sellerEmail) {
-  console.error('Missing env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TEST_SELLER_EMAIL.')
-  console.error('Run with:  set -a; source .env.local; set +a; pnpm tsx scripts/seed-e2e-fixtures.ts')
+  console.error('Missing in .env.local: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TEST_SELLER_EMAIL.')
   process.exit(1)
 }
 
-const admin: SupabaseClient = createClient(url, serviceKey, { auth: { persistSession: false } })
+const admin = createClient(url, serviceKey, { auth: { persistSession: false } })
 
 const pw = () => randomBytes(9).toString('base64url') // 12 chars, printed once below
 
-async function findUserByEmail(email: string): Promise<User | null> {
+async function findUserByEmail(email) {
   // Dev-scale scan (admin API has no direct lookup-by-email in this client version).
   for (let page = 1; page <= 10; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 })
@@ -49,7 +62,7 @@ async function findUserByEmail(email: string): Promise<User | null> {
 }
 
 /** Get-or-create an auth user with a fresh password; ensure a profile row exists. */
-async function ensureUser(email: string, role: 'member' | 'admin'): Promise<{ id: string; password: string }> {
+async function ensureUser(email, role) {
   const password = pw()
   let user = await findUserByEmail(email)
   if (user) {
@@ -76,7 +89,7 @@ async function main() {
   const buyerEmail = process.env.TEST_BUYER_EMAIL || 'e2e-buyer@test.local'
   const adminEmail = process.env.TEST_ADMIN_EMAIL || 'e2e-admin@test.local'
 
-  const seller = await findUserByEmail(sellerEmail!)
+  const seller = await findUserByEmail(sellerEmail)
   if (!seller) {
     console.error(`TEST_SELLER_EMAIL (${sellerEmail}) has no auth user — it must be the existing`)
     console.error('seeded seller (owns the Stripe test Connect account). Aborting, nothing changed.')
@@ -124,8 +137,8 @@ async function main() {
     console.log(`# TEST_LISTING_ID = "${listing.title}"`)
     console.log(`TEST_LISTING_ID=${listing.id}`)
   }
-  console.log('\nThen:  set -a; source .env.local; set +a')
-  console.log('       RUN_LIVE_TESTS=1 pnpm exec playwright test tests/e2e/checkout.spec.ts')
+  console.log('\nThen (no source needed — playwright.config.ts now loads .env.local itself):')
+  console.log('  RUN_LIVE_TESTS=1 pnpm exec playwright test tests/e2e/checkout.spec.ts')
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })
