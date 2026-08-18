@@ -1,12 +1,13 @@
 /**
- * GET /api/idv/start — send the signed-in user into Persona's hosted ID-verification flow.
- * Behind VERIFICATION_ENABLED. reference-id = user.id ties the resulting inquiry back to us;
- * the signed webhook (/api/webhooks/persona) is what actually marks them verified.
+ * GET /api/idv/start — send the signed-in user into Stripe Identity's hosted verification
+ * flow. Behind VERIFICATION_ENABLED. metadata.user_id ties the resulting VerificationSession
+ * back to us; the signed identity.verification_session.verified webhook (handled in the shared
+ * Stripe webhook) is what actually marks them verified.
  */
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { VERIFICATION_ENABLED } from '@/lib/flags'
-import { personaHostedUrl } from '@/lib/idv/persona'
+import { createIdentitySession } from '@/lib/idv/stripe-identity'
 
 const appBase = () => process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -16,12 +17,19 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.redirect(new URL('/enter', appBase()))
 
-  const url = personaHostedUrl(user.id)
-  if (!url) return NextResponse.redirect(new URL('/onboarding/verify?error=unconfigured', appBase()))
+  const returnUrl = `${appBase()}/onboarding/verify?submitted=1`
+  let session: { url: string; id: string } | null = null
+  try {
+    session = await createIdentitySession(user.id, returnUrl)
+  } catch (e) {
+    console.error('[idv] Stripe Identity session create failed:', e)
+  }
+  if (!session) return NextResponse.redirect(new URL('/onboarding/verify?error=unconfigured', appBase()))
+
   // Mark them pending so the UI reflects "in progress" until the webhook resolves it.
   const { createServiceClientRaw } = await import('@/lib/supabase/service')
   try {
     await createServiceClientRaw().from('profiles').update({ id_verification_status: 'pending' }).eq('id', user.id)
   } catch { /* non-fatal: the flow still starts */ }
-  return NextResponse.redirect(url)
+  return NextResponse.redirect(session.url)
 }

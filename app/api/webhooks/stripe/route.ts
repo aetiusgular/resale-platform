@@ -27,8 +27,11 @@ import { redeemReservedReward, restoreReward } from '@/lib/rewards'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED, IDENTITY_LOCKS_ENABLED, IDENTITY_CARD_MAX_OTHER_ACCOUNTS } from '@/lib/flags'
 import { notify } from '@/lib/notify'
+import { parseIdentityEvent, isIdentityApproval, isIdentityDecline } from '@/lib/idv/stripe-identity'
 
 export const dynamic = 'force-dynamic'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function POST(request: NextRequest) {
   // ── 1. Read raw body — must be text before signature verification ─────────
@@ -65,6 +68,11 @@ export async function POST(request: NextRequest) {
       case 'charge.refunded':
         await handleChargeRefunded(event, service)
         break
+      case 'identity.verification_session.verified':
+      case 'identity.verification_session.canceled':
+      case 'identity.verification_session.requires_input':
+        await handleIdentityEvent(event, service)
+        break
       default:
         break
     }
@@ -80,6 +88,32 @@ export async function POST(request: NextRequest) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ServiceClient = ReturnType<typeof createServiceClientRaw>
+
+// ── INFORM-Act ID verification (Stripe Identity; replaced Persona) ────────────
+// The shared Stripe webhook already verified the signature. Record an idempotent audit row
+// (UNIQUE(provider,event_id)) and, on a verified session, flip the referenced user's status.
+async function handleIdentityEvent(event: Stripe.Event, service: ServiceClient) {
+  const ev = parseIdentityEvent(event)
+  const { error: logErr } = await service.from('verification_events').insert({
+    provider: 'stripe', event_id: ev.eventId, event_name: ev.eventName,
+    inquiry_id: ev.sessionId, reference_id: ev.userId, status: ev.status,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    payload: event as any,
+  })
+  if (logErr) {
+    if (logErr.code === '23505') return // replayed event → no-op
+    throw new Error(`verification_events insert failed: ${logErr.message}`)
+  }
+  if (ev.userId && UUID_RE.test(ev.userId)) {
+    if (isIdentityApproval(ev)) {
+      await service.from('profiles').update({
+        id_verification_status: 'verified', id_verified: true, id_verified_at: new Date().toISOString(),
+      }).eq('id', ev.userId)
+    } else if (isIdentityDecline(ev)) {
+      await service.from('profiles').update({ id_verification_status: 'unverified' }).eq('id', ev.userId)
+    }
+  }
+}
 
 async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClient) {
   const pi = event.data.object as Stripe.PaymentIntent

@@ -9,7 +9,7 @@
  *   trailing sales ─────────────────────┘   (volume resolved inside the policy)
  *
  * Call this at the sell / payout gate (behind VERIFICATION_ENABLED); on true, hold
- * selling/payout pending Persona. Uses the service client (reads across a seller's
+ * selling/payout pending Stripe Identity verification. Uses the service client (reads across a seller's
  * reviews + profile) — never import into a client component.
  */
 import type { createServiceClientRaw } from '@/lib/supabase/service'
