@@ -22,7 +22,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // @live specs share ONE fixture listing + one real (test-mode) Stripe account, so
+  // parallel workers race each other over the listing lock (a checkout page mounting
+  // while the tamper test holds pending_escrow gets a 409 → no payment form). Run
+  // them serially; the fast structural specs keep parallelism in normal runs.
+  workers: process.env.CI || process.env.RUN_LIVE_TESTS ? 1 : undefined,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:3000',

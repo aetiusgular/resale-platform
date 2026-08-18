@@ -203,6 +203,13 @@ test.describe('@live order status pages', () => {
   test.skip(!isLive, 'RUN_LIVE_TESTS not set')
 
   test('checkout page renders order summary and payment form', async ({ page }) => {
+    // Self-clean BEFORE running too: a prior failed run (or a racing test) can leave the
+    // fixture listing locked in pending_escrow, which turns the mount-time /api/checkout
+    // into a 409 and hides the payment form.
+    const pre = serviceClient()
+    await pre.from('checkout_sessions').delete().eq('listing_id', TEST_LISTING_ID)
+    await pre.from('listings').update({ status: 'active' }).eq('id', TEST_LISTING_ID).eq('status', 'pending_escrow')
+
     await signIn(page, TEST_BUYER_EMAIL, TEST_BUYER_PW)
     await page.goto(`/checkout/${TEST_LISTING_ID}`)
 
