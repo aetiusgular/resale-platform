@@ -167,3 +167,39 @@ export function formatCents(cents: number): string {
 
 /** Fixed shipping cost for alpha (buyer-paid, $12). */
 export const SHIPPING_CENTS = 1200
+
+// ─── G11: onboarding welcome ramp (first 10 sales = 0% commission) ────────────
+
+/**
+ * Number of lifetime sales a seller gets at 0% platform commission before graduating
+ * to the tier system. "A sale" = a prior non-cancelled order at checkout time.
+ */
+export const WELCOME_SALES = 10
+
+/** Stripe processing estimate used for the welcome-phase seller fee: 2.9% + $0.30. */
+export const STRIPE_PCT_BPS = 290
+export const STRIPE_FIXED_CENTS = 30
+
+/**
+ * Which fee model prices this order, from the seller's count of prior non-cancelled
+ * orders at checkout. `< WELCOME_SALES` → 'welcome' (0% commission, seller covers
+ * processing only); otherwise 'tier' (the existing Fee Model v3 rates). Deterministic
+ * and snapshottable — resolve server-side at checkout and store on the order.
+ */
+export function resolveFeeMode(priorOrderCount: number): 'welcome' | 'tier' {
+  const n = Number.isFinite(priorOrderCount) && priorOrderCount > 0 ? Math.floor(priorOrderCount) : 0
+  return n < WELCOME_SALES ? 'welcome' : 'tier'
+}
+
+/**
+ * Welcome-phase seller fee: the seller absorbs only the estimated Stripe processing cost
+ * on (item + shipping) — 2.9% + $0.30 — so platform commission is 0%. Capped at the item
+ * price (never a negative payout) and floored at MIN_FEE_CENTS, mirroring sellerFeeAt. The
+ * platform keeps the shipping line to fund the label + its margin and nets ~$0 on processing.
+ */
+export function welcomeSellerFeeCents(itemCents: number, shippingCents: number): number {
+  const item = Math.max(0, Math.round(itemCents))
+  const ship = Math.max(0, Math.round(shippingCents))
+  const est  = feeAt(item + ship, STRIPE_PCT_BPS) + STRIPE_FIXED_CENTS
+  return Math.min(item, Math.max(est, MIN_FEE_CENTS))
+}
