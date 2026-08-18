@@ -6,6 +6,7 @@ import {
   parcelFromPreset,
   parseTrackerEvent,
   verifyEasypostSignature,
+  isCompleteAddress,
 } from '../../lib/shipping-labels'
 
 describe('pickCheapestGroundRate', () => {
@@ -105,5 +106,26 @@ describe('verifyEasypostSignature', () => {
   it('rejects missing header / secret', () => {
     expect(verifyEasypostSignature(body, null, secret)).toBe(false)
     expect(verifyEasypostSignature(body, digest, undefined)).toBe(false)
+  })
+})
+
+describe('isCompleteAddress', () => {
+  const full = { name: 'A Buyer', street1: '1 Main St', city: 'Seattle', state: 'WA', zip: '98101' }
+  it('accepts a complete address', () => {
+    expect(isCompleteAddress(full)).toBe(true)
+  })
+  it('rejects null / undefined', () => {
+    expect(isCompleteAddress(null)).toBe(false)
+    expect(isCompleteAddress(undefined)).toBe(false)
+  })
+  it('rejects a missing or blank required field', () => {
+    for (const k of ['name', 'street1', 'city', 'state', 'zip'] as const) {
+      expect(isCompleteAddress({ ...full, [k]: '' })).toBe(false)
+      const { [k]: _omit, ...rest } = full
+      expect(isCompleteAddress(rest)).toBe(false)
+    }
+  })
+  it('street2 is optional', () => {
+    expect(isCompleteAddress({ ...full, street2: undefined })).toBe(true)
   })
 })

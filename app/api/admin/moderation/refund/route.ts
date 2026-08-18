@@ -13,6 +13,8 @@ import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { checkModeratorRefund } from '@/lib/trust/release-hold'
 import { recsMarkRemoved } from '@/lib/recs/sync'
+import { SHIPPING_LABELS_ENABLED } from '@/lib/flags'
+import { refundLabelForOrder } from '@/lib/fulfillment'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -63,6 +65,9 @@ export async function POST(req: NextRequest) {
 
   // Recs G1: drop the voided listing from the index (non-blocking, fail-soft).
   after(() => recsMarkRemoved(order.listing_id))
+
+  // G12: reclaim an unused prepaid label (fail-soft; no-op if the item already shipped).
+  if (SHIPPING_LABELS_ENABLED) after(() => refundLabelForOrder(service, orderId))
 
   let refundPending = false
   if (existingRefunds.data.length === 0) {

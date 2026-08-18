@@ -1277,9 +1277,13 @@ export type Database = {
           delivered_at: string | null
           discount_cents: number
           disputed_at: string | null
+          easypost_shipment_id: string | null
+          easypost_tracker_id: string | null
           fee_mode: string
           id: string
           item_cents: number
+          label_purchased_at: string | null
+          label_refunded_at: string | null
           listing_id: string
           paid_at: string | null
           refunded_at: string | null
@@ -1288,9 +1292,12 @@ export type Database = {
           seller_fee_bps: number | null
           seller_fee_cents: number
           seller_id: string
+          ship_to_address: Json | null
           shipped_at: string | null
           shipping_address: Json | null
           shipping_cents: number
+          shipping_label_cost_cents: number | null
+          shipping_label_url: string | null
           state: Database["public"]["Enums"]["order_state"]
           stripe_payment_intent_id: string
           stripe_transfer_id: string | null
@@ -1310,9 +1317,13 @@ export type Database = {
           delivered_at?: string | null
           discount_cents?: number
           disputed_at?: string | null
+          easypost_shipment_id?: string | null
+          easypost_tracker_id?: string | null
           fee_mode?: string
           id?: string
           item_cents: number
+          label_purchased_at?: string | null
+          label_refunded_at?: string | null
           listing_id: string
           paid_at?: string | null
           refunded_at?: string | null
@@ -1321,9 +1332,12 @@ export type Database = {
           seller_fee_bps?: number | null
           seller_fee_cents: number
           seller_id: string
+          ship_to_address?: Json | null
           shipped_at?: string | null
           shipping_address?: Json | null
           shipping_cents: number
+          shipping_label_cost_cents?: number | null
+          shipping_label_url?: string | null
           state?: Database["public"]["Enums"]["order_state"]
           stripe_payment_intent_id: string
           stripe_transfer_id?: string | null
@@ -1343,9 +1357,13 @@ export type Database = {
           delivered_at?: string | null
           discount_cents?: number
           disputed_at?: string | null
+          easypost_shipment_id?: string | null
+          easypost_tracker_id?: string | null
           fee_mode?: string
           id?: string
           item_cents?: number
+          label_purchased_at?: string | null
+          label_refunded_at?: string | null
           listing_id?: string
           paid_at?: string | null
           refunded_at?: string | null
@@ -1354,9 +1372,12 @@ export type Database = {
           seller_fee_bps?: number | null
           seller_fee_cents?: number
           seller_id?: string
+          ship_to_address?: Json | null
           shipped_at?: string | null
           shipping_address?: Json | null
           shipping_cents?: number
+          shipping_label_cost_cents?: number | null
+          shipping_label_url?: string | null
           state?: Database["public"]["Enums"]["order_state"]
           stripe_payment_intent_id?: string
           stripe_transfer_id?: string | null
@@ -1508,6 +1529,7 @@ export type Database = {
           quick_setup: Json | null
           role: string
           seller_tier_locked_until: string | null
+          ship_from_address: Json | null
           shipping_address: Json | null
           sizes: Json
           stripe_connect_account_id: string | null
@@ -1542,6 +1564,7 @@ export type Database = {
           quick_setup?: Json | null
           role?: string
           seller_tier_locked_until?: string | null
+          ship_from_address?: Json | null
           shipping_address?: Json | null
           sizes?: Json
           stripe_connect_account_id?: string | null
@@ -1576,6 +1599,7 @@ export type Database = {
           quick_setup?: Json | null
           role?: string
           seller_tier_locked_until?: string | null
+          ship_from_address?: Json | null
           shipping_address?: Json | null
           sizes?: Json
           stripe_connect_account_id?: string | null
@@ -1805,6 +1829,50 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipping_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_name: string | null
+          id: string
+          order_id: string | null
+          payload: Json
+          provider: string
+          status: string | null
+          tracking_code: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_name?: string | null
+          id?: string
+          order_id?: string | null
+          payload?: Json
+          provider?: string
+          status?: string | null
+          tracking_code?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_name?: string | null
+          id?: string
+          order_id?: string | null
+          payload?: Json
+          provider?: string
+          status?: string | null
+          tracking_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]

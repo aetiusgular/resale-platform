@@ -2,9 +2,11 @@
  * POST /api/orders/[id]/confirm
  * Seller confirms the order (paid_held → seller_confirmed).
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { SHIPPING_LABELS_ENABLED } from '@/lib/flags'
+import { buyLabelForOrder } from '@/lib/fulfillment'
 
 export async function POST(
   _request: NextRequest,
@@ -39,6 +41,9 @@ export async function POST(
     console.error('[confirm] transition error:', error)
     return NextResponse.json({ error: error.message }, { status: 422 })
   }
+
+  // G12: auto-buy a prepaid label for the confirmed sale (dormant + fail-soft; never blocks).
+  if (SHIPPING_LABELS_ENABLED) after(() => buyLabelForOrder(service, orderId))
 
   return NextResponse.json({ ok: true })
 }

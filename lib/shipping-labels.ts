@@ -48,6 +48,11 @@ type RawRate = { id?: string | null; service?: string | null; rate?: string | nu
 
 // ─── Pure helpers (network-free, unit-tested) ────────────────────────────────
 
+/** A label needs a complete address: name + street1 + city + state + zip. */
+export function isCompleteAddress(a: Partial<LabelAddress> | null | undefined): a is LabelAddress {
+  return !!a && !!a.name?.trim() && !!a.street1?.trim() && !!a.city?.trim() && !!a.state?.trim() && !!a.zip?.trim()
+}
+
 /** Cheapest enabled-ground rate id + cents from an EasyPost `rates` array, or null. */
 export function pickCheapestGroundRate(
   rates: ReadonlyArray<RawRate> | null | undefined,
