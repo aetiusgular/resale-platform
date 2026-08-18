@@ -11,7 +11,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import stripe from '@/lib/stripe'
+import { createOrderTransfer } from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
 import { issueBuyerRewards } from '@/lib/rewards'
 import { checkEliteEligibility } from '@/lib/seller-program'
@@ -69,13 +69,9 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const transfer = await stripe.transfers.create({
-        amount:      order.transfer_cents,
-        currency:    'usd',
-        destination: connectAccountId,
-        description: `Order ${order.id} — auto-release transfer`,
-        metadata:    { order_id: order.id, source: 'cron' },
-      })
+      // Shared idempotent path (code-review fix #2): retries of a transfer whose
+      // stripe_transfer_id stamp failed dedupe at Stripe — never a second payout.
+      const transfer = await createOrderTransfer(order.id, order.transfer_cents, connectAccountId)
       await service
         .from('orders')
         .update({ stripe_transfer_id: transfer.id })

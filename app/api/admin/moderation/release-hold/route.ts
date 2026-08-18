@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import stripe from '@/lib/stripe'
+import { createOrderTransfer } from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
 import { issueBuyerRewards } from '@/lib/rewards'
 import { checkEliteEligibility } from '@/lib/seller-program'
@@ -60,15 +60,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Issue the transfer FIRST; only stamp the order once Stripe confirms (no phantom payout).
+  // Shared idempotent path (code-review fix #2): a double-click or a stamp-failure retry
+  // dedupes at Stripe. released_by/via are audited in moderation_actions below.
   let transferId: string
   try {
-    const transfer = await stripe.transfers.create({
-      amount:      order!.transfer_cents,
-      currency:    'usd',
-      destination: seller.stripe_connect_account_id,
-      description: `Order ${orderId} — payout hold released`,
-      metadata:    { order_id: orderId, released_by: user.id, via: 'moderation' },
-    })
+    const transfer = await createOrderTransfer(
+      orderId, order!.transfer_cents, seller.stripe_connect_account_id,
+    )
     transferId = transfer.id
   } catch (stripeError) {
     console.error('[moderation/release-hold] Stripe transfer error:', stripeError)

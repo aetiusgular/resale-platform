@@ -183,6 +183,9 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (lockError || !lockedListing) {
+    // Code-review fix #5a: this failure branch reserved the buyer's reward above but
+    // previously returned without restoring it, leaking the coupon into 'reserved' forever.
+    if (reward) await restoreReward(service, reward.rewardId)
     return NextResponse.json({ error: 'Listing is no longer available' }, { status: 409 })
   }
 

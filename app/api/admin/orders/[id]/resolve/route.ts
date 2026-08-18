@@ -13,7 +13,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { isUuid } from '@/lib/security/uuid'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import stripe from '@/lib/stripe'
+import stripe, { createOrderTransfer } from '@/lib/stripe'
 import { recsMarkRemoved } from '@/lib/recs/sync'
 
 export async function POST(
@@ -133,12 +133,11 @@ export async function POST(
 
       if (seller?.stripe_connect_account_id) {
         try {
-          const transfer = await stripe.transfers.create({
-            amount:      order.transfer_cents,
-            currency:    'usd',
-            destination: seller.stripe_connect_account_id,
-            metadata:    { order_id: orderId, resolved_by: user.id },
-          })
+          // Shared idempotent path (code-review fix #2): a concurrent cron sweep or a
+          // stamp-failure retry dedupes at Stripe. resolved_by is audited in order_events.
+          const transfer = await createOrderTransfer(
+            orderId, order.transfer_cents, seller.stripe_connect_account_id,
+          )
           await service
             .from('orders')
             .update({ stripe_transfer_id: transfer.id })

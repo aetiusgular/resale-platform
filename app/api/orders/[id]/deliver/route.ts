@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
-import stripe from '@/lib/stripe'
+import { createOrderTransfer } from '@/lib/stripe'
 import { applyTierProgress } from '@/lib/tier-progress'
 import { issueBuyerRewards } from '@/lib/rewards'
 import { checkEliteEligibility } from '@/lib/seller-program'
@@ -119,15 +119,13 @@ export async function POST(
 
   // Create Stripe transfer to seller's Connect account
   // transfer_cents = item_cents - seller_fee_cents
+  // Shared idempotent path: a concurrent cron sweep creating the same order's
+  // transfer dedupes at Stripe instead of double-paying (code-review fix #2).
   let transferId: string | undefined
   try {
-    const transfer = await stripe.transfers.create({
-      amount:      order.transfer_cents,
-      currency:    'usd',
-      destination: seller.stripe_connect_account_id,
-      description: `Order ${orderId} — funds release`,
-      metadata:    { order_id: orderId },
-    })
+    const transfer = await createOrderTransfer(
+      orderId, order.transfer_cents, seller.stripe_connect_account_id,
+    )
     transferId = transfer.id
   } catch (stripeError) {
     // Transfer failed — order is released in DB but no transfer yet.

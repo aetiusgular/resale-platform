@@ -34,3 +34,33 @@ export function constructWebhookEvent(rawBody: string, signature: string): Strip
 export function appBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 }
+
+/**
+ * Create the ONE escrow-release transfer for an order — the single shared money
+ * path for every release site (buyer confirm, cron retry, dispute resolution,
+ * collusion-hold release).
+ *
+ * Idempotency (code-review fix #2): the per-order `idempotencyKey` makes Stripe
+ * dedupe concurrent/retried creates — the classic double-payout windows (deliver
+ * racing the cron sweep; a transfer that succeeded but whose stripe_transfer_id
+ * stamp failed being retried) all collapse to one real transfer. For the key to
+ * work the request params MUST be identical at every call site, which is exactly
+ * why this helper exists: do NOT add per-caller metadata/description here — who
+ * initiated the release is already audited in order_events / moderation_actions.
+ */
+export async function createOrderTransfer(
+  orderId: string,
+  amountCents: number,
+  destinationAccountId: string,
+): Promise<Stripe.Transfer> {
+  return stripe.transfers.create(
+    {
+      amount:      amountCents,
+      currency:    'usd',
+      destination: destinationAccountId,
+      description: `Order ${orderId} — escrow release`,
+      metadata:    { order_id: orderId },
+    },
+    { idempotencyKey: `transfer-${orderId}` },
+  )
+}

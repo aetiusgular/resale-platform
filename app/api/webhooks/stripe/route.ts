@@ -15,15 +15,15 @@
  *
  * Events handled:
  *   payment_intent.succeeded      → create order, listing → sold
- *   payment_intent.payment_failed → release listing lock back to active
+ *   payment_intent.payment_failed → log only (a failed ATTEMPT is not terminal — see handler)
  *   account.updated               → update seller payouts_enabled
- *   charge.refunded               → order → refunded
+ *   charge.refunded               → order → refunded (FULL refunds only)
  */
 import { NextRequest, NextResponse, after } from 'next/server'
 import type Stripe from 'stripe'
 import stripe, { constructWebhookEvent } from '@/lib/stripe'
 import { recsMarkSold, recsMarkRemoved } from '@/lib/recs/sync'
-import { redeemReservedReward, restoreReward } from '@/lib/rewards'
+import { redeemReservedReward } from '@/lib/rewards'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED, IDENTITY_LOCKS_ENABLED, IDENTITY_CARD_MAX_OTHER_ACCOUNTS } from '@/lib/flags'
 import { notify } from '@/lib/notify'
@@ -146,7 +146,20 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
       .eq('stripe_payment_intent_id', pi.id)
       .single()
     if (existing) return // Already processed
-    throw new Error(`No checkout_session for PI ${pi.id} and no existing order`)
+
+    // Code-review fix #1b (self-heal): a charge succeeded but its checkout_session is gone
+    // and no order exists — the fee authority is lost, so an order can NEVER be built for
+    // this payment (reachable when the success webhook lags past the 30-minute session
+    // cleanup). Throwing here made Stripe retry a permanent failure for days while the
+    // buyer's money stayed captured. Refund it instead (idempotent per PI) and log loudly.
+    console.error(
+      `[webhook] ORPHANED PAYMENT ${pi.id}: no checkout_session and no order — auto-refunding`,
+    )
+    await stripe.refunds.create(
+      { payment_intent: pi.id, metadata: { reason: 'orphaned_payment_no_session' } },
+      { idempotencyKey: `orphan-refund-${pi.id}` },
+    )
+    return
   }
 
   const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, discount_cents, buyer_fee_bps, seller_fee_bps } = session
@@ -193,21 +206,37 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     .select('id')
     .single()
 
+  // Code-review fix #3a: on the duplicate-order replay path, do NOT return early — a crash
+  // between the original order insert and the side-effects below leaves the listing stuck in
+  // pending_escrow (which the session cleanup would later flip back to ACTIVE and double-sell).
+  // Every statement below is idempotent, so the replay simply repairs whatever is missing.
+  let orderId: string
   if (orderError) {
-    // Unique violation on stripe_payment_intent_id → already processed (idempotent)
-    if (orderError.code === '23505') return
-    throw new Error(`Order insert failed: ${orderError.message}`)
+    if (orderError.code !== '23505') throw new Error(`Order insert failed: ${orderError.message}`)
+    const { data: existing } = await service
+      .from('orders')
+      .select('id')
+      .eq('stripe_payment_intent_id', pi.id)
+      .single()
+    if (!existing) throw new Error(`Order insert conflicted but no order found for PI ${pi.id}`)
+    orderId = existing.id
+  } else {
+    orderId = order!.id
   }
 
-  // Append initial audit event (stripe_event_id for idempotency on replay)
-  await service.from('order_events').insert({
-    order_id:        order!.id,
+  // Append initial audit event (stripe_event_id UNIQUE = idempotency anchor; a replay that
+  // already wrote it conflicts harmlessly and repairs the crashed-before-audit case instead).
+  const { error: auditError } = await service.from('order_events').insert({
+    order_id:        orderId,
     from_state:      null,
     to_state:        'paid_held',
     source:          'webhook',
     stripe_event_id: event.id,
     payload:         { payment_intent_id: pi.id },
   })
+  if (auditError && auditError.code !== '23505') {
+    console.error(`[webhook] order_events audit insert failed for ${orderId}:`, auditError.message)
+  }
 
   // Mark listing sold and clean up the checkout lock
   await Promise.all([
@@ -219,7 +248,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
   after(() => recsMarkSold(session.listing_id))
 
   // Fee Model v3: mark the buyer's reserved reward redeemed against this order (fail-soft).
-  if (session.reward_id) after(() => redeemReservedReward(service, session.reward_id as string, order!.id))
+  if (session.reward_id) after(() => redeemReservedReward(service, session.reward_id as string, orderId))
 
   // Collusion (Branch 4): accumulate the buyer's card fingerprint + billing for the pre-payout check.
   if (COLLUSION_HOLD_ENABLED || IDENTITY_LOCKS_ENABLED) {
@@ -246,10 +275,10 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
             others.delete(session.buyer_id)
             if (others.size >= IDENTITY_CARD_MAX_OTHER_ACCOUNTS) {
               await service.from('collusion_flags').upsert(
-                { order_id: order!.id, buyer_id: session.buyer_id, seller_id: session.seller_id, reasons: ['card_multi_account'] },
+                { order_id: orderId, buyer_id: session.buyer_id, seller_id: session.seller_id, reasons: ['card_multi_account'] },
                 { onConflict: 'order_id' },
               )
-              console.warn(`[identity] card fingerprint on ${others.size + 1} accounts; flagged order ${order!.id}`)
+              console.warn(`[identity] card fingerprint on ${others.size + 1} accounts; flagged order ${orderId}`)
             }
           }
         }
@@ -263,31 +292,31 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
       await notify(service, session.seller_id, 'sale', {
         itemTitle: (l as { title?: string } | null)?.title,
         amountCents: item_cents,
-        orderId: order!.id,
+        orderId: orderId,
       })
     })
   }
 }
 
-async function handlePaymentFailed(event: Stripe.Event, service: ServiceClient) {
+/**
+ * Code-review fix #1: a failed payment ATTEMPT is NOT terminal, so this handler no longer
+ * tears the checkout down. Stripe fires `payment_intent.payment_failed` on EVERY declined
+ * confirmation, but the buyer is still on the checkout page holding the SAME PaymentIntent
+ * and can retry (fix card typo, different card). The old teardown (unlock listing + delete
+ * checkout_session + restore reward) made a successful retry arrive at
+ * handlePaymentSucceeded with no session and no order — buyer charged, order never created,
+ * listing re-sellable to someone else.
+ *
+ * Lifecycle now: the checkout_session's 30-minute expiry + release_expired_checkouts()
+ * (which restores the reserved reward and unlocks the listing — migration 0040) govern
+ * abandonment, exactly as they already did for never-attempted checkouts.
+ */
+async function handlePaymentFailed(event: Stripe.Event, _service: ServiceClient) {
   const pi = event.data.object as Stripe.PaymentIntent
-  const listingId = pi.metadata?.listing_id
-  if (!listingId) return
-
-  // Restore any reserved buyer reward so a failed payment doesn't consume it.
-  const { data: sess } = await service.from('checkout_sessions').select('reward_id').eq('stripe_payment_intent_id', pi.id).single()
-  const rid = (sess as { reward_id?: string | null } | null)?.reward_id
-  if (rid) await restoreReward(service, rid)
-
-  await Promise.all([
-    service.from('listings')
-      .update({ status: 'active' })
-      .eq('id', listingId)
-      .eq('status', 'pending_escrow'),
-    service.from('checkout_sessions')
-      .delete()
-      .eq('stripe_payment_intent_id', pi.id),
-  ])
+  console.warn(
+    `[webhook] payment attempt failed for PI ${pi.id}`,
+    pi.last_payment_error?.code ?? pi.last_payment_error?.message ?? 'unknown',
+  )
 }
 
 // Fee Model v3: activate a paid boost when its standalone charge succeeds. Idempotent.
@@ -375,6 +404,17 @@ async function handleChargeRefunded(event: Stripe.Event, service: ServiceClient)
     : charge.payment_intent?.id
 
   if (!piId) return
+
+  // Code-review fix #4: `charge.refunded` fires for PARTIAL refunds too (e.g. a courtesy
+  // shipping refund issued from the Stripe dashboard). Only a FULL refund voids the order —
+  // a partial one must not kill the sale or remove the listing. `charge.refunded` is only
+  // true when fully refunded; the amount check is the belt to that suspender.
+  if (!charge.refunded || charge.amount_refunded < charge.amount) {
+    console.warn(
+      `[webhook] partial refund on ${piId} (${charge.amount_refunded}/${charge.amount}) — order state unchanged`,
+    )
+    return
+  }
 
   // Find the order by payment intent ID (include listing_id for cleanup)
   const { data: order } = await service
