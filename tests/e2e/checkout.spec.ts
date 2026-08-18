@@ -137,7 +137,11 @@ test.describe('@live checkout flow', () => {
     const res = await page.request.post('/api/checkout', {
       data: { listingId: TEST_LISTING_ID },
     })
-    // Should succeed (creates PI) — tamper check happens in webhook
+    // Only 200 (PI created — tamper check happens in webhook) or 409 (listing locked by a
+    // previous run) are acceptable. Anything else — e.g. 422 seller-not-payout-ready —
+    // must FAIL here; the old branch-only assertions let a 422 pass vacuously.
+    expect([200, 409], `unexpected /api/checkout status ${res.status()}: ${await res.text()}`)
+      .toContain(res.status())
     if (res.status() === 200) {
       const body = await res.json()
       expect(body.clientSecret).toBeTruthy()
@@ -147,9 +151,6 @@ test.describe('@live checkout flow', () => {
       const svc = serviceClient()
       await svc.from('listings').update({ status: 'active' }).eq('id', TEST_LISTING_ID)
       await svc.from('checkout_sessions').delete().eq('listing_id', TEST_LISTING_ID)
-    } else if (res.status() === 409) {
-      // Listing already locked from previous test run — that's fine
-      expect([200, 409]).toContain(res.status())
     }
   })
 
