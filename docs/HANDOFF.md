@@ -1,8 +1,25 @@
 # HANDOFF.md
-## Current state: G10 (moderator-gated Legit Check) BUILT on `feat/moderator-lc` — pending native verify + gates. Fee/gap history → docs/SESSION_STATUS.md · tracker → docs/LAUNCH_ROADMAP.md
+## Current state: G11 (welcome ramp + category shipping margin + identity locks + Persona→Stripe) BUILT + native verify green on `feat/fee-tier-checkpoints`. Fee/gap history → docs/SESSION_STATUS.md · tracker → docs/LAUNCH_ROADMAP.md
 
-**Last updated:** 2026-08-12
-**Next prompt:** run the G10 verify + gate battery on-computer (see "## G10" below); fix to green, then merge.
+**Last updated:** 2026-08-18
+**Next prompt:** run the repo's code-reviewer/ui-verifier gate agents on the G11 money-path diff (checkout, webhook, migration 0038, identity locks) before merging `feat/fee-tier-checkpoints`; native `pnpm verify` already green (382 tests). Then consider consolidating the feature branches into `main` and pushing to origin (nothing is on origin yet).
+
+---
+
+## G11 — Welcome ramp + category shipping margin + identity locks + Persona→Stripe (2026-08-18)
+
+**Branch `feat/fee-tier-checkpoints`. Native `pnpm verify` green (382 tests, 0 errors).** Money-path;
+run code-reviewer + ui-verifier before merge. Flags off by default: `IDENTITY_LOCKS_ENABLED`,
+`SHIPPING_LABELS_ENABLED` (live rater dormant → floor pricing), `VERIFICATION_ENABLED`.
+
+- Welcome ramp: first 10 lifetime sales = 0% commission (processing only); `orders.fee_mode`
+  snapshot; `profiles.lifetime_sales_count` trigger-maintained.
+- Category shipping: `listings.shipping_cents` = max(quote, floor)+$2, set at listing time;
+  sellers can't set shipping. Flat `SHIPPING_CENTS` removed; `orderAmountsAt` shipping now required.
+- Identity: bank hard-lock (payouts_enabled=false on cross-account fingerprint) + card soft-flag;
+  partial unique index on `payment_identities(fingerprint) WHERE kind='bank'`.
+- Verification: Persona → Stripe Identity (`lib/idv/stripe-identity.ts`, events in shared Stripe
+  webhook). Persona adapter/webhook/test removed. Migration `0038` applied. See docs/G11_*.md.
 
 ---
 

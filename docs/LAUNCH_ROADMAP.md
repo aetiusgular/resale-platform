@@ -37,7 +37,8 @@ a blind megachange. Ordered by launch priority. Founder-only items at the bottom
 | G7 | Bump / refresh listings | `BUMP_ENABLED` | db-guard, code-reviewer | pending |
 | G8 | Saved-search alerts | `SAVED_SEARCH_ALERTS_ENABLED` | db-guard, code-reviewer | PARTIAL — storage/save built; needs G2 |
 | G9 | Follows + seller reviews/ratings | `FOLLOWS_ENABLED`, `REVIEWS_ENABLED` | db-guard, code-reviewer | pending |
-| G10 | Moderator-gated Legit Check + moderator roles | — | db-guard, code-reviewer, ui-verifier | BUILT (feat/moderator-lc) — pending native verify+gates |
+| G10 | Moderator-gated Legit Check + moderator roles | — | db-guard, code-reviewer, ui-verifier | ✅ built + verified (feat/moderator-lc) |
+| G11 | Welcome ramp + category shipping margin + identity locks + Persona→Stripe | `IDENTITY_LOCKS_ENABLED`, `SHIPPING_LABELS_ENABLED`, `VERIFICATION_ENABLED` | db-guard, code-reviewer, ui-verifier | ✅ BUILT + native verify green (feat/fee-tier-checkpoints) |
 
 ---
 
@@ -317,3 +318,27 @@ battery (see docs/HANDOFF.md §G10 for the exact ordered steps).
 - [ ] Stripe LIVE cutover — live keys are HUMAN-ONLY per docs/LAUNCH.md. No real money moves until this.
 - [ ] Seed the 24 founder invites from USER_FEEDBACK.md §6.
 - [ ] Turn on the flags above, in order, once each phase is verified + reviewed.
+
+
+## G11 — Onboarding welcome ramp + category shipping margin + identity locks  (2026-08-18)
+
+Full spec: `docs/G11_onboarding_shipping_margin.md`. Built on `feat/fee-tier-checkpoints`
+(commits f2944c6 → aa60bb0 → b1c6ce0 → 5c6dc53 → repoint). Native `pnpm verify` green (382 tests).
+
+**Shipped:**
+- **Welcome ramp (mainstay):** a seller's first `10` lifetime non-cancelled sales are 0%
+  platform commission (seller covers Stripe processing only, ~2.9%+$0.30); sale 11+ → the
+  existing tier system. `orders.fee_mode` snapshots which model priced each order;
+  `profiles.lifetime_sales_count` (trigger-maintained) is the O(1) gate.
+- **Category shipping margin (replaced the $2/mo Connect-cost idea):** sellers cannot set
+  shipping. `listings.shipping_cents` is system-derived = max(EasyPost worst-zone quote,
+  category floor) + $2, stored at listing time (`lib/shipping.ts` presets/floors;
+  `lib/shipping-easypost.ts` live rater DORMANT behind `SHIPPING_LABELS_ENABLED` → floor for now).
+- **Identity locks (`IDENTITY_LOCKS_ENABLED`, off by default):** payout-bank fingerprint
+  HARD-locked to one account (partial unique index + payouts_enabled=false on collision);
+  buyer card fingerprint SOFT (flags order to moderation on ≥2 other accounts, no block);
+  phone already unique.
+- **INFORM verification repointed Persona → Stripe Identity** (`lib/idv/stripe-identity.ts`;
+  events handled in the shared Stripe webhook). Policy + $5k trigger unchanged. Persona removed.
+
+**Migration:** `20240101000038_g11_welcome_shipping_identity.sql` (applied). No monthly-fee ledger.

@@ -1,5 +1,8 @@
 # Session status — build backlog complete (2026-08-02)
 
+> **Update 2026-08-18 — G11 (welcome ramp + category shipping margin + identity locks + Persona→Stripe) BUILT + native verify green on `feat/fee-tier-checkpoints`.**
+> Sellers' first 10 sales are 0% commission (cover processing only); shipping is system-derived per category (floor+$2, EasyPost rater dormant behind `SHIPPING_LABELS_ENABLED`); bank fingerprint hard-locked + card soft-flagged behind `IDENTITY_LOCKS_ENABLED`; ID verification repointed Persona→Stripe Identity. Migration `0038`. Also supersedes the flat $12 SHIPPING_CENTS. See docs/LAUNCH_ROADMAP.md §G11.
+>
 > **Update 2026-08-12 — G10 (moderator-gated Legit Check) built on `feat/moderator-lc`.**
 > General comments removed entirely; Legit Check is now moderators-only with 3-recommendation
 > auto-promotion + an auto-auth bot seam. Migration `0036`. Pending native verify + gates —

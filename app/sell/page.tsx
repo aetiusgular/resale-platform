@@ -7,6 +7,7 @@ import SellForm from './sell-form'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { VERIFICATION_ENABLED } from '@/lib/flags'
+import { WELCOME_SALES } from '@/lib/fees'
 import { sellerMustVerify } from '@/lib/idv/risk-resolver'
 
 export const metadata = { title: 'List an item' }
@@ -33,10 +34,12 @@ export default async function SellPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('username')
+    .select('username, lifetime_sales_count')
     .eq('id', user.id)
     .single()
   const username: string = (profile?.username as string) ?? ''
+  const salesCount: number = (profile?.lifetime_sales_count as number) ?? 0
+  const welcomeSalesRemaining = Math.max(0, WELCOME_SALES - salesCount)
 
   // Seller's fee rate — set by their trailing-365d sales volume (see lib/fee-tier).
   const sellerBps = await resolveEffectiveBps(createServiceClientRaw(), user.id, 'seller')
@@ -70,7 +73,7 @@ export default async function SellPage() {
         </div>
       </div>
 
-      <SellForm userId={user.id} sellerBps={sellerBps} />
+      <SellForm userId={user.id} sellerBps={sellerBps} welcomeSalesRemaining={welcomeSalesRemaining} />
       <MobileTabBar username={username} />
     </div>
   )

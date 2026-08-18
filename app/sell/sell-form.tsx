@@ -3,7 +3,8 @@
 import { useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { sellerFeeAt, sellerPayoutAt, formatCents } from '@/lib/fees'
+import { sellerFeeAt, formatCents, welcomeSellerFeeCents, WELCOME_SALES } from '@/lib/fees'
+import { floorShippingCents } from '@/lib/shipping'
 import {
   CONDITION_DEFINITIONS,
   PHOTO_SLOTS,
@@ -27,6 +28,7 @@ const SIZES = [
 interface SellFormProps {
   userId: string
   sellerBps: number
+  welcomeSalesRemaining?: number
 }
 
 type SlotUploading = { [key: string]: boolean }
@@ -57,7 +59,7 @@ async function resizeToJpeg(file: File, maxPx = 2000): Promise<Blob> {
   })
 }
 
-export default function SellForm({ userId, sellerBps }: SellFormProps) {
+export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 }: SellFormProps) {
   // Draft ID — stable for this session; used as storage path prefix
   const draftId = useRef(
     typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2),
@@ -95,8 +97,12 @@ export default function SellForm({ userId, sellerBps }: SellFormProps) {
   // ── price calculation ───────────────────────────────────────────────────────
   const priceDollars = parseFloat(priceRaw.replace(/[^0-9.]/g, ''))
   const priceCents   = Number.isFinite(priceDollars) ? Math.round(priceDollars * 100) : 0
-  const feeAmount    = priceCents > 0 ? sellerFeeAt(priceCents, sellerBps) : 0
-  const payoutAmount = priceCents > 0 ? sellerPayoutAt(priceCents, sellerBps) : 0
+  // Welcome ramp: first 10 sales are 0% commission — the seller only covers card processing
+  // (est. on item + the system shipping for the chosen category). After that, the tier rate.
+  const inWelcome    = welcomeSalesRemaining > 0
+  const estShipping  = floorShippingCents(category || 'Other')
+  const feeAmount    = priceCents > 0 ? (inWelcome ? welcomeSellerFeeCents(priceCents, estShipping) : sellerFeeAt(priceCents, sellerBps)) : 0
+  const payoutAmount = priceCents > 0 ? priceCents - feeAmount : 0
 
   // ── image upload ────────────────────────────────────────────────────────────
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -508,9 +514,16 @@ export default function SellForm({ userId, sellerBps }: SellFormProps) {
           />
           {priceCents > 0 && (
             <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              you receive {formatCents(payoutAmount)} — seller fee {sellerBps / 100}% ({formatCents(feeAmount)})
+              {inWelcome ? (
+                <>you receive ~{formatCents(payoutAmount)} — 0% commission, {welcomeSalesRemaining} of {WELCOME_SALES} free sales left (you cover ~{formatCents(feeAmount)} card processing)</>
+              ) : (
+                <>you receive {formatCents(payoutAmount)} — seller fee {sellerBps / 100}% ({formatCents(feeAmount)})</>
+              )}
             </div>
           )}
+          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+            Shipping is calculated automatically by item type and prepaid — you don&apos;t set it; the buyer pays it at checkout.
+          </div>
         </div>
 
         {/* Submit */}
