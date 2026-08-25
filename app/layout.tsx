@@ -30,6 +30,15 @@ export const metadata: Metadata = {
   description: 'Curated secondhand fashion marketplace',
 }
 
+// Force dynamic rendering app-wide. REQUIRED by the per-request CSP nonce in
+// middleware.ts: Next can only inject the nonce into inline <script> tags during
+// server rendering, so statically-generated pages (/enter, /terms, /privacy,
+// /fees, /onboarding/*, checkout/success) shipped nonce-less HTML that the
+// runtime CSP then blocked — a blank page in production. Setting this on the root
+// layout opts every route into dynamic rendering so the nonce always applies.
+// (Next docs: "Using nonces in a CSP mandates that all pages be dynamically rendered.")
+export const dynamic = 'force-dynamic'
+
 // Supabase origin (listing images + auth/API) — preconnect so the first image
 // fetch after a navigation skips DNS + TLS setup. React 19 hoists these <link>
 // tags into <head>.
