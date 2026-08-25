@@ -48,16 +48,17 @@ export async function GET(request: NextRequest) {
     case 'price_desc': query = query.order('price_cents', { ascending: false }).order('id'); break
     case 'most_saved': query = query.order('saves_count', { ascending: false }).order('id'); break
     default:
-      // G7: when bump is enabled, freshest bump first (NULLS LAST), then recency.
-      // Flag off ⇒ identical to before (created_at DESC). Uses listings_status_bumped_idx.
+      // G7 + boost alignment: boost first, then freshest bump, then recency — the SAME
+      // total order as browse page 1 (app/browse/page.tsx), so offset pagination across
+      // the page-1/load-more boundary never dups or skips rows. Boosts still only carry
+      // the "Promoted" label on page 1 (see `promoted: false` below). Since migration
+      // 0042 creation counts as the first bump, so bumped_at is never NULL on new rows;
+      // NULLS LAST kept for safety. Flag off ⇒ identical to before (created_at DESC).
+      query = query.order('boosted_until', { ascending: false, nullsFirst: false })
       if (BUMP_ENABLED) {
-        query = query
-          .order('bumped_at', { ascending: false, nullsFirst: false })
-          .order('created_at', { ascending: false })
-          .order('id')
-      } else {
-        query = query.order('created_at', { ascending: false }).order('id')
+        query = query.order('bumped_at', { ascending: false, nullsFirst: false })
       }
+      query = query.order('created_at', { ascending: false }).order('id')
   }
 
   query = query.range(offset, offset + PAGE_SIZE)

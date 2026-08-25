@@ -11,6 +11,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import Link from 'next/link'
 import { formatCents } from '@/lib/fees'
+import { BUMP_COOLDOWN_DAYS, PRICE_DROP_BUMP_MIN_PCT } from '@/lib/bump/eligibility'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -20,6 +21,9 @@ const CARD_OPTIONS = {
 
 type Pkg = { key: string; label: string; amountCents: number; durationDays: number }
 
+/** Free-bump state computed server-side (null = bump off or listing not active). */
+type FreeBump = { availableNow: boolean; nextAtIso: string | null }
+
 interface Props {
   listingId: string
   title: string
@@ -27,6 +31,7 @@ interface Props {
   active: boolean
   boostedUntil: string | null
   packages: Pkg[]
+  freeBump: FreeBump | null
 }
 
 function box(selected: boolean) {
@@ -37,7 +42,7 @@ function box(selected: boolean) {
   } as const
 }
 
-function BoostForm({ listingId, title, brand, active, boostedUntil, packages }: Props) {
+function BoostForm({ listingId, title, brand, active, boostedUntil, packages, freeBump }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const [selected, setSelected] = useState<string>(packages[1]?.key ?? packages[0]?.key ?? '')
@@ -101,6 +106,29 @@ function BoostForm({ listingId, title, brand, active, boostedUntil, packages }: 
       {currentlyBoosted && (
         <p style={{ marginTop: 12, fontSize: 13, color: 'var(--color-ink-soft)' }}>
           Already boosted until {new Date(boostedUntil as string).toLocaleDateString()}. Buying another extends promotion.
+        </p>
+      )}
+      {/* Free alternative (G7 bump) — the other half of the visibility economy: bump once
+          every 7 days free vs pay to stay pinned for the whole package period. */}
+      {freeBump && (
+        <p style={{ marginTop: 12, fontSize: 13, color: 'var(--color-ink-soft)' }}>
+          {freeBump.availableNow ? (
+            <>
+              Prefer free? A{' '}
+              <Link href={`/listings/${listingId}`} style={{ color: 'var(--color-ink)' }}>
+                bump
+              </Link>{' '}
+              is available now — one free refresh to the top of browse every {BUMP_COOLDOWN_DAYS} days.
+              A boost keeps this listing pinned up top, labelled Promoted, for the whole period.
+            </>
+          ) : (
+            <>
+              Your free bump (one refresh to the top every {BUMP_COOLDOWN_DAYS} days) is next
+              available {freeBump.nextAtIso ? new Date(freeBump.nextAtIso).toLocaleDateString() : 'soon'} —
+              or drop the price {PRICE_DROP_BUMP_MIN_PCT}% to bump early. A boost pins this listing
+              up top, labelled Promoted, for the whole period.
+            </>
+          )}
         </p>
       )}
 

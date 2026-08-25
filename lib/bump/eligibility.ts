@@ -14,6 +14,14 @@
  *                      second early bump needs another 10% off the *reduced* price —
  *                      a genuine, compounding markdown, not a gameable nudge.
  *
+ * SINCE MIGRATION 0042 (creation anchor, 2026-08-25): a BEFORE INSERT trigger sets
+ * bumped_at = now() and bumped_price_cents = list price at creation (plus a backfill for
+ * older rows), so creation itself counts as the first bump. In practice a new listing
+ * starts "fresh" in the browse ordering, its first FREE bump unlocks 7 days after
+ * listing, and the price-drop reference starts at the original list price. Rule 1 and
+ * the null-tolerant inputs remain for robustness (and for any row predating the
+ * backfill), not as an expected path.
+ *
  * NOTE on the roadmap's "≥10% price drop to re-bump after 30 days": the compounding
  * reference above makes the price-drop path self-limiting without a separate 30-day
  * timer or extra column. If instead you want the price-drop path to open only for

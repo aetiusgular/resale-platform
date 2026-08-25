@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
-import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED } from '@/lib/flags'
+import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED, BUMP_ENABLED } from '@/lib/flags'
 import { getFeed } from '@/lib/recs/client'
 import { applyFeedOrder } from '@/lib/recs/rank'
 import { applyBoostOrder } from '@/lib/boosts'
@@ -113,7 +113,15 @@ export default async function BrowsePage({ searchParams }: PageProps) {
       if (q) { query = query.order('id'); break } // ts_rank applied automatically
       // fallthrough to newest if no query
       /* falls through */
-    default:           query = query.order('boosted_until', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).order('id')
+    default: {
+      // Default order: paid boost first, then bump freshness, then recency — the same
+      // total order as the load-more API route, so offset pagination never dups/skips.
+      // Creation counts as the first bump (migration 0042), so bumped_at ≈ created_at
+      // until a seller actually bumps; BUMP off ⇒ identical to the pre-bump ordering.
+      query = query.order('boosted_until', { ascending: false, nullsFirst: false })
+      if (BUMP_ENABLED) query = query.order('bumped_at', { ascending: false, nullsFirst: false })
+      query = query.order('created_at', { ascending: false }).order('id')
+    }
   }
 
   query = query.range(offset, offset + PAGE_SIZE)
