@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/cron/process-transfers", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/tier-expiry", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/boost-expiry", "schedule": "0 7 * * *" }
+  ]
+}
