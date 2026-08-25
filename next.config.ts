@@ -6,6 +6,18 @@ const nextConfig: NextConfig = {
   // Silence the workspace root warning from multiple lockfiles
   outputFileTracingRoot: path.join(__dirname),
 
+  experimental: {
+    // Client router cache (Next 15 default is dynamic: 0 — nothing reused).
+    // dynamic: visited/auto-prefetched dynamic pages are reused for 30s
+    //   (back/forward + quick revisits are instant; prices/sold state can be up
+    //   to 30s stale in the UI — checkout re-validates server-side).
+    // static: full prefetches (PrefetchLink hover upgrade) live for 3 min.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
+
   async headers() {
     return [
       {

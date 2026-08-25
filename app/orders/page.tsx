@@ -18,6 +18,7 @@ import { formatCents } from '@/lib/fees'
 import { STATE_LABELS, type OrderState } from '@/lib/orders'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
+import PrefetchLink from '@/app/components/prefetch-link'
 
 export const metadata: Metadata = {
   title: 'Orders — Resale Platform',
@@ -67,7 +68,7 @@ function OrderRowLink({
   const label = STATE_LABELS[order.state as OrderState] ?? order.state.toUpperCase()
 
   return (
-    <Link
+    <PrefetchLink
       href={`/orders/${order.id}`}
       style={{
         display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px',
@@ -107,7 +108,7 @@ function OrderRowLink({
           {formatDate(order.created_at)}
         </span>
       </div>
-    </Link>
+    </PrefetchLink>
   )
 }
 

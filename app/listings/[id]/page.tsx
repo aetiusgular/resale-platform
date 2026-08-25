@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -18,16 +19,36 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params
+/**
+ * Single listing fetch shared by generateMetadata + the page via React cache()
+ * — one DB round-trip per request instead of two (metadata used to run its own
+ * narrower query). RLS scoping is unchanged: user client, non-active rows only
+ * visible to seller/admin.
+ */
+const getListing = cache(async (id: string) => {
   const supabase = await createClient()
   const { data } = await supabase
     .from('listings')
-    .select('title, brand, price_cents, images, description')
+    .select(`
+      id, title, brand, category, size, description,
+      condition_score, condition_notes,
+      price_cents, saves_count, is_price_dropped,
+      images, possession_photo_url,
+      status, rejection_reason, created_at,
+      seller_id, authentication_status,
+      profiles:seller_id (username, role, id_verification_status)
+    `)
     .eq('id', id)
-    .eq('status', 'active')
     .single()
+  return data
+})
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params
+  const data = await getListing(id)
+
+  // Same behavior as the old status='active' filter for public viewers; the
+  // seller/admin (who can fetch non-active rows) just gets the real title.
   if (!data) return { title: 'Listing not found' }
 
   const title = `${data.title} — ${data.brand} — ${formatCents(data.price_cents)}`
@@ -56,22 +77,11 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const { id } = await params
   const supabase = await createClient()
 
-  // Fetch user + listing in parallel (both independent)
-  const [{ data: { user } }, { data: listing }] = await Promise.all([
+  // Fetch user + listing in parallel (both independent). getListing is
+  // cache()-shared with generateMetadata — this resolves from the same flight.
+  const [{ data: { user } }, listing] = await Promise.all([
     supabase.auth.getUser(),
-    supabase
-      .from('listings')
-      .select(`
-        id, title, brand, category, size, description,
-        condition_score, condition_notes,
-        price_cents, saves_count, is_price_dropped,
-        images, possession_photo_url,
-        status, rejection_reason, created_at,
-        seller_id, authentication_status,
-        profiles:seller_id (username, role, id_verification_status)
-      `)
-      .eq('id', id)
-      .single(),
+    getListing(id),
   ])
 
   if (!listing) notFound()
@@ -148,7 +158,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
             <div style={{ aspectRatio: '3/4', boxSizing: 'border-box', border: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
               {frontImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={frontImage} alt={listing.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={frontImage} alt={listing.title} fetchPriority="high" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>3 : 4 — FRONT</span>
               )}

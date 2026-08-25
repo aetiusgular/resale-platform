@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import PrefetchLink from './prefetch-link'
 import { trackEvent } from '@/lib/analytics'
 import { formatCents } from '@/lib/fees'
 
@@ -74,7 +74,14 @@ export default function ListingCard({
       }}>
         {frontImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={frontImage} alt={listing.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img
+            src={frontImage}
+            alt={listing.title}
+            // First two grid rows load eagerly; the rest wait until scrolled near.
+            loading={(position ?? 0) < 8 ? 'eager' : 'lazy'}
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
         ) : (
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>3 : 4</span>
         )}
@@ -143,11 +150,11 @@ export default function ListingCard({
           {cardContent}
         </div>
       ) : (
-        <Link href={`/listings/${listing.id}`} style={{ textDecoration: 'none' }}
+        <PrefetchLink href={`/listings/${listing.id}`} style={{ textDecoration: 'none' }}
           onClick={() => { trackEvent('product_clicked', { listing_id: listing.id }); onProductClick?.(listing.id) }}
         >
           {cardContent}
-        </Link>
+        </PrefetchLink>
       )}
 
       {/* Save toggle */}

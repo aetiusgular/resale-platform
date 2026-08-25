@@ -1,5 +1,28 @@
 # Session status — build backlog complete (2026-08-02)
 
+> **Update 2026-08-25 (3) — perf: optimistic pre-loading (route skeletons + intent prefetch + router cache).**
+> Page-to-page felt slow because every route is dynamic with ZERO loading.tsx files (navigation
+> waited on the full server render with no feedback, and viewport prefetch had no loading
+> boundary to fetch) and the Next 15 client router cache default (`staleTimes.dynamic: 0`)
+> reuses nothing. Now: (1) `loading.tsx` skeletons for browse, listings/[id],
+> sellers/[username], saved, messages, messages/[id], orders, orders/[id], sell, settings,
+> boost/[listingId], checkout/[listingId] — shared ghosts in `app/components/skeletons.tsx`
+> (header/tabbar chrome replicated with REAL nav links + a working GET search form; no
+> data-testids so e2e selectors only match real components). (2) NEW
+> `app/components/prefetch-link.tsx` — upgrades Link to `prefetch={true}` (full route + data)
+> on hover/touch/focus; wired into listing cards, browse's inline headers, SiteHeader, mobile
+> tab bar, avatar menu, /orders rows, /messages rows, seller-profile grid + tabs. (3)
+> `experimental.staleTimes { dynamic: 30, static: 180 }` in next.config.ts so prefetched and
+> visited pages are actually reused (UI can show ≤30s-stale listing state; checkout still
+> re-validates server-side). (4) listings/[id] fetch deduped with React cache() —
+> generateMetadata used to run its own second listings query per view. (5) Below-fold card
+> images `loading="lazy"` + `decoding="async"`, listing hero `fetchPriority="high"`, Supabase
+> preconnect/dns-prefetch in root layout. No migrations, no flags, no money-path changes.
+> Prefetch is PROD-ONLY (dev always compiles routes on demand — judge on `pnpm build && pnpm
+> start` or the Vercel deploy, not `pnpm dev`). Owed: native `pnpm verify` + `pnpm build`
+> (commit is pathspec-scoped around the in-flight G13-hardening files).
+>
+
 > **Update 2026-08-25 (2) — legal layer: ToS + Privacy drafts + public /terms /privacy /fees pages.**
 > Full Terms of Service + Privacy Policy drafted (grounded in Grailed/Poshmark/Depop/Vestiaire
 > terms pulled via Chrome the same day + CCPA/CalOPPA/INFORM/1099-K/GDPR/sanctions research from

@@ -136,3 +136,28 @@ hr { border: none; border-top: 1px solid var(--color-line); margin: 0; }
   /* Restore desktop padding where mobile uses 16px */
   .content-pad { padding-left: 80px !important; padding-right: 80px !important; }
 }
+
+/* ─── Route-loading skeletons (loading.tsx) ─────────────────────────────────
+   Ghost blocks use --color-line (same tone as image placeholders) with a slow
+   opacity pulse. Instant paint on navigation; replaced when the route streams in. */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.skeleton {
+  background: var(--color-line);
+  border-radius: 2px;
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+/* 4-up listings grid for skeletons — mirrors the browse/seller grids (2-up on mobile) */
+.skeleton-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 40px 24px;
+}
+@media (max-width: 767px) {
+  .skeleton-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 16px; }
+}

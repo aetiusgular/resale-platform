@@ -5,7 +5,7 @@
  * If ?listing=<id> is present, auto-creates or finds the conversation and redirects.
  */
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
@@ -104,7 +104,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
               const timeAgo = formatTimeAgo(conv.updated_at)
 
               return (
-                <Link
+                <PrefetchLink
                   key={conv.id}
                   href={`/messages/${conv.id}`}
                   style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
@@ -119,7 +119,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
                       {listing?.title ?? '—'} · {listing ? formatCents(listing.price_cents) : ''}
                     </div>
                   </div>
-                </Link>
+                </PrefetchLink>
               )
             })}
           </div>

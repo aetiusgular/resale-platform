@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useState, useTransition, useCallback, useRef, useEffect } from 'react'
-import Link from 'next/link'
+import PrefetchLink from '@/app/components/prefetch-link'
 import type { BrowseListing, FilterCounts } from './page'
 import { trackEvent } from '@/lib/analytics'
 import {
@@ -144,8 +144,8 @@ function FilterRail({
           hide listings that aren&apos;t your size
         </span>
         {hasSizes
-          ? <Link href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>edit</Link>
-          : <Link href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>set your sizes →</Link>
+          ? <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>edit</PrefetchLink>
+          : <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>set your sizes →</PrefetchLink>
         }
       </div>
 
@@ -571,9 +571,9 @@ export default function BrowseClient({
       }}
         className="browse-header-desktop"
       >
-        <Link href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>
+        <PrefetchLink href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>
           ———
-        </Link>
+        </PrefetchLink>
         {/* Search input */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <form
@@ -606,11 +606,11 @@ export default function BrowseClient({
           </form>
         </div>
         <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
+          <PrefetchLink href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
             Sell
-          </Link>
-          <Link href="/saved" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</Link>
-          <Link href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Messages</Link>
+          </PrefetchLink>
+          <PrefetchLink href="/saved" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</PrefetchLink>
+          <PrefetchLink href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Messages</PrefetchLink>
           <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
         </nav>
       </header>
@@ -618,7 +618,7 @@ export default function BrowseClient({
       {/* Mobile header */}
       <header style={{ display: 'none' }} className="browse-header-mobile">
         <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px' }}>
-          <Link href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</Link>
+          <PrefetchLink href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</PrefetchLink>
           <div style={{ flex: 1 }} />
           <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
         </div>

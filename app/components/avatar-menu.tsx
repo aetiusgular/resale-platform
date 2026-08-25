@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import Link from 'next/link'
+import PrefetchLink from './prefetch-link'
 
 interface Props {
   username: string
@@ -75,7 +75,7 @@ export default function AvatarMenu({ username, initials }: Props) {
             { label: 'ORDERS', href: '/orders' },
             { label: 'SETTINGS', href: '/settings' },
           ].map(item => (
-            <Link
+            <PrefetchLink
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
@@ -87,7 +87,7 @@ export default function AvatarMenu({ username, initials }: Props) {
               }}
             >
               {item.label}
-            </Link>
+            </PrefetchLink>
           ))}
           <button
             onClick={handleLogout}

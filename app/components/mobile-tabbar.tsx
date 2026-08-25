@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import PrefetchLink from './prefetch-link'
 import { usePathname } from 'next/navigation'
 
 interface Props {
@@ -43,7 +43,7 @@ export default function MobileTabBar({ username, hasUnread }: Props) {
         const color = active ? 'var(--color-ink)' : 'var(--color-ink-soft)'
 
         return (
-          <Link
+          <PrefetchLink
             key={tab.label}
             href={tab.href}
             data-testid={`tab-${tab.label.toLowerCase()}`}
@@ -98,7 +98,7 @@ export default function MobileTabBar({ username, hasUnread }: Props) {
             >
               {tab.label}
             </span>
-          </Link>
+          </PrefetchLink>
         )
       })}
     </nav>

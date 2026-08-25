@@ -5,7 +5,7 @@
  */
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
@@ -204,7 +204,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
           {/* Action buttons */}
           {seller.id !== user.id && (
             <div style={{ marginLeft: 'auto', flex: 'none', display: 'flex', gap: '8px' }}>
-              <Link
+              <PrefetchLink
                 href={`/messages?seller=${seller.id}`}
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -215,7 +215,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                 }}
               >
                 Message
-              </Link>
+              </PrefetchLink>
               {FOLLOWS_ENABLED && (
                 <FollowButton sellerId={seller.id as string} initialFollowing={isFollowing} />
               )}
@@ -234,7 +234,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
         {/* Tabs */}
         <div style={{ marginTop: '64px', display: 'flex', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
           {(['listings', 'reviews'] as const).map(t => (
-            <Link
+            <PrefetchLink
               key={t}
               href={`/sellers/${username}?tab=${t}`}
               style={{
@@ -249,7 +249,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               {activeTab === t && (
                 <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />
               )}
-            </Link>
+            </PrefetchLink>
           ))}
         </div>
 
@@ -276,7 +276,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                   const images: string[] = Array.isArray(l.images) ? l.images : []
                   const frontImage = images[0] ?? null
                   return (
-                    <Link key={l.id} href={`/listings/${l.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+                    <PrefetchLink key={l.id} href={`/listings/${l.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
                       <div style={{
                         aspectRatio: '3/4', boxSizing: 'border-box',
                         border: '1px solid var(--color-line)', overflow: 'hidden',
@@ -302,7 +302,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                       <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
                         {l.size} · {l.condition_score}/10
                       </div>
-                    </Link>
+                    </PrefetchLink>
                   )
                 })}
               </div>

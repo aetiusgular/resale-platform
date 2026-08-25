@@ -6,7 +6,7 @@
  * Server component: accepts preloaded user data so callers can avoid a
  * second DB round-trip.
  */
-import Link from 'next/link'
+import PrefetchLink from './prefetch-link'
 import AvatarMenu from './avatar-menu'
 import NotificationBell from './notification-bell'
 import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
@@ -27,7 +27,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
       background: 'var(--color-bg)',
     }}>
       {/* Wordmark */}
-      <Link
+      <PrefetchLink
         href="/"
         data-testid="site-wordmark"
         style={{
@@ -37,7 +37,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
         }}
       >
         ———
-      </Link>
+      </PrefetchLink>
 
       {/* Search — navigates to /browse */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
@@ -62,7 +62,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
 
       {/* Right nav — desktop only links */}
       <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <Link
+        <PrefetchLink
           href="/sell"
           className="desktop-only"
           style={{
@@ -74,8 +74,8 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
           }}
         >
           Sell
-        </Link>
-        <Link
+        </PrefetchLink>
+        <PrefetchLink
           href="/saved"
           className="desktop-only"
           style={{
@@ -85,8 +85,8 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
           }}
         >
           Saved
-        </Link>
-        <Link
+        </PrefetchLink>
+        <PrefetchLink
           href="/messages"
           className="desktop-only"
           style={{
@@ -96,7 +96,7 @@ export default function SiteHeader({ username, searchValue = '' }: Props) {
           }}
         >
           Messages
-        </Link>
+        </PrefetchLink>
         {NOTIFICATIONS_ENABLED && <NotificationBell />}
         <AvatarMenu username={username} initials={initials} />
       </nav>

@@ -30,6 +30,17 @@ export const metadata: Metadata = {
   description: 'Curated secondhand fashion marketplace',
 }
 
+// Supabase origin (listing images + auth/API) — preconnect so the first image
+// fetch after a navigation skips DNS + TLS setup. React 19 hoists these <link>
+// tags into <head>.
+const supabaseOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').origin
+  } catch {
+    return null
+  }
+})()
+
 export default function RootLayout({
   children,
 }: {
@@ -43,6 +54,12 @@ export default function RootLayout({
       {/* suppressHydrationWarning: browser extensions (Grammarly et al.) inject
           attributes into <body> before React hydrates — not a real mismatch. */}
       <body suppressHydrationWarning>
+        {supabaseOrigin && (
+          <>
+            <link rel="preconnect" href={supabaseOrigin} />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
+        )}
         <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
