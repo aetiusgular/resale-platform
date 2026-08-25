@@ -10,8 +10,12 @@
 > never rank below bumped ones, the first free bump unlocks 7 days after listing, and the ≥10%
 > price-drop early-bump path references the original list price from day one. `/boost/[id]` now
 > shows the free-bump alternative (next-eligible date) beside the paid packages. All dormant
-> behind `BUMP_ENABLED` as before. **Owed: `0042` db push (db-guard per convention), native
-> `pnpm verify`, commit** (keep separate from the already-staged G13 batch).
+> behind `BUMP_ENABLED` as before. Same day, verified green natively (392/392; build 55→56
+> routes) and `0042` APPLIED to remote. **Also NEW: `/orders` index page** — viewer's purchases
+> + sales, newest first (orders via user client/RLS, listing snapshots via service role AFTER
+> own-order scoping — same pattern as the orders/[id] UNKNOWN fix), plus ORDERS in the avatar
+> menu. Closes the money-path-review "/orders 404" finding (checkout-success fallback +
+> order-header "All orders" links now resolve). No flag — orders UI is always-on.
 >
 > **Update 2026-08-18 — G11 (welcome ramp + category shipping margin + identity locks + Persona→Stripe) BUILT + native verify green on `feat/fee-tier-checkpoints`.**
 > Sellers' first 10 sales are 0% commission (cover processing only); shipping is system-derived per category (floor+$2, EasyPost rater dormant behind `SHIPPING_LABELS_ENABLED`); bank fingerprint hard-locked + card soft-flagged behind `IDENTITY_LOCKS_ENABLED`; ID verification repointed Persona→Stripe Identity. Migration `0038`. Also supersedes the flat $12 SHIPPING_CENTS. See docs/LAUNCH_ROADMAP.md §G11.

@@ -72,6 +72,7 @@ export default function AvatarMenu({ username, initials }: Props) {
         >
           {[
             { label: 'PROFILE', href: `/sellers/${username}` },
+            { label: 'ORDERS', href: '/orders' },
             { label: 'SETTINGS', href: '/settings' },
           ].map(item => (
             <Link
