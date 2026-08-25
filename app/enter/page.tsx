@@ -98,19 +98,34 @@ export default function EnterPage() {
           gap: '24px',
         }}
       >
-        {['About', 'Terms', 'Privacy'].map((label) => (
-          <span
+        <span
+          style={{
+            font: '500 11px var(--font-ui)',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--color-ink-soft)',
+          }}
+        >
+          About
+        </span>
+        {[
+          { label: 'Terms', href: '/terms' },
+          { label: 'Privacy', href: '/privacy' },
+          { label: 'Fees', href: '/fees' },
+        ].map(({ label, href }) => (
+          <Link
             key={label}
+            href={href}
             style={{
               font: '500 11px var(--font-ui)',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: 'var(--color-ink-soft)',
-              cursor: 'pointer',
+              textDecoration: 'none',
             }}
           >
             {label}
-          </span>
+          </Link>
         ))}
       </div>
     </div>

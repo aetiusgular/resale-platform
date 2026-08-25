@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes accessible without a session (listing detail is public read for active listings)
-const PUBLIC_PATHS = ['/enter', '/onboarding/account', '/styleguide', '/listings']
+const PUBLIC_PATHS = ['/enter', '/onboarding/account', '/styleguide', '/listings', '/terms', '/privacy', '/fees']
 
 // Routes only accessible without a session (redirect to / if logged in)
 const AUTH_ONLY_PATHS = ['/enter']

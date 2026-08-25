@@ -1,5 +1,21 @@
 # Session status — build backlog complete (2026-08-02)
 
+> **Update 2026-08-25 (2) — legal layer: ToS + Privacy drafts + public /terms /privacy /fees pages.**
+> Full Terms of Service + Privacy Policy drafted (grounded in Grailed/Poshmark/Depop/Vestiaire
+> terms pulled via Chrome the same day + CCPA/CalOPPA/INFORM/1099-K/GDPR/sanctions research from
+> official sources; adversarial verify pass applied — 2 HIGH fixes: processor-held funds framing,
+> SB 478 wording). Sources, clause-to-law map, and the pre-launch checklist live in
+> `docs/legal/LEGAL_COMPLIANCE_NOTES.md`; research under `docs/legal/research/`. Placeholders
+> (`[COMPANY LEGAL NAME]`, `[PLATFORM]`, …) stay until the name lands; the DRAFT banner renders
+> on-page (alert-colored, `<mark>`ed placeholders) until counsel signs off. Front end: `/terms` +
+> `/privacy` render generated HTML (`scripts/generate-legal.mjs` rebuilds `app/*/content.ts` from
+> `docs/legal/*.md`; regen needs one-time `pnpm add -D marked`), `/fees` renders LIVE from
+> `lib/fees.ts` + `lib/boosts.ts` + `lib/shipping.ts` constants (single source of truth — cannot
+> drift from checkout), all three added to middleware `PUBLIC_PATHS`, `/enter` footer
+> Terms/Privacy/Fees are now real links (shared `app/components/legal-doc.tsx` shell). No
+> migrations, no flags, no money-path changes. Owed: native `pnpm build && pnpm verify`,
+> pathspec-scoped commit (unrelated G13-hardening work is in flight in the same tree), push.
+>
 > **Update 2026-08-25 — bump ⇄ boost integration finished (page-1 ordering + creation anchor). Migration `0042`.**
 > G7's bump ordering only ever covered the load-more API route; the main browse page (page 1)
 > sorted `boosted_until → created_at` and ignored `bumped_at`, so flipping `BUMP_ENABLED` on
