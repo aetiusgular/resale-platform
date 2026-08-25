@@ -715,62 +715,6 @@ export type Database = {
           },
         ]
       }
-      invite_codes: {
-        Row: {
-          claimed_at: string | null
-          code: string
-          created_at: string
-          generated_by: string
-          status: Database["public"]["Enums"]["invite_code_status"]
-          used_by: string | null
-        }
-        Insert: {
-          claimed_at?: string | null
-          code: string
-          created_at?: string
-          generated_by: string
-          status?: Database["public"]["Enums"]["invite_code_status"]
-          used_by?: string | null
-        }
-        Update: {
-          claimed_at?: string | null
-          code?: string
-          created_at?: string
-          generated_by?: string
-          status?: Database["public"]["Enums"]["invite_code_status"]
-          used_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invite_codes_generated_by_fkey"
-            columns: ["generated_by"]
-            isOneToOne: false
-            referencedRelation: "buyer_stats"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "invite_codes_generated_by_fkey"
-            columns: ["generated_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "invite_codes_used_by_fkey"
-            columns: ["used_by"]
-            isOneToOne: true
-            referencedRelation: "buyer_stats"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "invite_codes_used_by_fkey"
-            columns: ["used_by"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       listing_flags: {
         Row: {
           created_at: string
@@ -1518,7 +1462,6 @@ export type Database = {
           id_verification_status: Database["public"]["Enums"]["id_verification_status"]
           id_verified: boolean
           id_verified_at: string | null
-          invited_by: string | null
           is_moderator: boolean
           lifetime_sales_count: number
           moderator_since: string | null
@@ -1553,7 +1496,6 @@ export type Database = {
           id_verification_status?: Database["public"]["Enums"]["id_verification_status"]
           id_verified?: boolean
           id_verified_at?: string | null
-          invited_by?: string | null
           is_moderator?: boolean
           lifetime_sales_count?: number
           moderator_since?: string | null
@@ -1588,7 +1530,6 @@ export type Database = {
           id_verification_status?: Database["public"]["Enums"]["id_verification_status"]
           id_verified?: boolean
           id_verified_at?: string | null
-          invited_by?: string | null
           is_moderator?: boolean
           lifetime_sales_count?: number
           moderator_since?: string | null
@@ -1608,22 +1549,7 @@ export type Database = {
           username?: string
           verified_checker?: boolean
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_invited_by_fkey"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "buyer_stats"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "profiles_invited_by_fkey"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       push_subscriptions: {
         Row: {
@@ -1913,24 +1839,6 @@ export type Database = {
         }
         Relationships: []
       }
-      waitlist: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       buyer_stats: {
@@ -1959,15 +1867,8 @@ export type Database = {
           window_start_ms: number
         }[]
       }
-      claim_invite_code:
-        | { Args: { p_code: string }; Returns: Json }
-        | { Args: { p_code: string; p_user_id: string }; Returns: Json }
       expire_and_void_offers: { Args: never; Returns: undefined }
       expire_boosts: { Args: never; Returns: undefined }
-      generate_member_codes: {
-        Args: { p_count?: number; p_user_id: string }
-        Returns: string[]
-      }
       is_admin: { Args: never; Returns: boolean }
       post_auto_lc: {
         Args: {
