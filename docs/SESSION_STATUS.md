@@ -19,8 +19,18 @@
 > images `loading="lazy"` + `decoding="async"`, listing hero `fetchPriority="high"`, Supabase
 > preconnect/dns-prefetch in root layout. No migrations, no flags, no money-path changes.
 > Prefetch is PROD-ONLY (dev always compiles routes on demand — judge on `pnpm build && pnpm
-> start` or the Vercel deploy, not `pnpm dev`). Owed: native `pnpm verify` + `pnpm build`
-> (commit is pathspec-scoped around the in-flight G13-hardening files).
+> start` or the Vercel deploy, not `pnpm dev`). Verified same day: native `pnpm verify`
+> 392/392 + `pnpm build` 59 routes green; PUSHED as `337835a`.
+> **Follow-up (same day): CI e2e caught a streaming regression** — with loading.tsx present
+> the shell flushes (status 200) before the page's data resolves, so the page-level
+> `notFound()` could no longer set a 404: `/listings/<unknown-id>` returned 200
+> (listings.spec "returns 404" ×2 failed in Actions). Fix: `app/listings/[id]/layout.tsx`
+> existence gate — a segment layout renders ABOVE the loading boundary, before first flush,
+> so its `notFound()` still yields a real HTTP 404 for browsers/bots/curl; `getListing`
+> moved to `app/listings/[id]/get-listing.ts`, React cache()-shared by layout + metadata +
+> page (still exactly one listings query per request). Trade: the listing shell now waits on
+> one PK lookup before the skeleton paints. Other notFound()/redirect() routes are safe:
+> their anon paths are middleware-gated (real 307s) and none have status-asserting tests.
 >
 
 > **Update 2026-08-25 (2) — legal layer: ToS + Privacy drafts + public /terms /privacy /fees pages.**

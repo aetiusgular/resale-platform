@@ -1,8 +1,8 @@
-import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { getListing } from './get-listing'
 import { formatCents } from '@/lib/fees'
 import { BOOSTED_POSTS_ENABLED } from '@/lib/flags'
 import { BUMP_ENABLED } from '@/lib/flags'
@@ -18,30 +18,6 @@ import MobileTabBar from '@/app/components/mobile-tabbar'
 interface PageProps {
   params: Promise<{ id: string }>
 }
-
-/**
- * Single listing fetch shared by generateMetadata + the page via React cache()
- * — one DB round-trip per request instead of two (metadata used to run its own
- * narrower query). RLS scoping is unchanged: user client, non-active rows only
- * visible to seller/admin.
- */
-const getListing = cache(async (id: string) => {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('listings')
-    .select(`
-      id, title, brand, category, size, description,
-      condition_score, condition_notes,
-      price_cents, saves_count, is_price_dropped,
-      images, possession_photo_url,
-      status, rejection_reason, created_at,
-      seller_id, authentication_status,
-      profiles:seller_id (username, role, id_verification_status)
-    `)
-    .eq('id', id)
-    .single()
-  return data
-})
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
