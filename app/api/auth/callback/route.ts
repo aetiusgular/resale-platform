@@ -7,10 +7,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+/**
+ * Resolve the post-login `next` target to a same-origin path.
+ *
+ * `new URL(raw, origin)` IGNORES the base whenever `raw` is absolute, so passing a
+ * raw search param straight into it is an open redirect: `?next=https://evil.com`,
+ * `?next=//evil.com` (protocol-relative) and `?next=/\evil.com` (WHATWG treats `\`
+ * as `/` for special schemes) all resolve off-origin. Parsing and then comparing
+ * `origin` rejects every one of those, including percent-encoded variants, without
+ * hand-rolling string checks. Anything off-origin or unparseable falls back to /browse.
+ */
+function resolveNext(raw: string | null, origin: string): string {
+  if (!raw) return '/browse'
+  try {
+    const target = new URL(raw, origin)
+    if (target.origin !== origin) return '/browse'
+    return target.pathname + target.search + target.hash
+  } catch {
+    return '/browse'
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const oauthCode = searchParams.get('code')
-  const next = searchParams.get('next') || '/browse'
+  const next = resolveNext(searchParams.get('next'), origin)
 
   if (!oauthCode) {
     return NextResponse.redirect(new URL('/enter/login?error=oauth', origin))

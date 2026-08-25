@@ -40,11 +40,11 @@ test.describe('Gate — unauthenticated', () => {
 
 test.describe('Styleguide still accessible', () => {
   test('/styleguide accessible without auth', async ({ page }) => {
-    // Styleguide is not gated — it's for development reference
-    // But middleware now gates all non-/enter routes. Check it redirects.
+    // /styleguide is in middleware's PUBLIC_PATHS, so it must render for an anonymous
+    // visitor. Asserting /styleguide|/enter would match both outcomes and could never
+    // fail — if the route were ever dropped from PUBLIC_PATHS the styleguide smoke specs
+    // would start rendering /enter and this test would stay green.
     await page.goto('/styleguide')
-    // Either shows styleguide (if not gated) or redirects to /enter
-    const url = page.url()
-    expect(url).toMatch(/\/styleguide|\/enter/)
+    await expect(page).toHaveURL(/\/styleguide$/)
   })
 })

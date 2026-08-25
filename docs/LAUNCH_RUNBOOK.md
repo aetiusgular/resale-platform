@@ -32,8 +32,11 @@ Legend: 🧑 = founder/human-only step (never delegate). 💻 = terminal on your
 
 ## Phase 1 — Founder decisions (🧑, blocking everything user-facing)
 
-6. **Pick the final name and buy the domain** (Cloudflare or Namecheap as registrar).
-   Everything below needs the domain string.
+6. **Domain: DEFERRED (decision 2026-08-24)** — testing 1–2 weeks on the free
+   `<project>.vercel.app` URL. What you pick instead: the **Vercel project name**, since it
+   becomes the URL testers see (renaming the project later changes the URL, so pick
+   something you can live with; the brand name + real domain come after the test window).
+   Wherever this runbook says `yourdomain.com`, substitute `https://<project>.vercel.app`.
 7. **Legal: entity + Terms of Service + Privacy Policy.** You hold other people's money in
    escrow — have these exist before real users, even trusted ones. When written, wire the
    About/Terms/Privacy footer links on `/enter` (currently decorative).
@@ -44,22 +47,26 @@ Legend: 🧑 = founder/human-only step (never delegate). 💻 = terminal on your
 ## Phase 2 — Vendor accounts (🧑🌐, ~1–2 hrs total)
 
 9. **Vercel account** (Hobby is fine for alpha).
-10. **Resend** (transactional email): create account → verify your sending domain (adds
-    DNS records at the registrar) → API key. You'll set `RESEND_API_KEY` +
-    `NOTIFY_EMAIL_FROM` (e.g. `orders@yourdomain.com`).
+10. **Resend: DEFERRED with the domain** — verifying a sender requires a domain you own,
+    so `NOTIFICATIONS_ENABLED` stays OFF during the vercel.app window (testers coordinate
+    in the group chat; the bell/emails arrive with the domain). When the domain lands:
+    account → verify sending domain → `RESEND_API_KEY` + `NOTIFY_EMAIL_FROM`.
 11. **Web push keys** (💻, no vendor): `npx web-push generate-vapid-keys` → save the pair
     for `VAPID_PUBLIC_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, plus
     `VAPID_SUBJECT=mailto:you@yourdomain.com`.
-12. **Google OAuth** (per `docs/GOOGLE_OAUTH_SETUP.md`): Google Cloud Console → OAuth
+12. **Google OAuth** (per `docs/GOOGLE_OAUTH_SETUP.md`) — unaffected by the missing domain,
+    since the redirect URI Google sees is the SUPABASE callback: Cloud Console → OAuth
     consent screen (External; scopes email/profile/openid) → Credentials → OAuth client ID
-    (Web) → **Authorized redirect URI = the SUPABASE callback**
+    (Web) → **Authorized redirect URI =**
     `https://rwabzxfyndpsqpmfmrim.supabase.co/auth/v1/callback` → copy client ID + secret.
     Then Supabase 🌐 → Authentication → Providers → Google → enable + paste. Then
-    Authentication → URL Configuration → Site URL = `https://yourdomain.com`; Redirect URLs
-    allowlist: `http://localhost:3000/api/auth/callback` AND
-    `https://yourdomain.com/api/auth/callback`.
-    Verify locally first: `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true` in `.env.local`, restart
-    dev, `/enter/login` shows the Google button, round-trip works.
+    Authentication → URL Configuration → Site URL = `https://<project>.vercel.app`;
+    Redirect URLs allowlist: `http://localhost:3000/api/auth/callback` AND
+    `https://<project>.vercel.app/api/auth/callback`.
+    Consent-screen note: in "Testing" mode only listed test users can sign in — either add
+    your ~24 testers' emails as test users, or publish the app (unverified-app warning is
+    fine for trusted testers). Verify locally first: flag on in `.env.local`, restart dev,
+    `/enter/login` Google button round-trips.
 13. **Stripe live-mode prep** (🧑): dashboard → Live mode → complete/confirm the Connect
     platform profile → enable **Stripe Identity** on the account (used by
     `VERIFICATION_ENABLED` later; G11 repointed off Persona —
@@ -98,8 +105,9 @@ Legend: 🧑 = founder/human-only step (never delegate). 💻 = terminal on your
     | `RESEND_API_KEY` / `NOTIFY_EMAIL_FROM` | from step 10 (used when notifications flip on) |
     | `VAPID_PUBLIC_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | from step 11 |
     | All feature flags | leave UNSET/false for now — flipped one wave at a time in Phase 6 |
-18. **Domain**: Vercel → Project → Domains → add `yourdomain.com` → create the DNS records
-    it shows at your registrar → wait for ✓ + auto-SSL.
+18. **Domain: skipped for now** — note your exact `https://<project>.vercel.app` URL; it's
+    the string that goes into Supabase URL config (step 12) and the Stripe webhook (step 20).
+    HTTPS is automatic on vercel.app.
 19. **Supabase production hardening** 🌐: enable PITR / daily backups (Add-ons); run
     `SELECT tablename FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity;` in the
     SQL editor → must return 0 rows.
@@ -107,7 +115,7 @@ Legend: 🧑 = founder/human-only step (never delegate). 💻 = terminal on your
 ## Phase 4 — Stripe LIVE cutover (🧑 HUMAN-ONLY, per LAUNCH.md §2)
 
 20. Stripe dashboard (Live mode) → Developers → Webhooks → **Add endpoint**
-    `https://yourdomain.com/api/webhooks/stripe`, subscribed to EXACTLY what the handler
+    `https://<project>.vercel.app/api/webhooks/stripe`, subscribed to EXACTLY what the handler
     processes (**supersedes LAUNCH.md's older list** — `transfer.created` isn't handled;
     the identity events are):
     `payment_intent.succeeded` · `payment_intent.payment_failed` · `charge.refunded` ·
@@ -135,8 +143,9 @@ Legend: 🧑 = founder/human-only step (never delegate). 💻 = terminal on your
 
 ## Phase 6 — Flag flips (env → redeploy → smoke, ONE at a time)
 
-26. `NOTIFICATIONS_ENABLED=true` → place/advance a test order → seller gets the email, bell
-    populates.
+26. `NOTIFICATIONS_ENABLED=true` — **DEFERRED until the domain lands** (needs Resend's
+    verified sender, step 10). When flipped: advance a test order → seller gets the email,
+    bell populates.
 27. `IDENTITY_LOCKS_ENABLED=true` and `COLLUSION_HOLD_ENABLED=true` — pure additive safety,
     no vendor, enforce only on collisions.
 28. `VERIFICATION_ENABLED=true` (Stripe Identity was enabled in step 13) — dormant until a
@@ -171,6 +180,22 @@ Legend: 🧑 = founder/human-only step (never delegate). 💻 = terminal on your
     delivery; disputes freeze it.
 
 ---
+
+## When the real domain arrives (week 2+, after the name is chosen)
+
+A ~30-minute migration; testers' vercel.app links keep working throughout:
+
+1. Buy the domain → Vercel → Project → Domains → add it → DNS records at registrar → ✓ +
+   auto-SSL. Vercel serves BOTH domains; optionally set the custom one as primary
+   (vercel.app then redirects to it).
+2. Supabase → Auth → URL Configuration: Site URL → the new domain; ADD
+   `https://newdomain.com/api/auth/callback` to the redirect allowlist (keep the vercel.app
+   entry during transition).
+3. Stripe → the live webhook endpoint → **edit its URL in place** to the new domain — the
+   signing secret is preserved, no env change needed.
+4. Resend: verify the sending domain → set `RESEND_API_KEY` + `NOTIFY_EMAIL_FROM` in Vercel
+   → flip `NOTIFICATIONS_ENABLED=true` (+ push works too, VAPID keys from step 11) → redeploy.
+5. Tell the testers the new URL. Done.
 
 ## Superseded / stale-doc notes
 - **LAUNCH.md §2 webhook event list** (had `transfer.created`, missed identity events) → use Phase 4 step 20.

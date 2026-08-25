@@ -78,6 +78,15 @@ function AccountForm() {
       return
     }
 
+    // Without a session the client is still `anon`, so the insert below would fail the
+    // insert-own-profile policy with a raw 42501. Happens if email confirmations are ever
+    // enabled on the hosted project (they are off today, per supabase/config.toml).
+    if (!authData.session) {
+      setLoading(false)
+      setError('check your email to confirm your address, then log in to finish setup')
+      return
+    }
+
     const { error: profileError } = await supabase.from('profiles').insert({
       id: userId,
       username: username.toLowerCase(),
@@ -85,8 +94,16 @@ function AccountForm() {
 
     if (profileError) {
       setLoading(false)
-      if (profileError.message.includes('unique') || profileError.code === '23505') {
+      // The auth user now exists but has no profile. Leaving the signup form mounted strands
+      // them: re-submitting returns "User already registered" forever, and the log-in link
+      // bounces back here via middleware's profile-exists redirect. Promoting them into the
+      // username-only recovery state (the same one detectOauth builds on reload) lets them
+      // retry the part that actually failed.
+      setOauthUser({ id: userId, email: authData.user?.email ?? email.trim().toLowerCase() })
+      if (profileError.code === '23505' && profileError.message.includes('username')) {
         setError('username already taken — pick another')
+      } else if (profileError.code === '23505') {
+        setError('profile already created — continue below')
       } else {
         setError(profileError.message)
       }
@@ -97,7 +114,7 @@ function AccountForm() {
     router.push('/onboarding/verify')
   }
 
-  // Google user completing signup: create the profile + claim the code (no password).
+  // Google user completing signup: create the profile (no password).
   async function handleOauthComplete(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -112,8 +129,12 @@ function AccountForm() {
     })
     if (profileError) {
       setLoading(false)
-      if (profileError.message.includes('unique') || profileError.code === '23505') {
+      // A 23505 here is either the username UNIQUE or the id PRIMARY KEY. Telling someone to
+      // "pick another username" on a PK conflict sends them chasing a fix that cannot work.
+      if (profileError.code === '23505' && profileError.message.includes('username')) {
         setError('username already taken — pick another')
+      } else if (profileError.code === '23505') {
+        setError('profile already created — continue below')
       } else {
         setError(profileError.message)
       }

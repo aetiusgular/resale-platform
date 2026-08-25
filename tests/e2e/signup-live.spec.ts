@@ -66,9 +66,12 @@ test.describe('@live Signup UI — full onboarding flow', () => {
       .select('id')
       .eq('username', signedUpUsername)
       .single()
-    if (profileRow) {
-      signedUpUserId = profileRow.id
-    }
+    // Assert rather than guard: a null here means signup did NOT create the profile row,
+    // which is the exact regression this spec exists to catch. Silently skipping left the
+    // test green AND orphaned a real auth user in the live project on every run, because
+    // afterAll then had no id to delete and the username is timestamp-derived (never retried).
+    expect(profileRow, 'signup did not create a profile row').not.toBeNull()
+    signedUpUserId = profileRow!.id
 
     // ── Step 4: skip ID verification ─────────────────────────────────────────
     await page.getByRole('button', { name: /skip for now/i }).click()
