@@ -16,9 +16,11 @@ export default async function PayoutsSettingsPage({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
 
+  // Only payouts_enabled is used here; stripe_connect_account_id is no longer granted to
+  // the `authenticated` role (migration 0044) and was unused on this page anyway.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('payouts_enabled, stripe_connect_account_id')
+    .select('payouts_enabled')
     .eq('id', user.id)
     .single()
 

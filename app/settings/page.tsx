@@ -14,7 +14,11 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
 
-  const { data: profile } = await supabase
+  // Own-profile read via the service role: sensitive columns (phone, addresses, Stripe
+  // Connect id) are no longer granted to the `authenticated` role (migration 0044 —
+  // pre-launch audit Finding 1). Scoped to the caller's own id, so it reads only their row.
+  const svc = createServiceClientRaw()
+  const { data: profile } = await svc
     .from('profiles')
     .select('username, sizes, payouts_enabled, stripe_connect_account_id, phone, phone_verified_at, shipping_address, ship_from_address')
     .eq('id', user.id)
@@ -30,7 +34,6 @@ export default async function SettingsPage() {
   let buyerTier: SideDashboard | null = null
   let sellerTier: SideDashboard | null = null
   if (TIER_DASHBOARD_ENABLED) {
-    const svc = createServiceClientRaw()
     ;[buyerTier, sellerTier] = await Promise.all([
       getTierDashboard(svc, user.id, 'buyer'),
       getTierDashboard(svc, user.id, 'seller'),
