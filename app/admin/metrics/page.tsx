@@ -74,17 +74,6 @@ export default async function AdminMetricsPage() {
   }
   const totalSignups = (signupRows ?? []).length
 
-  // ── Invite tree: total members with an inviter ───────────────────────────
-  const { count: invitedCount } = await service
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .not('invited_by', 'is', null)
-
-  // ── Waitlist count ───────────────────────────────────────────────────────
-  const { count: waitlistCount } = await service
-    .from('waitlist')
-    .select('id', { count: 'exact', head: true })
-
   return (
     <div style={{ fontFamily: 'var(--font-mono)', padding: '32px', maxWidth: '960px' }}>
       <h1 style={{ fontSize: '20px', marginBottom: '32px' }}>Platform Metrics</h1>
@@ -146,16 +135,6 @@ export default async function AdminMetricsPage() {
         </table>
       </section>
 
-      {/* Community */}
-      <section style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '14px', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Community
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '16px' }}>
-          <Stat label="Waitlist signups" value={String(waitlistCount ?? 0)} />
-          <Stat label="Members via invite" value={String(invitedCount ?? 0)} />
-        </div>
-      </section>
     </div>
   )
 }

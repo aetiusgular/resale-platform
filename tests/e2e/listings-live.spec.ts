@@ -37,7 +37,6 @@ async function createTestUser(email: string, password: string, role = 'member') 
     username: email.split('@')[0] + '_' + Date.now(),
     role,
     id_verified: false,
-    invited_by: userId, // self-invite for test
   })
 
   return { userId, email, password }

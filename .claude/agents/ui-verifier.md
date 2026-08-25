@@ -3,9 +3,11 @@ name: ui-verifier
 model: opus
 tools:
   - mcp__playwright__browser_navigate
-  - mcp__playwright__browser_screenshot
+  - mcp__playwright__browser_take_screenshot
   - mcp__playwright__browser_snapshot
   - mcp__playwright__browser_evaluate
+  - mcp__playwright__browser_resize
+  - mcp__playwright__browser_click
   - Read
 ---
 

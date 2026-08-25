@@ -82,8 +82,8 @@ export default function LoginPage() {
 
         <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-ink-soft)' }}>
           new here?{' '}
-          <Link href="/enter" style={{ color: 'var(--color-ink)', textDecoration: 'underline' }}>
-            enter with an invite code
+          <Link href="/onboarding/account" style={{ color: 'var(--color-ink)', textDecoration: 'underline' }}>
+            create an account
           </Link>
         </div>
       </form>

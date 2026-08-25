@@ -1,6 +1,5 @@
 /**
- * Seed script: creates a system profile, founder invite codes,
- * marks 24 founder accounts id-verified with 3 invite codes each,
+ * Seed script: creates a system profile, marks 24 founder accounts id-verified,
  * seeds 2 moderators (the ex-"verified checkers"; G10 gates Legit Check to
  * moderators), and creates a demo legit-check thread on the first active listing.
  *
@@ -15,7 +14,6 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { generateCode } from '../lib/invite-codes'
 
 // ─── Production guard ──────────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
@@ -29,11 +27,10 @@ if (!process.argv.includes('--confirm')) {
 }
 
 const SYSTEM_USER_EMAIL  = 'system@resale-platform.internal'
-const FOUNDER_CODE_COUNT = 30
 
 // 24 alpha seed contacts from docs/USER_FEEDBACK.md §6.
 // Two designated verified checkers (per B7 design) keep checker fields.
-// All others: id_verified=true, 3 invite codes each, bronze tier.
+// All others: id_verified=true, bronze tier.
 const FOUNDER_ACCOUNTS: Array<{
   username: string
   verified_checker?: boolean
@@ -118,38 +115,8 @@ async function main() {
     console.log('[seed] system profile exists')
   }
 
-  // ── 3. Founder invite codes ───────────────────────────────────────────────
-  const { count: existingCount } = await supabase
-    .from('invite_codes').select('code', { count: 'exact', head: true }).eq('generated_by', systemUserId)
-
-  const needed = FOUNDER_CODE_COUNT - (existingCount ?? 0)
-  if (needed > 0) {
-    console.log(`[seed] generating ${needed} founder codes…`)
-    const codesToInsert: { code: string; generated_by: string }[] = []
-    const seen = new Set<string>()
-    const { data: allCodes } = await supabase.from('invite_codes').select('code')
-    for (const row of allCodes ?? []) seen.add(row.code)
-
-    while (codesToInsert.length < needed) {
-      const code = generateCode()
-      if (!seen.has(code)) { seen.add(code); codesToInsert.push({ code, generated_by: systemUserId }) }
-    }
-
-    const { error: insertError } = await supabase.from('invite_codes').insert(codesToInsert)
-    if (insertError) throw new Error(`Failed to insert founder codes: ${insertError.message}`)
-    console.log(`[seed] inserted ${codesToInsert.length} codes`)
-    codesToInsert.slice(0, 5).forEach((c) => console.log(`  ${c.code}`))
-    if (codesToInsert.length > 5) console.log(`  … and ${codesToInsert.length - 5} more`)
-  } else {
-    console.log(`[seed] already have ${existingCount} founder codes — skipping`)
-  }
-
-  // ── 4. Founder accounts: id-verified + invite codes ───────────────────────
+  // ── 3. Founder accounts: id-verified ──────────────────────────────────────
   const fixtureIds: Record<string, string> = {}
-
-  // Snapshot all codes before the loop to avoid repeated fetches
-  const { data: allCodesNow } = await supabase.from('invite_codes').select('code')
-  const globalSeen = new Set<string>((allCodesNow ?? []).map(r => r.code))
 
   for (const founder of FOUNDER_ACCOUNTS) {
     const email = `founder+${founder.username}@example.com`
@@ -190,32 +157,9 @@ async function main() {
     if (upsertErr) {
       console.warn(`[seed] upsert ${founder.username}: ${upsertErr.message}`)
     }
-
-    // Give each founder exactly 3 invite codes
-    const { count: founderCodeCount } = await supabase
-      .from('invite_codes')
-      .select('code', { count: 'exact', head: true })
-      .eq('generated_by', userId)
-
-    const toCreate = 3 - (founderCodeCount ?? 0)
-    if (toCreate > 0) {
-      const newCodes: { code: string; generated_by: string }[] = []
-      while (newCodes.length < toCreate) {
-        const code = generateCode()
-        if (!globalSeen.has(code)) {
-          globalSeen.add(code)
-          newCodes.push({ code, generated_by: userId })
-        }
-      }
-      const { error: codeErr } = await supabase.from('invite_codes').insert(newCodes)
-      if (codeErr) console.warn(`[seed] codes for ${founder.username}: ${codeErr.message}`)
-      else console.log(`[seed] ${founder.username} → ${newCodes.length} invite codes`)
-    } else {
-      console.log(`[seed] ${founder.username} already has ${founderCodeCount} codes`)
-    }
   }
 
-  // ── 5. Demo LC thread on first active listing ──────────────────────────────
+  // ── 4. Demo LC thread on first active listing ──────────────────────────────
   const { data: activeListing } = await supabase
     .from('listings').select('id, title').eq('status', 'active')
     .order('created_at', { ascending: true }).limit(1).maybeSingle()

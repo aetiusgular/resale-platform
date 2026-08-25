@@ -1,91 +1,9 @@
-'use client'
-
-import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/browser'
-import { normalizeCode, isValidCodeFormat } from '@/lib/invite-codes'
-import { INVITE_ONLY_ENABLED_PUBLIC } from '@/lib/flags'
 
-type EnterError = 'code not found' | 'code already used' | 'cannot claim your own code' | 'invalid format' | string
-
-function errorMessage(err: EnterError): string {
-  if (err === 'code not found') return 'code not found'
-  if (err === 'code already used') return 'code already used'
-  if (err === 'cannot claim your own code') return 'that code is yours — share it with a friend'
-  if (err === 'invalid format') return 'codes look like XXXX-XXXX'
-  return err
-}
-
+/**
+ * /enter — public landing. Open signup (G13): create an account or log in.
+ */
 export default function EnterPage() {
-  const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [code, setCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  async function handleEnter(e: React.FormEvent) {
-    e.preventDefault()
-    const normalized = normalizeCode(code)
-
-    // Open platform (default): an empty code just goes straight to account creation.
-    if (!INVITE_ONLY_ENABLED_PUBLIC && normalized.length === 0) {
-      router.push('/onboarding/account')
-      return
-    }
-
-    if (!isValidCodeFormat(normalized)) {
-      setError('invalid format')
-      return
-    }
-
-    setError(null)
-    setLoading(true)
-
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      // Not signed in yet — store code in sessionStorage then redirect to signup
-      sessionStorage.setItem('pending_invite_code', normalized)
-      router.push('/onboarding/account?code=' + encodeURIComponent(normalized))
-      return
-    }
-
-    // Already signed in — claim the code directly
-    const { data, error: rpcError } = await supabase.rpc('claim_invite_code', {
-      p_code: normalized,
-    })
-
-    setLoading(false)
-
-    if (rpcError || !data) {
-      setError(rpcError?.message ?? 'something went wrong')
-      return
-    }
-
-    const result = data as { success: boolean; error: string | null }
-    if (!result.success) {
-      setError(result.error ?? 'something went wrong')
-      return
-    }
-
-    router.push('/onboarding/codes')
-  }
-
-  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')
-    // Auto-insert hyphen at position 4
-    let formatted = raw.replace(/-/g, '')
-    if (formatted.length > 4) {
-      formatted = formatted.slice(0, 4) + '-' + formatted.slice(4, 8)
-    }
-    setCode(formatted)
-    if (error) setError(null)
-  }
-
-  const hasError = Boolean(error)
-
   return (
     <div
       style={{
@@ -135,138 +53,34 @@ export default function EnterPage() {
           A quieter market for the things worth keeping.
         </p>
 
-        {/* Form */}
-        <form
-          onSubmit={handleEnter}
+        {/* Create account */}
+        <Link
+          href="/onboarding/account"
           style={{
             marginTop: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '44px',
             width: '100%',
             maxWidth: '360px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
+            background: 'var(--color-ink)',
+            color: 'var(--color-bg)',
+            border: '1px solid var(--color-ink)',
+            borderRadius: '2px',
+            font: '500 14px var(--font-ui)',
+            letterSpacing: '-0.01em',
+            textDecoration: 'none',
+            boxSizing: 'border-box',
           }}
         >
-          {/* Code input */}
-          <div>
-            <div
-              style={{
-                position: 'relative',
-                height: '44px',
-                border: `1px solid ${hasError ? 'var(--color-alert)' : 'var(--color-line)'}`,
-                borderRadius: '2px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 12px',
-                boxSizing: 'border-box',
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  left: '6px',
-                  top: '-7px',
-                  background: 'var(--color-bg)',
-                  padding: '0 4px',
-                  font: '500 12px var(--font-ui)',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: hasError ? 'var(--color-alert)' : 'var(--color-ink-soft)',
-                }}
-              >
-                {INVITE_ONLY_ENABLED_PUBLIC ? 'Invite code' : 'Invite code (optional)'}
-              </span>
-              <input
-                ref={inputRef}
-                type="text"
-                value={code}
-                onChange={handleInput}
-                placeholder="····-····"
-                maxLength={9}
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                style={{
-                  width: '100%',
-                  border: 'none',
-                  outline: 'none',
-                  background: 'transparent',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '14px',
-                  letterSpacing: '0.08em',
-                  color: 'var(--color-ink)',
-                  textAlign: 'center',
-                }}
-              />
-            </div>
-            {hasError && (
-              <div
-                style={{
-                  marginTop: '6px',
-                  fontSize: '12px',
-                  color: 'var(--color-alert)',
-                  textAlign: 'left',
-                }}
-              >
-                {errorMessage(error!)}
-              </div>
-            )}
-          </div>
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '44px',
-              width: '100%',
-              background: 'var(--color-ink)',
-              color: 'var(--color-bg)',
-              border: '1px solid var(--color-ink)',
-              borderRadius: '2px',
-              font: '500 14px var(--font-ui)',
-              letterSpacing: '-0.01em',
-              cursor: loading ? 'default' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-              transition: 'opacity 120ms linear',
-            }}
-          >
-            {loading ? 'Checking…' : INVITE_ONLY_ENABLED_PUBLIC ? 'Enter' : 'Create account'}
-          </button>
-        </form>
-
-        {INVITE_ONLY_ENABLED_PUBLIC ? (
-          <Link
-            href="/enter/waitlist"
-            style={{
-              marginTop: '20px',
-              fontSize: '13px',
-              color: 'var(--color-ink)',
-            }}
-          >
-            no code? join the waitlist
-          </Link>
-        ) : (
-          <p
-            style={{
-              marginTop: '20px',
-              fontSize: '13px',
-              color: 'var(--color-ink-soft)',
-              maxWidth: '360px',
-            }}
-          >
-            No invite needed — leave the code blank to create an account, or enter one to credit whoever referred you.
-          </p>
-        )}
+          Create account
+        </Link>
 
         <Link
           href="/enter/login"
           style={{
-            marginTop: '12px',
+            marginTop: '20px',
             fontSize: '13px',
             color: 'var(--color-ink-soft)',
           }}

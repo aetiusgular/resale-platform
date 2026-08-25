@@ -70,15 +70,3 @@ export const GOOGLE_AUTH_ENABLED =
 // ── Fee model v2 §1f: tier dashboards (display only) ──
 export const TIER_DASHBOARD_ENABLED =
   process.env.TIER_DASHBOARD_ENABLED === 'true'
-
-// ── Access gate ──────────────────────────────────────────────────────────────
-// The platform is OPEN by default (this flag OFF). Set INVITE_ONLY_ENABLED=true to
-// require every new account to claim an invite code before using the app (the
-// middleware bounces un-invited profiles to /enter). The invite-code system stays
-// fully intact either way — codes still work as referrals when the platform is open.
-export const INVITE_ONLY_ENABLED =
-  process.env.INVITE_ONLY_ENABLED === 'true'
-// Client mirror (NEXT_PUBLIC — read in the /enter and /onboarding/account pages so the
-// UI shows the code field as required vs optional). Keep in step with the server flag.
-export const INVITE_ONLY_ENABLED_PUBLIC =
-  process.env.NEXT_PUBLIC_INVITE_ONLY_ENABLED === 'true'

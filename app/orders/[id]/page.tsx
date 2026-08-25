@@ -86,8 +86,11 @@ export default async function OrderPage({ params }: PageProps) {
     reviewEligible = !existingReview
   }
 
-  // Fetch listing snapshot for display
-  const { data: listing } = await supabase
+  // Fetch listing snapshot for display — via service role, NOT the user client:
+  // listings RLS only exposes status='active' rows to non-sellers, so the buyer of
+  // a sold listing would get null here and the page would render "Unknown"/no photo.
+  // Safe: the viewer was verified above to be the buyer, the seller, or an admin.
+  const { data: listing } = await createServiceClientRaw()
     .from('listings')
     .select('title, brand, size, images')
     .eq('id', order.listing_id)

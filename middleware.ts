@@ -1,12 +1,11 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { INVITE_ONLY_ENABLED } from '@/lib/flags'
 
 // Routes accessible without a session (listing detail is public read for active listings)
-const PUBLIC_PATHS = ['/enter', '/enter/waitlist', '/onboarding/account', '/styleguide', '/listings']
+const PUBLIC_PATHS = ['/enter', '/onboarding/account', '/styleguide', '/listings']
 
 // Routes only accessible without a session (redirect to / if logged in)
-const AUTH_ONLY_PATHS = ['/enter', '/enter/waitlist']
+const AUTH_ONLY_PATHS = ['/enter']
 
 // Routes requiring role='admin'
 const ADMIN_PATHS = ['/admin']
@@ -109,8 +108,7 @@ export async function middleware(request: NextRequest) {
     return applyCsp(response)
   }
 
-  // Has session — check for claimed invite code
-  // If they're still in onboarding, let them through
+  // Has session — if they're still in onboarding, let them through
   const isOnboarding = pathname.startsWith('/onboarding')
   if (isOnboarding) {
     return applyCsp(response)
@@ -130,10 +128,10 @@ export async function middleware(request: NextRequest) {
     return applyCsp(response)
   }
 
-  // Check if user has a profile + claimed invite code
+  // Check if user has a profile
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, invited_by, role, banned')
+    .select('id, role, banned')
     .eq('id', user.id)
     .single()
 
@@ -145,18 +143,6 @@ export async function middleware(request: NextRequest) {
   // Ban enforcement (G6): a suspended user is redirected to /banned on any page.
   if (profile.banned && pathname !== '/banned') {
     return applyCsp(NextResponse.redirect(new URL('/banned', request.url)))
-  }
-
-  // Invite gate — ONLY enforced when INVITE_ONLY_ENABLED. The platform is open by
-  // default: a profile that never claimed a code is a normal member and passes
-  // straight through (and gets the gate cookie below like anyone else). Flip
-  // INVITE_ONLY_ENABLED=true to require every new account to claim a code first.
-  if (INVITE_ONLY_ENABLED && !profile.invited_by && profile.role !== 'admin') {
-    if (!isPublicPath) {
-      return applyCsp(NextResponse.redirect(new URL('/enter', request.url)))
-    }
-    // Don't set gate cookie for ungated users
-    return applyCsp(response)
   }
 
   // Admin gate: /admin/* requires role='admin'

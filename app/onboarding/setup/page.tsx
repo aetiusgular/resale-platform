@@ -89,18 +89,11 @@ export default function SetupPage() {
         keepalive: true,
       }).catch(() => {})
     }
-    // Generate codes server-side then navigate
-    await generateCodes()
-    router.push('/onboarding/codes')
-  }
-
-  async function generateCodes() {
-    await fetch('/api/onboarding/generate-codes', { method: 'POST' })
+    router.push('/browse')
   }
 
   async function handleSkip() {
-    await generateCodes()
-    router.push('/onboarding/codes')
+    router.push('/browse')
   }
 
   return (

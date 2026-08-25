@@ -1,14 +1,10 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
-import { normalizeCode } from '@/lib/invite-codes'
 import GoogleButton from '@/app/enter/google-button'
-import { GOOGLE_AUTH_ENABLED, INVITE_ONLY_ENABLED_PUBLIC } from '@/lib/flags'
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Supa = any
+import { GOOGLE_AUTH_ENABLED } from '@/lib/flags'
 
 export default function AccountPage() {
   return (
@@ -20,10 +16,7 @@ export default function AccountPage() {
 
 function AccountForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const codeParam = searchParams.get('code') ?? ''
 
-  const [invitedBy, setInvitedBy] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -42,39 +35,6 @@ function AccountForm() {
     }
     detectOauth()
   }, [])
-
-  useEffect(() => {
-    if (!codeParam) return
-    async function resolveInviter() {
-      const supabase = createClient()
-      const { data: codeRow } = await supabase
-        .from('invite_codes')
-        .select('generated_by')
-        .eq('code', normalizeCode(codeParam))
-        .single()
-      if (codeRow?.generated_by) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', codeRow.generated_by)
-          .single()
-        if (profile?.username) setInvitedBy(profile.username as string)
-      }
-    }
-    resolveInviter()
-  }, [codeParam])
-
-  async function claimCodeIfPresent(supabase: Supa) {
-    if (!codeParam) return
-    const { data: claimData, error: claimError } = await supabase.rpc('claim_invite_code', {
-      p_code: normalizeCode(codeParam),
-    })
-    if (claimError) {
-      console.error('[claim_invite_code]', claimError)
-    } else if (claimData && !claimData.success) {
-      console.error('[claim_invite_code] failed:', claimData.error)
-    }
-  }
 
   function validUsername(u: string): boolean {
     if (!u.match(/^[a-zA-Z0-9_]{3,30}$/)) {
@@ -133,7 +93,6 @@ function AccountForm() {
       return
     }
 
-    await claimCodeIfPresent(supabase)
     setLoading(false)
     router.push('/onboarding/verify')
   }
@@ -160,25 +119,15 @@ function AccountForm() {
       }
       return
     }
-    await claimCodeIfPresent(supabase)
     setLoading(false)
-    // With a code — or when the platform is open (default) — they're fully in. Only
-    // invite-only mode sends a codeless Google user back to /enter to claim one first.
-    router.push(codeParam || !INVITE_ONLY_ENABLED_PUBLIC ? '/onboarding/verify' : '/enter')
+    router.push('/onboarding/verify')
     router.refresh()
   }
-
-  const normalizedCode = normalizeCode(codeParam)
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100svh', boxSizing: 'border-box', padding: '0 24px 40px' }}>
       <div style={{ padding: '40px 0 0', textAlign: 'center' }}>
         <span style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
-        {codeParam && (
-          <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
-            CODE {normalizedCode} ACCEPTED{invitedBy ? ` · INVITED BY @${invitedBy.toUpperCase()}` : ''}
-          </div>
-        )}
       </div>
 
       {oauthUser ? (
@@ -251,7 +200,7 @@ function AccountForm() {
                 OR
                 <span style={{ flex: 1, height: '1px', background: 'var(--color-line)' }} />
               </div>
-              <GoogleButton next="/browse" inviteCode={codeParam || undefined} />
+              <GoogleButton next="/browse" />
             </>
           )}
         </form>

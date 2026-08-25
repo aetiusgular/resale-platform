@@ -15,7 +15,6 @@ applied to the remote DB, so flipping a flag is env-only — no schema work.
   - `RECS_ENABLED` ↔ `NEXT_PUBLIC_RECS_ENABLED`
   - `BOOSTED_POSTS_ENABLED` = `NEXT_PUBLIC_BOOSTED_POSTS_ENABLED`
   - `GOOGLE_AUTH_ENABLED` = `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`
-  - `INVITE_ONLY_ENABLED` ↔ `NEXT_PUBLIC_INVITE_ONLY_ENABLED`
 - **Flip one wave at a time**, smoke-test its flow, then proceed. **Rollback** is always: set the
   env back to `false` and redeploy. Nothing here rewrites data.
 
@@ -42,7 +41,6 @@ No feature flags on yet.
 | `GOOGLE_AUTH_ENABLED` (+ `NEXT_PUBLIC_`) | Google OAuth creds configured in Supabase (see `docs/GOOGLE_OAUTH_SETUP.md`) | Google button appears on /enter; sign-in round-trips |
 | `PHONE_VERIFICATION_ENABLED` | Twilio (SMS OTP) wired (`lib/phone/`) | /settings phone verify sends a code and marks verified |
 | `NOTIFICATIONS_ENABLED` | Resend API key + web-push VAPID keys | placing an order emails the seller; bell populates |
-| `INVITE_ONLY_ENABLED` (+ `NEXT_PUBLIC_`) | none (decision) | **Decision:** invite-only soft launch (recommended for a controlled start) vs open. Codes still work as referrals either way. |
 
 Phone is the identity anchor the anti-abuse locks lean on, so turn it on before Wave C.
 
@@ -101,7 +99,7 @@ Turn these on once you actually have users/supply; several are no-ops or noise w
 | `REVIEWS_ENABLED`, `FOLLOWS_ENABLED` | a user base (social proof) |
 | `BUYER_REWARDS_ENABLED` | buyers transacting (loyalty milestones $1k/$5k/$10k) |
 | `BOOSTED_POSTS_ENABLED` (+ `NEXT_PUBLIC_`) | seller supply + buyer demand (this is monetization) |
-| `BUMP_ENABLED` | listing volume worth refreshing |
+| `BUMP_ENABLED` | migration `0042` applied (creation-as-first-bump anchor). Free bump every 7 days, early via ≥10% price cut; default browse = boost → bump → recency on page 1 AND load-more; `/boost/[id]` cross-links the free bump. Listing volume worth refreshing. |
 | `SAVED_SEARCH_ALERTS_ENABLED` | **requires `NOTIFICATIONS_ENABLED`** (Wave B) |
 | `AUTH_BADGE_ENABLED` | authenticated-item badge/review flow |
 | `TIER_DASHBOARD_ENABLED` | none — display-only; safe anytime |
@@ -110,7 +108,7 @@ Turn these on once you actually have users/supply; several are no-ops or noise w
 
 ## One-line summary of the critical path
 
-Wave A foundations → **B** (google, phone, notifications, invite decision) → **C** (identity +
+Wave A foundations → **B** (google, phone, notifications) → **C** (identity +
 collusion locks) → **E** (Stripe Identity, enable early, harmless) → open the doors. **D** shipping
 stays floor-priced/manual-ship at launch; live rating + prepaid labels are follow-up builds.
 **F** growth flags come on as liquidity appears. Every step: set env → redeploy → smoke-test →

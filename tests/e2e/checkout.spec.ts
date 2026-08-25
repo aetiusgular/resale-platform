@@ -41,8 +41,7 @@ async function signIn(page: Page, email: string, password: string) {
       'TEST_* credentials missing — run `node scripts/seed-e2e-fixtures.mjs` and add the printed block to .env.local',
     )
   }
-  // /enter became the invite/waitlist landing when open registration shipped (c050434);
-  // the email+password form lives at /enter/login now.
+  // /enter is the public landing; the email+password form lives at /enter/login.
   await page.goto('/enter/login')
   const submit = page.locator('button[type="submit"]')
   await submit.waitFor({ state: 'visible' })

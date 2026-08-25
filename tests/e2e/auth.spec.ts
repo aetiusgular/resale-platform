@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * B1 auth gate Playwright specs.
+ * B1 auth gate Playwright specs (G13: open signup — the invite/waitlist system is removed).
  * Non-@live: these run against the app with no real Supabase session.
- * @live variants (RLS/RPC unit tests) are in auth-live.spec.ts.
+ * @live signup flow lives in signup-live.spec.ts.
  */
 
 test.describe('Gate — unauthenticated', () => {
@@ -12,54 +12,29 @@ test.describe('Gate — unauthenticated', () => {
     await expect(page).toHaveURL(/\/enter$/)
   })
 
-  test('/enter shows invite code input and tagline', async ({ page }) => {
+  test('/enter shows tagline and create-account entry', async ({ page }) => {
     await page.goto('/enter')
     await expect(page.getByText('A quieter market for the things worth keeping.')).toBeVisible()
-    await expect(page.getByRole('textbox')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Create account' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'already a member? log in' })).toBeVisible()
   })
 
-  test('invalid format shows error', async ({ page }) => {
+  test('create account goes to signup', async ({ page }) => {
     await page.goto('/enter')
-    const input = page.getByRole('textbox')
-    await input.fill('BADCODE')
-    await page.getByRole('button', { name: 'Create account' }).click()
-    await expect(page.getByText('codes look like XXXX-XXXX')).toBeVisible()
-  })
-
-  test('no code — create account goes to signup', async ({ page }) => {
-    await page.goto('/enter')
-    await page.getByRole('button', { name: 'Create account' }).click()
+    await page.getByRole('link', { name: 'Create account' }).click()
     await expect(page).toHaveURL(/\/onboarding\/account$/)
   })
 
-  test('waitlist form submits email', async ({ page }) => {
-    // Stub the API so the test doesn't hit the real DB
-    await page.route('/api/waitlist', route =>
-      route.fulfill({ status: 200, body: JSON.stringify({ ok: true }) })
-    )
-    await page.goto('/enter/waitlist')
-    await page.getByRole('textbox').fill('test@example.com')
-    await page.getByRole('button', { name: 'Join waitlist' }).click()
-    await expect(page.getByText("You're on the list.")).toBeVisible({ timeout: 5000 })
+  test('log in link goes to /enter/login', async ({ page }) => {
+    await page.goto('/enter')
+    await page.getByRole('link', { name: 'already a member? log in' }).click()
+    await expect(page).toHaveURL(/\/enter\/login$/)
   })
 
   test('direct access to gated /onboarding/* redirects to /enter when unauthenticated', async ({ page }) => {
     // /onboarding/verify and /setup require auth; /account is intentionally public
     await page.goto('/onboarding/verify')
     await expect(page).toHaveURL(/\/enter$/)
-  })
-})
-
-test.describe('Gate — /enter page error states', () => {
-  test('code already used error shows in alert color', async ({ page }) => {
-    await page.goto('/enter')
-    const input = page.getByRole('textbox')
-    // Submit a properly formatted but non-existent code (no session → goes to signup flow)
-    await input.fill('AAAA-BBBB')
-    await page.getByRole('button', { name: 'Create account' }).click()
-    // Without a session it should redirect to /onboarding/account with code param
-    await expect(page).toHaveURL(/\/onboarding\/account/)
   })
 })
 

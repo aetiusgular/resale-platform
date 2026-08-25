@@ -2,15 +2,15 @@
 
 /**
  * "Continue with Google" — Supabase OAuth (Google). Kicks off the OAuth redirect to
- * /api/auth/callback, forwarding `next` (where to land afterward) and an optional invite
- * `code` so a new member's code survives the round-trip. The callback exchanges the code for
- * a session and routes: existing profile → `next`; new user → onboarding to pick a username.
- * Requires the Google provider enabled in Supabase (see docs/GOOGLE_OAUTH_SETUP.md).
+ * /api/auth/callback, forwarding `next` (where to land afterward). The callback exchanges
+ * the code for a session and routes: existing profile → `next`; new user → onboarding to
+ * pick a username. Requires the Google provider enabled in Supabase (see
+ * docs/GOOGLE_OAUTH_SETUP.md).
  */
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/browser'
 
-export default function GoogleButton({ next = '/browse', inviteCode }: { next?: string; inviteCode?: string }) {
+export default function GoogleButton({ next = '/browse' }: { next?: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,7 +19,6 @@ export default function GoogleButton({ next = '/browse', inviteCode }: { next?: 
     setError(null)
     const supabase = createClient()
     const params = new URLSearchParams({ next })
-    if (inviteCode) params.set('invite', inviteCode)
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/api/auth/callback?${params.toString()}` },
