@@ -1,8 +1,10 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Routes accessible without a session (listing detail is public read for active listings)
-const PUBLIC_PATHS = ['/enter', '/onboarding/account', '/styleguide', '/listings', '/terms', '/privacy', '/fees']
+// Routes accessible without a session. Guests can now browse: the root, the browse feed,
+// listing detail, and seller profiles are all public read (RLS still exposes only active
+// listings + public profile columns to anon, and every write API still requires a session).
+const PUBLIC_PATHS = ['/enter', '/onboarding/account', '/styleguide', '/', '/browse', '/listings', '/sellers', '/terms', '/privacy', '/fees', '/reset-password']
 
 // Routes only accessible without a session (redirect to / if logged in)
 const AUTH_ONLY_PATHS = ['/enter']
@@ -31,7 +33,7 @@ function buildCsp(nonce: string): string {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://q.stripe.com https://b.stripecdn.com https://us.i.posthog.com`,
     `font-src 'self' https://fonts.gstatic.com`,
-    `connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.stripe.com https://app.posthog.com https://us.i.posthog.com https://*.sentry.io https://o*.ingest.sentry.io`,
+    `connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.stripe.com https://app.posthog.com https://us.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io`,
     `frame-src https://js.stripe.com https://hooks.stripe.com`,
     `form-action 'self'`,
     `base-uri 'self'`,

@@ -31,23 +31,27 @@ function resolveNext(raw: string | null, origin: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const oauthCode = searchParams.get('code')
+  // Supabase/Google can return an error INSTEAD of a code (e.g. an account-linking
+  // refusal). That carries the real reason — surface it instead of a generic failure.
+  const providerError = searchParams.get('error_description') ?? searchParams.get('error')
   const next = resolveNext(searchParams.get('next'), origin)
 
-  if (!oauthCode) {
-    return NextResponse.redirect(new URL('/enter/login?error=oauth', origin))
+  const fail = (reason: string) => {
+    console.error('[auth/callback] failed:', reason)
+    return NextResponse.redirect(
+      new URL(`/enter/login?error=oauth&reason=${encodeURIComponent(reason)}`, origin),
+    )
   }
+
+  if (providerError) return fail(providerError)
+  if (!oauthCode) return fail('missing authorization code')
 
   const supabase = await createClient()
   const { error } = await supabase.auth.exchangeCodeForSession(oauthCode)
-  if (error) {
-    console.error('[auth/callback] exchange failed:', error.message)
-    return NextResponse.redirect(new URL('/enter/login?error=oauth', origin))
-  }
+  if (error) return fail(error.message)
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.redirect(new URL('/enter/login?error=oauth', origin))
-  }
+  if (!user) return fail('no user after code exchange')
 
   const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle()
   if (!profile) {

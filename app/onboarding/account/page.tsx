@@ -31,7 +31,13 @@ function AccountForm() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle()
-      if (!profile) setOauthUser({ id: user.id, email: user.email ?? '' })
+      if (!profile) {
+        setOauthUser({ id: user.id, email: user.email ?? '' })
+        // Confirmed-email signups arrive with the username they picked stashed in user
+        // metadata (Google users have none). Prefill it so they only need to confirm.
+        const metaUsername = (user.user_metadata?.username as string | undefined) ?? ''
+        if (metaUsername) setUsername(metaUsername)
+      }
     }
     detectOauth()
   }, [])
@@ -60,7 +66,7 @@ function AccountForm() {
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/onboarding/verify`,
+        emailRedirectTo: `${window.location.origin}/api/auth/callback`,
         data: { username: username.toLowerCase() },
       },
     })
@@ -83,7 +89,7 @@ function AccountForm() {
     // enabled on the hosted project (they are off today, per supabase/config.toml).
     if (!authData.session) {
       setLoading(false)
-      setError('check your email to confirm your address, then log in to finish setup')
+      setError('check your email and open the link to confirm and finish setup')
       return
     }
 

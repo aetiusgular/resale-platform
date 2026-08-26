@@ -14,6 +14,7 @@ import BumpButton from './bump-button'
 import CommunitySection from './community-section'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
+import GuestAction from '@/app/components/guest-action'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -104,8 +105,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const listedAgo = formatTimeAgo(listing.created_at)
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className={user ? 'mobile-bottom-pad' : undefined}>
-      {user && <SiteHeader username={currentUsername} />}
+    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
+      {/* currentUsername is '' for guests → SiteHeader renders its Sign-in variant. */}
+      <SiteHeader username={currentUsername} />
 
       {/* Seller status banners */}
       {isSeller && listing.status === 'pending_review' && (
@@ -233,13 +235,25 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
             {/* BUY / OFFER buttons */}
             <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {listing.status === 'active' && user && !isSeller ? (
-                <Link
-                  href={`/checkout/${id}`}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
-                >
-                  Buy now — {formatCents(total)}
-                </Link>
+              {/* Buy now: authed buyer → checkout; guest → popup (returns to checkout);
+                  otherwise (sold/pending/own listing) → disabled. */}
+              {listing.status === 'active' && !isSeller ? (
+                user ? (
+                  <Link
+                    href={`/checkout/${id}`}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
+                  >
+                    Buy now — {formatCents(total)}
+                  </Link>
+                ) : (
+                  <GuestAction
+                    next={`/checkout/${id}`}
+                    testId="buy-guest"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)' }}
+                  >
+                    Buy now — {formatCents(total)}
+                  </GuestAction>
+                )
               ) : (
                 <button
                   disabled
@@ -248,13 +262,23 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   {listing.status === 'sold' ? 'SOLD' : listing.status === 'pending_escrow' ? 'PENDING' : 'Buy now'}
                 </button>
               )}
-              {listing.status === 'active' && user && !isSeller ? (
-                <a
-                  href={`/messages?listing=${id}`}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
-                >
-                  Make offer
-                </a>
+              {listing.status === 'active' && !isSeller ? (
+                user ? (
+                  <a
+                    href={`/messages?listing=${id}`}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
+                  >
+                    Make offer
+                  </a>
+                ) : (
+                  <GuestAction
+                    next={`/messages?listing=${id}`}
+                    testId="offer-guest"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)' }}
+                  >
+                    Make offer
+                  </GuestAction>
+                )
               ) : (
                 <button
                   disabled
@@ -263,8 +287,18 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   Make offer
                 </button>
               )}
-              {listing.status === 'active' && user && !isSeller ? (
-                <MessageSellerButton listingId={id} />
+              {listing.status === 'active' && !isSeller ? (
+                user ? (
+                  <MessageSellerButton listingId={id} />
+                ) : (
+                  <GuestAction
+                    next={`/listings/${id}`}
+                    testId="message-guest"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid transparent', borderRadius: '2px', font: '500 14px var(--font-ui)' }}
+                  >
+                    Message seller
+                  </GuestAction>
+                )
               ) : (
                 <button
                   disabled
@@ -302,8 +336,10 @@ export default async function ListingDetailPage({ params }: PageProps) {
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
                 LISTED {listedAgo.toUpperCase()} · {listing.saves_count ?? 0} SAVED
               </div>
-              {user && !isSeller && (
-                <SaveButton listingId={id} initialSaved={isSaved} />
+              {!isSeller && (
+                user
+                  ? <SaveButton listingId={id} initialSaved={isSaved} />
+                  : <SaveButton listingId={id} initialSaved={false} guest />
               )}
             </div>
           </div>
@@ -313,6 +349,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
         {listing.status === 'active' && (
           <CommunitySection
             listingId={id}
+            isGuest={!user}
             canPostLc={
               userProfile?.is_moderator === true ||
               userProfile?.role === 'admin'
@@ -320,7 +357,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
           />
         )}
       </div>
-      {user && <MobileTabBar username={currentUsername} />}
+      <MobileTabBar username={currentUsername} />
     </div>
   )
 }

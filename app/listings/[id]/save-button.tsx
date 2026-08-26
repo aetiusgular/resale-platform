@@ -1,19 +1,30 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { trackEvent } from '@/lib/analytics'
+import { useAuthModal } from '@/app/components/auth-modal-provider'
 
 export default function SaveButton({
   listingId,
   initialSaved,
+  guest = false,
 }: {
   listingId: string
   initialSaved: boolean
+  /** Signed-out viewer: clicking opens the sign-in popup instead of saving. */
+  guest?: boolean
 }) {
   const [saved, setSaved] = useState(initialSaved)
   const [loading, setLoading] = useState(false)
+  const { openAuthModal } = useAuthModal()
+  const pathname = usePathname()
 
   async function toggle() {
+    if (guest) {
+      openAuthModal(pathname)
+      return
+    }
     setLoading(true)
     const prevSaved = saved
     setSaved(s => !s) // optimistic

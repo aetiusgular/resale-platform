@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
 import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED, BUMP_ENABLED } from '@/lib/flags'
@@ -50,8 +49,11 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   const params = await searchParams
   const supabase = await createClient()
 
+  // Guests browse freely (user === null). Everything user-scoped below — the
+  // personalized feed, the saved-set, the profile size prefs — is guarded on
+  // `user` and simply skipped for a signed-out visitor. Write actions are gated
+  // client-side (auth popup) and server-side (401 + RLS).
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/enter')
 
   const q        = params.q?.trim() ?? ''
   const dept     = params.dept ?? ''
@@ -76,8 +78,8 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     minPrice === null && maxPrice === null && condMin === null &&
     !verified && !authenticated && !dropped &&
     (sort === 'newest' || sort === 'relevance')
-  const recsEligible = RECS_ENABLED && isDiscoveryView && offset === 0
-  const feedPromise = recsEligible ? getFeed({ userId: user.id }) : Promise.resolve(null)
+  const recsEligible = RECS_ENABLED && isDiscoveryView && offset === 0 && !!user
+  const feedPromise = recsEligible && user ? getFeed({ userId: user.id }) : Promise.resolve(null)
 
   // ── Build listing query ────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -156,7 +158,9 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     countQuery,
     supabase.from('listings').select('department').eq('status', 'active'),
     supabase.from('listings').select('category').eq('status', 'active'),
-    supabase.from('profiles').select('sizes, username').eq('id', user.id).single(),
+    user
+      ? supabase.from('profiles').select('sizes, username').eq('id', user.id).single()
+      : Promise.resolve({ data: null }),
   ])
 
   const listings = (rawListings ?? []) as Array<{
@@ -177,7 +181,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     droppedIds.length > 0
       ? supabase.from('price_history').select('listing_id, old_price_cents, changed_at').in('listing_id', droppedIds).order('changed_at', { ascending: true })
       : Promise.resolve({ data: null }),
-    displayedIds.length > 0
+    user && displayedIds.length > 0
       ? supabase.from('saves').select('listing_id').in('listing_id', displayedIds)
       : Promise.resolve({ data: null }),
   ])
@@ -243,7 +247,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
         currentOffset={offset}
         username={username}
         authBadgeEnabled={AUTH_BADGE_ENABLED}
-        userId={user.id}
+        userId={user?.id ?? ''}
         recsTelemetryEnabled={RECS_TELEMETRY_ENABLED}
       />
     </Suspense>

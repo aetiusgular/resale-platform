@@ -3,9 +3,9 @@
  * Header, avatar initials, tier, VERIFIED ID microtag, member-since,
  * two-sided stats rows, LISTINGS tab (grid), REVIEWS tab (empty state).
  */
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import PrefetchLink from '@/app/components/prefetch-link'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
@@ -15,6 +15,7 @@ import FollowButton from './follow-button'
 import RecommendModeratorButton from './recommend-moderator-button'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
+import GuestAction from '@/app/components/guest-action'
 
 interface PageProps {
   params: Promise<{ username: string }>
@@ -42,13 +43,16 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const { tab = 'listings' } = await searchParams
 
   const supabase = await createClient()
+  // Seller profiles are public — guests (user === null) view freely. Everything
+  // user-scoped (own profile, follow state, moderator recommend) is guarded on `user`.
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/enter')
 
   // Fetch current user's profile + target seller in parallel
   const service = createServiceClientRaw()
   const [{ data: currentProfile }, { data: seller }] = await Promise.all([
-    supabase.from('profiles').select('username, role, is_moderator').eq('id', user.id).single(),
+    user
+      ? supabase.from('profiles').select('username, role, is_moderator').eq('id', user.id).single()
+      : Promise.resolve({ data: null }),
     service.from('profiles').select('id, username, role, id_verification_status, tier, verified_checker, checker_category, is_moderator, created_at').eq('username', username).single(),
   ])
   const currentUsername: string = (currentProfile?.username as string) ?? ''
@@ -94,7 +98,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const nameById = new Map((reviewerProfiles ?? []).map((rp) => [rp.id as string, rp.username as string]))
 
   let isFollowing = false
-  if (FOLLOWS_ENABLED) {
+  if (FOLLOWS_ENABLED && user) {
     const { data: myFollow } = await supabase
       .from('follows')
       .select('id')
@@ -106,10 +110,10 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
 
   // ── G10: moderator recommendation status (only when the viewer can recommend) ──
   const canRecommendModerator =
-    seller.id !== user.id && viewerIsModerator && !sellerIsModerator && isVerified
+    seller.id !== user?.id && viewerIsModerator && !sellerIsModerator && isVerified
   let modRecCount = 0
   let viewerRecommended = false
-  if (canRecommendModerator) {
+  if (canRecommendModerator && user) {
     const { data: recs } = await service
       .from('moderator_recommendations')
       .select('recommender_id')
@@ -201,22 +205,38 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
             </div>
           </div>
 
-          {/* Action buttons */}
-          {seller.id !== user.id && (
+          {/* Action buttons. Guests see Message (→ popup); Follow/Recommend are authed-only. */}
+          {seller.id !== user?.id && (
             <div style={{ marginLeft: 'auto', flex: 'none', display: 'flex', gap: '8px' }}>
-              <PrefetchLink
-                href={`/messages?seller=${seller.id}`}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  height: '44px', padding: '0 24px',
-                  background: 'var(--color-bg)', color: 'var(--color-ink)',
-                  border: '1px solid var(--color-ink)', borderRadius: '2px',
-                  font: '500 14px var(--font-ui)', textDecoration: 'none',
-                }}
-              >
-                Message
-              </PrefetchLink>
-              {FOLLOWS_ENABLED && (
+              {user ? (
+                <Link
+                  href={`/messages?seller=${seller.id}`}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    height: '44px', padding: '0 24px',
+                    background: 'var(--color-bg)', color: 'var(--color-ink)',
+                    border: '1px solid var(--color-ink)', borderRadius: '2px',
+                    font: '500 14px var(--font-ui)', textDecoration: 'none',
+                  }}
+                >
+                  Message
+                </Link>
+              ) : (
+                <GuestAction
+                  next={`/messages?seller=${seller.id}`}
+                  testId="seller-message-guest"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    height: '44px', padding: '0 24px',
+                    background: 'var(--color-bg)', color: 'var(--color-ink)',
+                    border: '1px solid var(--color-ink)', borderRadius: '2px',
+                    font: '500 14px var(--font-ui)',
+                  }}
+                >
+                  Message
+                </GuestAction>
+              )}
+              {user && FOLLOWS_ENABLED && (
                 <FollowButton sellerId={seller.id as string} initialFollowing={isFollowing} />
               )}
               {canRecommendModerator && (
@@ -234,7 +254,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
         {/* Tabs */}
         <div style={{ marginTop: '64px', display: 'flex', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
           {(['listings', 'reviews'] as const).map(t => (
-            <PrefetchLink
+            <Link
               key={t}
               href={`/sellers/${username}?tab=${t}`}
               style={{
@@ -249,7 +269,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               {activeTab === t && (
                 <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />
               )}
-            </PrefetchLink>
+            </Link>
           ))}
         </div>
 
@@ -276,7 +296,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                   const images: string[] = Array.isArray(l.images) ? l.images : []
                   const frontImage = images[0] ?? null
                   return (
-                    <PrefetchLink key={l.id} href={`/listings/${l.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+                    <Link key={l.id} href={`/listings/${l.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
                       <div style={{
                         aspectRatio: '3/4', boxSizing: 'border-box',
                         border: '1px solid var(--color-line)', overflow: 'hidden',
@@ -302,7 +322,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                       <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
                         {l.size} · {l.condition_score}/10
                       </div>
-                    </PrefetchLink>
+                    </Link>
                   )
                 })}
               </div>

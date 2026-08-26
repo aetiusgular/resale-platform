@@ -67,6 +67,12 @@ export const IDENTITY_CARD_MAX_OTHER_ACCOUNTS = 2
 export const GOOGLE_AUTH_ENABLED =
   process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true'
 
+// ── Apple OAuth sign-in/up (NEXT_PUBLIC — read in client auth pages). Ships DARK:
+// off until an Apple Developer account exists and the Apple provider is configured in
+// Supabase (Service ID + signing key). The button + wiring are built and idle until then. ──
+export const APPLE_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_APPLE_AUTH_ENABLED === 'true'
+
 // ── Fee model v2 §1f: tier dashboards (display only) ──
 export const TIER_DASHBOARD_ENABLED =
   process.env.TIER_DASHBOARD_ENABLED === 'true'

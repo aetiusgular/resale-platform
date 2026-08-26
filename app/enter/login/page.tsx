@@ -15,8 +15,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('error') === 'oauth') {
-      setError('Google sign-in failed — please try again.')
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error') === 'oauth') {
+      const reason = params.get('reason')
+      setError(reason ? `Google sign-in failed: ${reason}` : 'Google sign-in failed — please try again.')
     }
   }, [])
 
@@ -34,7 +37,9 @@ export default function LoginPage() {
       setError(
         signInError.message === 'Invalid login credentials'
           ? 'wrong email or password'
-          : signInError.message
+          : signInError.message === 'Email not confirmed'
+            ? 'check your email to confirm your address before logging in'
+            : signInError.message
       )
       return
     }
@@ -57,6 +62,12 @@ export default function LoginPage() {
           onChange={(v) => { setEmail(v); setError(null) }} autoComplete="email" />
         <FloatingInput label="Password" type="password" value={password}
           onChange={(v) => { setPassword(v); setError(null) }} autoComplete="current-password" />
+
+        <div style={{ marginTop: '-12px', textAlign: 'right' }}>
+          <Link href="/enter/forgot" style={{ fontSize: '12px', color: 'var(--color-ink-soft)', textDecoration: 'underline' }}>
+            forgot password?
+          </Link>
+        </div>
 
         {error && (
           <div style={{ fontSize: '14px', color: 'var(--color-alert)' }}>{error}</div>

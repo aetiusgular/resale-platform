@@ -1,10 +1,7 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 
-// Authenticated home → /browse
+// Home → /browse for everyone. Browsing is public now (guests included); the
+// browse feed itself decides what a signed-out visitor sees. No auth check here.
 export default async function HomePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/enter')
   redirect('/browse')
 }

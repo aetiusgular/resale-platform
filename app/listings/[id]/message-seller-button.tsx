@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAuthModal } from '@/app/components/auth-modal-provider'
 
 interface Props {
   listingId: string
@@ -9,6 +10,8 @@ interface Props {
 
 export default function MessageSellerButton({ listingId }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const { openAuthModal } = useAuthModal()
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {
@@ -22,7 +25,9 @@ export default function MessageSellerButton({ listingId }: Props) {
       const { conversation } = await res.json()
       router.push(`/messages/${conversation.id}`)
     } else if (res.status === 401) {
-      router.push('/enter')
+      // Session expired mid-session → sign-in popup rather than the full /enter page.
+      setLoading(false)
+      openAuthModal(pathname)
     } else {
       setLoading(false)
     }

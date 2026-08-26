@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, EB_Garamond, Space_Mono } from 'next/font/google'
 import './globals.css'
 import SmoothScroll from '@/app/components/smooth-scroll'
+import AuthModalProvider from '@/app/components/auth-modal-provider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -69,7 +70,9 @@ export default function RootLayout({
             <link rel="dns-prefetch" href={supabaseOrigin} />
           </>
         )}
-        <SmoothScroll>{children}</SmoothScroll>
+        <AuthModalProvider>
+          <SmoothScroll>{children}</SmoothScroll>
+        </AuthModalProvider>
       </body>
     </html>
   )

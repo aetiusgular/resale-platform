@@ -2,22 +2,88 @@
 
 import PrefetchLink from './prefetch-link'
 import { usePathname } from 'next/navigation'
+import { useAuthModal } from './auth-modal-provider'
 
 interface Props {
+  /** Empty string ⇒ signed-out visitor: Sell / Messages / Profile open the popup. */
   username: string
   hasUnread?: boolean
 }
 
 export default function MobileTabBar({ username, hasUnread }: Props) {
   const pathname = usePathname()
+  const { openAuthModal } = useAuthModal()
+  const isGuest = !username
 
+  // `auth: true` tabs require a session — for a guest they open the sign-in popup
+  // instead of navigating. Feed/Discover are the public browse feed either way.
   const tabs = [
-    { label: 'FEED', href: '/', icon: feedIcon, match: (p: string) => p === '/' },
-    { label: 'DISCOVER', href: '/browse', icon: discoverIcon, match: (p: string) => p.startsWith('/browse') },
-    { label: 'SELL', href: '/sell', icon: sellIcon, match: (p: string) => p.startsWith('/sell') },
-    { label: 'MESSAGES', href: '/messages', icon: messagesIcon, match: (p: string) => p.startsWith('/messages') },
-    { label: 'PROFILE', href: `/sellers/${username}`, icon: profileIcon, match: (p: string) => p === `/sellers/${username}` },
+    { label: 'FEED', href: '/browse', icon: feedIcon, match: (p: string) => p === '/' || p === '/browse', auth: false },
+    { label: 'DISCOVER', href: '/browse', icon: discoverIcon, match: (p: string) => p.startsWith('/browse'), auth: false },
+    { label: 'SELL', href: '/sell', icon: sellIcon, match: (p: string) => p.startsWith('/sell'), auth: true },
+    { label: 'MESSAGES', href: '/messages', icon: messagesIcon, match: (p: string) => p.startsWith('/messages'), auth: true },
+    { label: 'PROFILE', href: username ? `/sellers/${username}` : '/settings', icon: profileIcon, match: (p: string) => p === `/sellers/${username}`, auth: true },
   ]
+
+  const tabInner = (tab: (typeof tabs)[number], active: boolean, color: string) => (
+    <>
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke={color}
+        strokeWidth={active ? '2' : '1.5'}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {tab.icon(active)}
+      </svg>
+      {tab.label === 'MESSAGES' && hasUnread && (
+        <span
+          style={{
+            position: 'absolute',
+            top: '6px',
+            right: 'calc(50% - 14px)',
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: 'var(--color-accent)',
+          }}
+        />
+      )}
+      <span
+        style={{
+          fontFamily: 'var(--font-ui)',
+          fontSize: '10px',
+          fontWeight: active ? 600 : 400,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color,
+          lineHeight: 1,
+        }}
+      >
+        {tab.label}
+      </span>
+    </>
+  )
+
+  const tabStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '2px',
+    flex: 1,
+    height: '56px',
+    textDecoration: 'none',
+    position: 'relative',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+  }
 
   return (
     <nav
@@ -41,63 +107,31 @@ export default function MobileTabBar({ username, hasUnread }: Props) {
       {tabs.map((tab) => {
         const active = tab.match(pathname)
         const color = active ? 'var(--color-ink)' : 'var(--color-ink-soft)'
+        const testId = `tab-${tab.label.toLowerCase()}`
+
+        // Guest + auth-required tab → open the popup instead of navigating.
+        if (isGuest && tab.auth) {
+          return (
+            <button
+              key={tab.label}
+              type="button"
+              onClick={() => openAuthModal(tab.href)}
+              data-testid={testId}
+              style={tabStyle}
+            >
+              {tabInner(tab, active, color)}
+            </button>
+          )
+        }
 
         return (
           <PrefetchLink
             key={tab.label}
             href={tab.href}
-            data-testid={`tab-${tab.label.toLowerCase()}`}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2px',
-              flex: 1,
-              height: '56px',
-              textDecoration: 'none',
-              position: 'relative',
-            }}
+            data-testid={testId}
+            style={tabStyle}
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke={color}
-              strokeWidth={active ? '2' : '1.5'}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              {tab.icon(active)}
-            </svg>
-            {tab.label === 'MESSAGES' && hasUnread && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '6px',
-                  right: 'calc(50% - 14px)',
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: 'var(--color-accent)',
-                }}
-              />
-            )}
-            <span
-              style={{
-                fontFamily: 'var(--font-ui)',
-                fontSize: '10px',
-                fontWeight: active ? 600 : 400,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color,
-                lineHeight: 1,
-              }}
-            >
-              {tab.label}
-            </span>
+            {tabInner(tab, active, color)}
           </PrefetchLink>
         )
       })}

@@ -12,6 +12,8 @@ import {
 import AvatarMenu from '@/app/components/avatar-menu'
 import ListingCard from '@/app/components/listing-card'
 import MobileTabBar from '@/app/components/mobile-tabbar'
+import { useAuthModal } from '@/app/components/auth-modal-provider'
+import GuestAction from '@/app/components/guest-action'
 
 type Props = {
   initialListings: BrowseListing[]
@@ -101,13 +103,15 @@ function FilterSection({
 
 // ─── Filter rail (shared by desktop sidebar + mobile drawer) ────────────────
 function FilterRail({
-  params, update, filterCounts, userSizes, authBadgeEnabled,
+  params, update, filterCounts, userSizes, authBadgeEnabled, isGuest, onAuthPrompt,
 }: {
   params: URLSearchParams
   update: (key: string, val: string | null) => void
   filterCounts: FilterCounts
   userSizes: Record<string, string>
   authBadgeEnabled: boolean
+  isGuest: boolean
+  onAuthPrompt: () => void
 }) {
   const cat     = params.get('cat') ?? ''
   const dept    = params.get('dept') ?? ''
@@ -122,32 +126,58 @@ function FilterRail({
 
   return (
     <div>
-      {/* My Sizes */}
-      <div style={{
-        border: '1px solid var(--color-line)', borderRadius: '2px',
-        padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ font: '500 14px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>My sizes</span>
-          {/* Toggle */}
-          <span
-            onClick={() => update('my_sizes', params.get('my_sizes') === '1' ? null : '1')}
-            style={{ position: 'relative', width: '36px', height: '20px', border: '1px solid var(--color-ink)', borderRadius: '2px', background: 'var(--color-bg)', display: 'inline-block', cursor: 'pointer' }}
-          >
-            <span style={{
-              position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px',
-              borderRadius: '2px', background: params.get('my_sizes') === '1' ? 'var(--color-accent)' : 'var(--color-line)',
-            }} />
+      {/* My Sizes — signed-out visitors get a sign-in prompt instead of a working
+          toggle (personalized sizing needs an account). ADD MY SIZES opens the popup. */}
+      {isGuest ? (
+        <div style={{
+          border: '1px solid var(--color-line)', borderRadius: '2px',
+          padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px',
+        }}>
+          <span style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--color-ink-soft)' }}>
+            Sign up or log in to add your sizes and we&apos;ll customize your feed to better fit your needs.
           </span>
+          <button
+            type="button"
+            onClick={onAuthPrompt}
+            data-testid="add-sizes-guest"
+            style={{
+              height: '44px', width: '100%', boxSizing: 'border-box',
+              background: 'var(--color-bg)', color: 'var(--color-ink)',
+              border: '1px solid var(--color-ink)', borderRadius: '2px',
+              fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700,
+              letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
+            }}
+          >
+            Add my sizes
+          </button>
         </div>
-        <span style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--color-ink-soft)' }}>
-          hide listings that aren&apos;t your size
-        </span>
-        {hasSizes
-          ? <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>edit</PrefetchLink>
-          : <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>set your sizes →</PrefetchLink>
-        }
-      </div>
+      ) : (
+        <div style={{
+          border: '1px solid var(--color-line)', borderRadius: '2px',
+          padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ font: '500 14px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>My sizes</span>
+            {/* Toggle */}
+            <span
+              onClick={() => update('my_sizes', params.get('my_sizes') === '1' ? null : '1')}
+              style={{ position: 'relative', width: '36px', height: '20px', border: '1px solid var(--color-ink)', borderRadius: '2px', background: 'var(--color-bg)', display: 'inline-block', cursor: 'pointer' }}
+            >
+              <span style={{
+                position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px',
+                borderRadius: '2px', background: params.get('my_sizes') === '1' ? 'var(--color-accent)' : 'var(--color-line)',
+              }} />
+            </span>
+          </div>
+          <span style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--color-ink-soft)' }}>
+            hide listings that aren&apos;t your size
+          </span>
+          {hasSizes
+            ? <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>edit</PrefetchLink>
+            : <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>set your sizes →</PrefetchLink>
+          }
+        </div>
+      )}
 
       {/* Department */}
       <FilterSection title="Department">
@@ -358,7 +388,12 @@ export default function BrowseClient({
   const searchParams = useSearchParams()
   const router       = useRouter()
   const pathname     = usePathname()
+  const { openAuthModal } = useAuthModal()
   const [isPending, startTransition] = useTransition()
+
+  // Empty username/userId ⇒ signed-out visitor. Guests browse freely; any write
+  // (save, follow-search) opens the sign-in popup instead of hitting the API.
+  const isGuest = !userId
 
   const [extraListings, setExtraListings]   = useState<BrowseListing[]>([])
   const [extraSaved, setExtraSaved]         = useState<Set<string>>(new Set())
@@ -375,7 +410,7 @@ export default function BrowseClient({
 
   // ── recs telemetry: init once; observe impressions as the grid grows ────────
   useEffect(() => {
-    if (!recsTelemetryEnabled) return
+    if (!recsTelemetryEnabled || !userId) return
     recsInit(userId)
     // Identity merge: fold the anon device's taste into this account (once, fail-soft).
     mergeRecsIdentity(userId)
@@ -452,6 +487,13 @@ export default function BrowseClient({
 
   // ── Save / unsave ──────────────────────────────────────────────────────────
   async function handleSaveToggle(listingId: string, currentlySaved: boolean) {
+    // Guest → prompt sign-in instead of hitting the (401) API. This is the canonical
+    // "try to like something" gate: the popup opens; after auth they're back here and
+    // can save for real.
+    if (isGuest) {
+      openAuthModal(pathname)
+      return
+    }
     // Optimistic update
     setSavedIds(prev => {
       const next = new Set(prev)
@@ -532,6 +574,10 @@ export default function BrowseClient({
 
   // ── Follow search ──────────────────────────────────────────────────────────
   async function followSearch() {
+    if (isGuest) {
+      openAuthModal(pathname)
+      return
+    }
     setFollowPending(true)
     const query: Record<string, string> = {}
     if (q)       query.q = q
@@ -605,14 +651,25 @@ export default function BrowseClient({
             />
           </form>
         </div>
-        <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <PrefetchLink href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
-            Sell
-          </PrefetchLink>
-          <PrefetchLink href="/saved" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</PrefetchLink>
-          <PrefetchLink href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Messages</PrefetchLink>
-          <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
-        </nav>
+        {isGuest ? (
+          <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <GuestAction next="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)' }}>
+              Sell
+            </GuestAction>
+            <GuestAction testId="browse-signin" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', whiteSpace: 'nowrap' }}>
+              Sign in
+            </GuestAction>
+          </nav>
+        ) : (
+          <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <PrefetchLink href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
+              Sell
+            </PrefetchLink>
+            <PrefetchLink href="/saved" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</PrefetchLink>
+            <PrefetchLink href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Messages</PrefetchLink>
+            <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
+          </nav>
+        )}
       </header>
 
       {/* Mobile header */}
@@ -620,7 +677,13 @@ export default function BrowseClient({
         <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px' }}>
           <PrefetchLink href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</PrefetchLink>
           <div style={{ flex: 1 }} />
-          <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
+          {isGuest ? (
+            <GuestAction testId="browse-signin-mobile" style={{ display: 'inline-flex', alignItems: 'center', height: '40px', padding: '0 18px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 13px var(--font-ui)', whiteSpace: 'nowrap' }}>
+              Sign in
+            </GuestAction>
+          ) : (
+            <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
+          )}
         </div>
         {/* Mobile search */}
         <div style={{ padding: '12px 16px 0' }}>
@@ -727,6 +790,8 @@ export default function BrowseClient({
               filterCounts={filterCounts}
               userSizes={userSizes}
               authBadgeEnabled={authBadgeEnabled}
+              isGuest={isGuest}
+              onAuthPrompt={() => openAuthModal(pathname)}
             />
           </aside>
 
@@ -835,6 +900,8 @@ export default function BrowseClient({
                 filterCounts={filterCounts}
                 userSizes={userSizes}
                 authBadgeEnabled={authBadgeEnabled}
+                isGuest={isGuest}
+                onAuthPrompt={() => openAuthModal(pathname)}
               />
             </div>
           </div>

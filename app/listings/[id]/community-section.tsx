@@ -10,6 +10,8 @@
  * "AUTOMATED AUTHENTICATION" label.
  */
 import { useState, useEffect, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
+import { useAuthModal } from '@/app/components/auth-modal-provider'
 
 type TierBadge = 'bronze' | 'silver' | 'gold'
 type CommentSource = 'human' | 'auto'
@@ -39,6 +41,8 @@ interface CommunitySectionProps {
   listingId: string
   /** true = current viewer may post in LC (moderator or admin). */
   canPostLc: boolean
+  /** true = signed-out viewer: Agree/Flag open the sign-in popup instead of 401ing. */
+  isGuest?: boolean
 }
 
 const TIER_BORDER: Record<TierBadge, string> = {
@@ -65,7 +69,9 @@ function agreeCount(actions: { action: string }[]): number {
   return actions.filter(a => a.action === 'agree').length
 }
 
-export default function CommunitySection({ listingId, canPostLc }: CommunitySectionProps) {
+export default function CommunitySection({ listingId, canPostLc, isGuest = false }: CommunitySectionProps) {
+  const { openAuthModal } = useAuthModal()
+  const pathname = usePathname()
   const [comments, setComments] = useState<CommentRow[] | null>(null)
   const [inputBody, setInputBody] = useState('')
   const [posting, setPosting]     = useState(false)
@@ -105,6 +111,7 @@ export default function CommunitySection({ listingId, canPostLc }: CommunitySect
   }
 
   async function handleAgree(commentId: string) {
+    if (isGuest) { openAuthModal(pathname); return }
     if (agreedIds.has(commentId)) return
     await fetch(`/api/listings/${listingId}/comments/${commentId}/agree`, { method: 'POST' })
     setAgreedIds(prev => new Set([...prev, commentId]))
@@ -112,6 +119,7 @@ export default function CommunitySection({ listingId, canPostLc }: CommunitySect
   }
 
   async function handleFlag(commentId: string) {
+    if (isGuest) { openAuthModal(pathname); return }
     await fetch(`/api/listings/${listingId}/comments/${commentId}/flag`, { method: 'POST' })
   }
 
