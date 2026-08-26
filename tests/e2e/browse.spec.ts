@@ -5,15 +5,17 @@ import { test, expect } from '@playwright/test'
  * Tests structural/routing behaviour without a real Supabase session.
  */
 
-test.describe('Browse — requires auth', () => {
-  test('/browse redirects unauthenticated user to /enter', async ({ page }) => {
+test.describe('Browse — public for guests', () => {
+  test('/browse renders for an unauthenticated user (no redirect to /enter)', async ({ page }) => {
     await page.goto('/browse')
-    await expect(page).toHaveURL(/\/enter/)
+    await expect(page).toHaveURL(/\/browse/)
+    // Guest header shows a Sign in button (also proves the auth-modal provider mounted).
+    await expect(page.getByTestId('browse-signin')).toBeVisible()
   })
 
-  test('/ redirects unauthenticated user to /enter (home now routes to /browse)', async ({ page }) => {
+  test('/ routes an unauthenticated user to /browse', async ({ page }) => {
     await page.goto('/')
-    await expect(page).toHaveURL(/\/enter/)
+    await expect(page).toHaveURL(/\/browse/)
   })
 })
 

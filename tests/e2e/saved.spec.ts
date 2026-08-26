@@ -30,9 +30,9 @@ test.describe('SiteHeader SAVED link', () => {
 
 // ─── Gate regression: middleware optimization didn't open a hole ─────────────
 test.describe('Gate regression — middleware cookie optimization', () => {
-  test('unauthenticated user cannot reach /browse', async ({ page }) => {
+  test('unauthenticated user CAN reach /browse (now public)', async ({ page }) => {
     await page.goto('/browse')
-    await expect(page).toHaveURL(/\/enter/)
+    await expect(page).toHaveURL(/\/browse/)
   })
 
   test('unauthenticated user cannot reach /saved', async ({ page }) => {

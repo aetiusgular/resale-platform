@@ -7,9 +7,9 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('Gate — unauthenticated', () => {
-  test('unauthenticated / redirects to /enter', async ({ page }) => {
+  test('unauthenticated / routes to /browse (public)', async ({ page }) => {
     await page.goto('/')
-    await expect(page).toHaveURL(/\/enter$/)
+    await expect(page).toHaveURL(/\/browse$/)
   })
 
   test('/enter shows tagline and create-account entry', async ({ page }) => {

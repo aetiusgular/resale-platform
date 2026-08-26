@@ -12,7 +12,7 @@ const MOBILE = { width: 375, height: 812 }
 test.describe('Mobile — unauthenticated redirects (no horizontal overflow)', () => {
   test.use({ viewport: MOBILE })
 
-  const routes = ['/browse', '/saved', '/messages', '/sell', '/settings']
+  const routes = ['/saved', '/messages', '/sell', '/settings']
 
   for (const route of routes) {
     test(`${route} redirects to /enter without overflow`, async ({ page }) => {

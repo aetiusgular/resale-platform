@@ -24,10 +24,10 @@ test.describe('Sell page — no React key warnings', () => {
 })
 
 // ─── Issue 2: Browse card alignment ──────────────────────────────────────────
-test.describe('Browse — card alignment', () => {
-  test('/browse redirects unauthenticated user to /enter', async ({ page }) => {
+test.describe('Browse — public for guests', () => {
+  test('/browse renders for an unauthenticated user (no redirect)', async ({ page }) => {
     await page.goto('/browse')
-    await expect(page).toHaveURL(/\/enter/)
+    await expect(page).toHaveURL(/\/browse/)
   })
 })
 
@@ -92,10 +92,11 @@ test.describe('@live Avatar menu', () => {
 })
 
 // ─── Issue 4: Seller profile page ────────────────────────────────────────────
-test.describe('Seller profile — unauthenticated', () => {
-  test('/sellers/nonexistent redirects unauthenticated to /enter', async ({ page }) => {
+test.describe('Seller profile — public for guests', () => {
+  test('/sellers/nonexistent is reachable for a guest (not redirected to /enter)', async ({ page }) => {
     await page.goto('/sellers/nonexistent-user-xyz')
-    await expect(page).toHaveURL(/\/enter/)
+    // Public route: a missing seller renders the not-found page in place, not an /enter bounce.
+    await expect(page).toHaveURL(/\/sellers\//)
   })
 })
 
