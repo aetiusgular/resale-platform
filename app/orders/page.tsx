@@ -21,7 +21,7 @@ import MobileTabBar from '@/app/components/mobile-tabbar'
 import PrefetchLink from '@/app/components/prefetch-link'
 
 export const metadata: Metadata = {
-  title: 'Orders — Resale Platform',
+  title: 'Orders',
   description: 'Your purchases and sales.',
 }
 

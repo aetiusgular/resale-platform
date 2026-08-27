@@ -3,14 +3,20 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
+import JsonLd from '@/app/components/json-ld'
+import { organizationJsonLd, webSiteJsonLd } from '@/lib/seo-listing'
 import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED, BUMP_ENABLED } from '@/lib/flags'
 import { getFeed } from '@/lib/recs/client'
 import { applyFeedOrder } from '@/lib/recs/rank'
 import { applyBoostOrder } from '@/lib/boosts'
 
 export const metadata: Metadata = {
-  title: 'Browse — Resale Platform',
+  title: 'Browse',
   description: 'Browse curated secondhand fashion listings.',
+  // Every filter/sort/offset/q permutation canonicalizes to clean /browse —
+  // facet URLs are never the ranking surface (brand/category landing pages
+  // will be, once the wiki exists).
+  alternates: { canonical: '/browse' },
 }
 
 const PAGE_SIZE = 24
@@ -236,7 +242,11 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   const username: string = (profileData?.username as string) ?? ''
 
   return (
-    <Suspense>
+    <>
+      {/* Effective homepage (/ redirects here): site-level structured data. */}
+      <JsonLd data={webSiteJsonLd()} />
+      <JsonLd data={organizationJsonLd()} />
+      <Suspense>
       <BrowseClient
         initialListings={finalListings}
         totalCount={totalCount ?? 0}
@@ -250,6 +260,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
         userId={user?.id ?? ''}
         recsTelemetryEnabled={RECS_TELEMETRY_ENABLED}
       />
-    </Suspense>
+      </Suspense>
+    </>
   )
 }

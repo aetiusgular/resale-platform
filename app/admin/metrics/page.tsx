@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
 
-export const metadata = { title: 'Admin — Metrics' }
+export const metadata = { title: 'Admin — Metrics', robots: { index: false, follow: false } }
 export const revalidate = 300 // refresh every 5 min in prod
 
 export default async function AdminMetricsPage() {

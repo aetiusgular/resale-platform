@@ -1,8 +1,16 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
+import { SITE_TAGLINE } from '@/lib/seo'
 
 /**
  * /enter — public landing. Open signup (G13): create an account or log in.
  */
+export const metadata: Metadata = {
+  title: 'Sign in',
+  description: SITE_TAGLINE,
+  alternates: { canonical: '/enter' },
+}
+
 export default function EnterPage() {
   return (
     <div

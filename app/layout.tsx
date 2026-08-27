@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter, EB_Garamond, Space_Mono } from 'next/font/google'
 import './globals.css'
+import { SEO_INDEXING_ENABLED } from '@/lib/flags'
+import { baseUrl, SITE_NAME, SITE_TAGLINE } from '@/lib/seo'
 import SmoothScroll from '@/app/components/smooth-scroll'
 import AuthModalProvider from '@/app/components/auth-modal-provider'
 
@@ -27,8 +29,29 @@ const spaceMono = Space_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Resale Platform',
-  description: 'Curated secondhand fashion marketplace',
+  metadataBase: new URL(baseUrl()),
+  title: {
+    default: SITE_NAME,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: SITE_TAGLINE,
+  applicationName: SITE_NAME,
+  openGraph: {
+    siteName: SITE_NAME,
+    type: 'website',
+    locale: 'en_US',
+    url: '/',
+  },
+  twitter: {
+    card: 'summary',
+  },
+  // Deindex gate for the vercel.app tester window. robots.txt deliberately
+  // still ALLOWS crawling in this state — a crawler must be able to fetch a
+  // page to see this noindex (a disallow-all robots.txt would strand URL-only
+  // index entries). Flip SEO_INDEXING_ENABLED at real-domain cutover.
+  robots: SEO_INDEXING_ENABLED
+    ? { index: true, follow: true }
+    : { index: false, follow: false },
 }
 
 // Force dynamic rendering app-wide. REQUIRED by the per-request CSP nonce in

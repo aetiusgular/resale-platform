@@ -17,7 +17,7 @@ import { SHIPPING_CATEGORIES, SHIPPING_MARGIN_CENTS, floorShippingCents } from '
  * Renders LIVE from the money constants (lib/fees.ts, lib/boosts.ts, lib/shipping.ts) so
  * this page can never drift from what checkout actually charges. No hardcoded numbers.
  */
-export const metadata = { title: 'Fee Schedule' }
+export const metadata = { title: 'Fee Schedule', alternates: { canonical: '/fees' } }
 
 const pct = (bps: number) => `${(bps / 100).toFixed(1)}%`
 const usd = (cents: number) =>

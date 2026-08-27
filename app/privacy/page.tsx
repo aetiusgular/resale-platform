@@ -6,7 +6,7 @@ import { PRIVACY_HTML } from './content'
  * says so). Source of truth: docs/legal/PRIVACY_POLICY.md → scripts/generate-legal.mjs.
  * CalOPPA requires this to be conspicuously linked with the word "Privacy" (see /enter footer).
  */
-export const metadata = { title: 'Privacy Policy' }
+export const metadata = { title: 'Privacy Policy', alternates: { canonical: '/privacy' } }
 
 export default function PrivacyPage() {
   return <LegalDoc html={PRIVACY_HTML} />

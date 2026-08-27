@@ -12,9 +12,9 @@ export const getListing = cache(async (id: string) => {
   const { data } = await supabase
     .from('listings')
     .select(`
-      id, title, brand, category, size, description,
+      id, title, brand, category, department, size, description,
       condition_score, condition_notes,
-      price_cents, saves_count, is_price_dropped,
+      price_cents, shipping_cents, saves_count, is_price_dropped,
       images, possession_photo_url,
       status, rejection_reason, created_at,
       seller_id, authentication_status,

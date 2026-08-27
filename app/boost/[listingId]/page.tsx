@@ -5,7 +5,7 @@ import { BOOST_PACKAGES } from '@/lib/boosts'
 import { BUMP_COOLDOWN_MS } from '@/lib/bump/eligibility'
 import BoostClient from './boost-client'
 
-export const metadata = { title: 'Boost listing — Resale Platform' }
+export const metadata = { title: 'Boost listing' }
 
 export default async function BoostPage({ params }: { params: Promise<{ listingId: string }> }) {
   if (!BOOSTED_POSTS_ENABLED) notFound()

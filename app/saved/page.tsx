@@ -8,7 +8,7 @@ import MobileTabBar from '@/app/components/mobile-tabbar'
 import SavedClient from './saved-client'
 
 export const metadata: Metadata = {
-  title: 'Saved — Resale Platform',
+  title: 'Saved',
   description: 'Your saved items.',
 }
 

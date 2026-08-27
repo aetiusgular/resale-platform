@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Styleguide — Resale Platform',
+  title: 'Styleguide',
+  robots: { index: false, follow: false },
 }
 
 /* ─── Token data ─────────────────────────────────────────────────────────── */

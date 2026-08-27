@@ -8,6 +8,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { SITE_NAME } from '@/lib/seo'
+import JsonLd from '@/app/components/json-ld'
+import { profilePageJsonLd } from '@/lib/seo-listing'
 import { formatCents } from '@/lib/fees'
 import { aggregateRating } from '@/lib/reviews/rating'
 import { FOLLOWS_ENABLED, REVIEWS_ENABLED } from '@/lib/flags'
@@ -24,7 +27,15 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { username } = await params
-  return { title: `@${username} — Resale Platform` }
+  const title = `@${username}`
+  const description = `@${username}'s closet on ${SITE_NAME} — secondhand fashion listings.`
+  const path = `/sellers/${username}`
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: { title, description, url: path },
+  }
 }
 
 function formatTimeAgo(iso: string) {
@@ -136,6 +147,8 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
       <SiteHeader username={currentUsername} />
+
+      <JsonLd data={profilePageJsonLd(seller.username as string)} />
 
       <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 80px 96px' }} className="seller-profile-inner">
 

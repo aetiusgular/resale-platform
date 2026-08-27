@@ -6,7 +6,7 @@ import { PHOTO_SLOTS } from '@/lib/condition'
 import AdminActions from './admin-actions'
 import CommentActions from './comment-actions'
 
-export const metadata = { title: 'Admin — Review Queue' }
+export const metadata = { title: 'Admin — Review Queue', robots: { index: false, follow: false } }
 
 interface ListingFlag {
   id: string

@@ -76,3 +76,11 @@ export const APPLE_AUTH_ENABLED =
 // ── Fee model v2 §1f: tier dashboards (display only) ──
 export const TIER_DASHBOARD_ENABLED =
   process.env.TIER_DASHBOARD_ENABLED === 'true'
+// ── SEO indexing gate ────────────────────────────────────────────────────────
+// OFF during the vercel.app trusted-tester window: robots.txt still allows
+// crawling (so Google can SEE the noindex) but the root layout emits
+// noindex/nofollow and robots.txt omits the sitemap reference. Set true at
+// real-domain cutover (LAUNCH_RUNBOOK "when the real domain arrives") — never
+// before: production .vercel.app is NOT auto-noindexed by Vercel.
+export const SEO_INDEXING_ENABLED =
+  process.env.SEO_INDEXING_ENABLED === 'true'

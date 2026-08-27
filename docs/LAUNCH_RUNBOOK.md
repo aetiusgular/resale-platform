@@ -195,7 +195,19 @@ A ~30-minute migration; testers' vercel.app links keep working throughout:
    signing secret is preserved, no env change needed.
 4. Resend: verify the sending domain → set `RESEND_API_KEY` + `NOTIFY_EMAIL_FROM` in Vercel
    → flip `NOTIFICATIONS_ENABLED=true` (+ push works too, VAPID keys from step 11) → redeploy.
-5. Tell the testers the new URL. Done.
+5. **Turn on search (SEO):**
+   - Vercel env: update `NEXT_PUBLIC_APP_URL=https://newdomain.com` (build-time — canonicals,
+     og:url, and sitemap URLs all derive from it, alongside the Stripe/IDV redirects) and set
+     `SEO_INDEXING_ENABLED=true` → redeploy.
+   - Make the custom domain PRIMARY (step 1) so vercel.app 308-redirects to it. If that
+     redirect isn't active, add to `next.config.ts`:
+     `async redirects() { return [{ source: '/:path*', has: [{ type: 'host', value: 'resale-platform-eta.vercel.app' }], destination: 'https://newdomain.com/:path*', permanent: true }] }`
+   - Google Search Console: add + verify the domain property → submit `/sitemap.xml`.
+   - Rich Results Test (search.google.com/test/rich-results) on one live listing URL —
+     expect Product (merchant listing) + BreadcrumbList; fix anything flagged.
+   - Follow-on lever: Google Merchant Center free listings (one-of-a-kind used apparel
+     passes with `identifier_exists=false`).
+6. Tell the testers the new URL. Done.
 
 ## Superseded / stale-doc notes
 - **LAUNCH.md §2 webhook event list** (had `transfer.created`, missed identity events) → use Phase 4 step 20.

@@ -15,6 +15,8 @@ import CommunitySection from './community-section'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 import GuestAction from '@/app/components/guest-action'
+import JsonLd from '@/app/components/json-ld'
+import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -29,16 +31,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!data) return { title: 'Listing not found' }
 
   const title = `${data.title} — ${data.brand} — ${formatCents(data.price_cents)}`
-  const description = `${data.title} by ${data.brand}. ${formatCents(data.price_cents)} on the platform.`
-  const images = Array.isArray(data.images) ? data.images.filter(Boolean) : []
+  const description = metaDescription(data)
+  // Slots 0–4 only — index 5 is the POSSESSION proof photo, never public.
+  const images = schemaImages(data.images)
   const ogImage = images[0] ?? null
+  const path = `/listings/${id}`
 
   return {
     title,
     description,
+    alternates: { canonical: path },
     openGraph: {
       title,
       description,
+      url: path,
       ...(ogImage ? { images: [{ url: ogImage }] } : {}),
     },
     twitter: {
@@ -108,6 +114,31 @@ export default async function ListingDetailPage({ params }: PageProps) {
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
       {/* currentUsername is '' for guests → SiteHeader renders its Sign-in variant. */}
       <SiteHeader username={currentUsername} />
+
+      {/* Merchant-listing structured data — public (active) listings only.
+          Sold listings 404 publicly this phase; the SoldOut branch lands with
+          the public sold archive (SEO2, with HF7). */}
+      {listing.status === 'active' && (
+        <>
+          <JsonLd
+            data={productJsonLd({
+              id: listing.id,
+              title: listing.title,
+              brand: listing.brand,
+              category: listing.category,
+              department: listing.department,
+              size: listing.size,
+              description: listing.description,
+              condition_score: listing.condition_score,
+              price_cents: listing.price_cents,
+              shipping_cents: listing.shipping_cents ?? null,
+              images: listing.images,
+              sellerUsername: seller?.username ?? null,
+            })}
+          />
+          <JsonLd data={breadcrumbJsonLd(listing)} />
+        </>
+      )}
 
       {/* Seller status banners */}
       {isSeller && listing.status === 'pending_review' && (

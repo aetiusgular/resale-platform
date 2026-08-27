@@ -5,7 +5,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 
-export const metadata = { title: 'Account suspended' }
+export const metadata = { title: 'Account suspended', robots: { index: false, follow: false } }
 
 export default async function BannedPage() {
   const supabase = await createClient()

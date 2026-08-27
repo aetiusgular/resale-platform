@@ -12,7 +12,7 @@ import ModerationActions from './moderation-actions'
 import { COLLUSION_REASON_LABEL } from '@/lib/trust/release-hold'
 import { formatCents } from '@/lib/fees'
 
-export const metadata = { title: 'Admin — Moderation' }
+export const metadata = { title: 'Admin — Moderation', robots: { index: false, follow: false } }
 
 type Flag = { id: string; type: string; evidence: Record<string, unknown>; created_at: string; listing_id: string }
 type ListingRow = { id: string; title: string; brand: string; status: string; seller_id: string }
