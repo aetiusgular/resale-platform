@@ -7,5 +7,6 @@
       "npx playwright *"
     ],
     "deny": []
-  }
+  },
+  "includeCoAuthoredBy": false
 }
