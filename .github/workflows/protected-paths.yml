@@ -1,0 +1,57 @@
+name: Protected paths
+
+# Guardrail, not a security boundary: fails any PR that touches money/auth/DB/
+# config paths (see .github/protected-paths.txt) unless the founder opened the
+# PR or has applied the `protected-approved` label after review.
+# The path list is read from the PR's BASE commit, so a PR cannot edit the
+# list to get itself past the guard.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Guard protected paths
+    runs-on: ubuntu-latest
+    # The founder's own PRs skip the guard.
+    if: github.event.pull_request.user.login != 'aetiusgular'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check changed files against protected list
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'protected-approved') }}
+        run: |
+          set -euo pipefail
+
+          # Protected list from the BASE commit (tamper-resistant), comments stripped.
+          git show "$BASE_SHA:.github/protected-paths.txt" \
+            | grep -Ev '^[[:space:]]*(#|$)' > /tmp/protected.txt
+
+          # Files this PR actually changes (merge-base three-dot diff).
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > /tmp/changed.txt
+
+          if MATCHES=$(grep -E -f /tmp/protected.txt /tmp/changed.txt); then
+            echo "This PR touches protected paths:"
+            echo "$MATCHES" | sed 's/^/  - /'
+            echo
+            if [ "$APPROVED" = "true" ]; then
+              echo "'protected-approved' label present — founder signed off. Passing."
+              exit 0
+            fi
+            echo "These files hold money / auth / database / config logic (AGENTS.md §2)."
+            echo "Either drop these changes and describe what you need in the PR"
+            echo "description instead, or wait for the founder to review and apply the"
+            echo "'protected-approved' label — labeling re-runs this check automatically."
+            exit 1
+          fi
+
+          echo "No protected paths touched."

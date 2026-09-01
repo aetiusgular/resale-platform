@@ -24,6 +24,15 @@ founder explicitly reinstates a routing policy. Quality is the only bar.
 - Never `cat` entire directories. View design PNGs/HTML exports one at a time, only when implementing that screen.
 - Subagents use haiku by default for cheap exploration.
 
+## Collaborator guardrails (added 2026-09-01)
+- `AGENTS.md` (repo root) is **BINDING for every coding agent** in this repo —
+  read it before making changes. It defines the protected paths (mirrored in
+  `.github/protected-paths.txt`): money, auth, RLS/migrations, config, founder tooling.
+- Non-founder PRs touching protected paths fail the `protected-paths` CI check
+  until the founder reviews and applies the `protected-approved` label.
+- Frontend collaborators: work in `app/` (never `app/api/`) + `tests/`, on
+  branches, via PRs — never on `main`.
+
 ## Money rules (CRITICAL)
 - **Prices are integer cents.** Never floats. `price_cents INT NOT NULL`.
 - All money-state changes happen inside **DB transactions**, never ad-hoc updates.

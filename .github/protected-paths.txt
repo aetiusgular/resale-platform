@@ -1,0 +1,32 @@
+# Protected paths — anchored regexes (grep -E), one per line.
+# A PR touching any matching file fails the `protected-paths` CI check until
+# the founder reviews it and applies the `protected-approved` label.
+# Human-readable mirror: AGENTS.md §2. Keep the two in sync.
+^lib/
+^app/api/
+^supabase/
+^middleware\.ts$
+^instrumentation\.ts$
+^instrumentation-client\.ts$
+^next\.config\.ts$
+^vercel\.json$
+^package\.json$
+^pnpm-lock\.yaml$
+^pnpm-workspace\.yaml$
+^tsconfig\.json$
+^eslint\.config\.mjs$
+^postcss\.config\.mjs$
+^playwright\.config\.ts$
+^vitest\.config\.ts$
+^\.github/
+^\.claude/
+^\.mcp\.json$
+^\.env\.example$
+^\.gitignore$
+^prompts/
+^scripts/
+^audit\.mjs$
+^docs/HANDOFF\.md$
+^docs/ROADMAP\.md$
+^CLAUDE\.md$
+^AGENTS\.md$
