@@ -14,12 +14,12 @@ import Link from 'next/link'
 const CSS = `
 .legal-doc { max-width: 720px; margin: 0 auto; padding: 40px 24px 96px; }
 .legal-doc .legal-home { font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--color-ink); text-decoration: none; }
-.legal-doc h1 { font: 400 28px var(--font-serif); margin: 32px 0 8px; }
-.legal-doc h2 { font: 600 20px var(--font-ui); letter-spacing: -0.01em; margin: 40px 0 12px; }
-.legal-doc h3 { font: 600 16px var(--font-ui); letter-spacing: -0.01em; margin: 28px 0 8px; }
+.legal-doc h1 { font: 300 28px var(--font-ui); letter-spacing: -0.01em; margin: 32px 0 8px; }
+.legal-doc h2 { font: 500 20px var(--font-ui); letter-spacing: -0.01em; margin: 40px 0 12px; }
+.legal-doc h3 { font: 500 16px var(--font-ui); letter-spacing: -0.01em; margin: 28px 0 8px; }
 .legal-doc p { margin: 0 0 12px; }
 .legal-doc p, .legal-doc li { font-size: 14px; line-height: 1.65; color: var(--color-ink); }
-.legal-doc p em { font-family: var(--font-serif); font-style: italic; font-size: 15px; color: var(--color-ink-soft); }
+.legal-doc p em { font-family: var(--font-ui); font-weight: 300; font-style: normal; font-size: 15px; color: var(--color-ink-soft); }
 .legal-doc ul, .legal-doc ol { margin: 0 0 12px; padding-left: 22px; }
 .legal-doc li { margin: 4px 0; }
 .legal-doc blockquote { margin: 0 0 24px; padding: 12px 16px; border-left: 2px solid var(--color-alert); border-radius: var(--radius); }
@@ -43,7 +43,7 @@ export default function LegalDoc({
     <div className="legal-doc">
       <style>{CSS}</style>
       <Link href="/" aria-label="Home" className="legal-home">
-        ———
+        archive
       </Link>
       {html ? (
         <article dangerouslySetInnerHTML={{ __html: html }} />

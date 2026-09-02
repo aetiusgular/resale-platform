@@ -102,7 +102,7 @@ export default function OrderBuyerView({ order, listing, sellerUsername, reviewP
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
       <header style={{ height: 64, borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 80px' }}>
-        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
+        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>archive</span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
           ORDER NO. {orderNum} · PLACED {placedDate.toUpperCase()}
         </span>

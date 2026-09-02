@@ -1,26 +1,30 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import PrefetchLink from './prefetch-link'
 import { trackEvent } from '@/lib/analytics'
 import { formatCents } from '@/lib/fees'
+import Icon from './icon'
+import ListingImagePlaceholder from './listing-image-placeholder'
+import { useStudio } from './studio'
 
-const TITLE_MAX_CHARS = 38
-
-export function truncateTitle(t: string): string {
-  return t.length > TITLE_MAX_CHARS ? t.slice(0, TITLE_MAX_CHARS - 1).trimEnd() + '…' : t
+export function truncateTitle(t: string, max = 38): string {
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t
 }
 
+/** Quiet relative time — Are.na metadata, not a shout. */
 export function formatTimeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}H AGO`
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}H AGO`
+  if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}D AGO`
+  if (days < 7) return `${days}d ago`
   const weeks = Math.floor(days / 7)
-  if (days < 30) return `${weeks}W AGO`
-  return `${Math.floor(days / 30)}M AGO`
+  if (days < 30) return `${weeks}w ago`
+  return `${Math.floor(days / 30)}mo ago`
 }
 
 export type ListingCardData = {
@@ -46,131 +50,308 @@ type ListingCardProps = {
   listing: ListingCardData
   isSaved: boolean
   onSaveToggle: (id: string, saved: boolean) => void
-  /** Override the time label (e.g. "SAVED 2H AGO" instead of "2H AGO") */
+  /** caption = grid (brand + title + price + facts); record = full accession label */
+  density?: 'caption' | 'record'
+  /** Footer bookmark — record density only; never on grid */
+  showSave?: boolean
   timeLabel?: string
-  /** If true, the listing is sold/removed — show veil + dimmed text */
   unavailable?: boolean
-  /** recs telemetry: grid position (0-based) for impression/click events */
   position?: number
-  /** recs telemetry: called on product click, alongside PostHog product_clicked */
   onProductClick?: (id: string) => void
 }
 
+const captionPriceStrike: CSSProperties = {
+  color: 'var(--color-ink-soft)',
+  textDecoration: 'line-through',
+  fontWeight: 400,
+}
+
+const brandSlot: CSSProperties = {
+  minHeight: 'var(--card-slot-brand)',
+  maxHeight: 'var(--card-slot-brand)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  lineHeight: 1.4,
+  fontWeight: 500,
+  letterSpacing: '0.04em',
+  textTransform: 'lowercase',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  minWidth: 0,
+}
+
+const titleSlot: CSSProperties = {
+  minHeight: 'var(--card-slot-title)',
+  maxHeight: 'var(--card-slot-title)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 'var(--card-title-size)',
+  lineHeight: 'var(--card-line-lh)',
+  overflow: 'hidden',
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflowWrap: 'break-word',
+  wordBreak: 'break-word',
+  minWidth: 0,
+}
+
+const priceSlot: CSSProperties = {
+  minHeight: 'var(--card-slot-price)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  flexWrap: 'nowrap',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 'var(--card-title-size)',
+  lineHeight: 'var(--card-line-lh)',
+  fontWeight: 500,
+  fontVariantNumeric: 'tabular-nums',
+  minWidth: 0,
+}
+
+const factsSlot: CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  lineHeight: 1.4,
+  color: 'var(--color-ink-soft)',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  minWidth: 0,
+  flex: 1,
+}
+
+function captionFactsLine(listing: ListingCardData, timeLabel?: string): string {
+  const listed = timeLabel ?? formatTimeAgo(listing.created_at)
+  const parts = [
+    listing.size || null,
+    listing.condition_score ? `${listing.condition_score}/10` : null,
+    listed ? `listed ${listed}` : null,
+  ].filter(Boolean)
+  return parts.join(' · ')
+}
+
+function renderPrice(
+  listing: ListingCardData,
+  unavailable: boolean | undefined,
+  strikeStyle: CSSProperties,
+) {
+  if (listing.is_price_dropped && listing.original_price_cents && !unavailable) {
+    return (
+      <>
+        <span style={strikeStyle}>{formatCents(listing.original_price_cents)}</span>
+        <span style={{ marginLeft: '0.4em' }}>{listing.price_display}</span>
+      </>
+    )
+  }
+  return listing.price_display
+}
+
 export default function ListingCard({
-  listing, isSaved, onSaveToggle, timeLabel, unavailable, position, onProductClick,
+  listing,
+  isSaved,
+  onSaveToggle,
+  density = 'caption',
+  showSave: _showSave = false,
+  timeLabel,
+  unavailable,
+  position,
+  onProductClick,
 }: ListingCardProps) {
+  const studio = useStudio()
   const frontImage = listing.images[0] ?? null
   const isVerified = listing.seller?.id_verification_status === 'verified'
+  const isAuthed = listing.authentication_status === 'authenticated'
+  const showTrust = !unavailable && (isAuthed || isVerified)
+  const isCaption = density === 'caption'
+  const frameBorder = isCaption ? 'none' : studio.frame === 'none' ? 'none' : '1px solid var(--color-line)'
+  const framePad = !isCaption && studio.frame === 'inset' ? 8 : 0
+  const accession = timeLabel ?? formatTimeAgo(listing.created_at)
+  const factParts = [
+    listing.size || null,
+    `${listing.condition_score}/10`,
+  ].filter(Boolean)
+  const ink = unavailable ? 'var(--color-ink-soft)' : 'var(--color-ink)'
+  const mark = studio.iconSize + 2
+  const factsLine = captionFactsLine(listing, timeLabel)
 
   const cardContent = (
     <>
-      {/* Image */}
-      <div style={{
-        position: 'relative',
-        aspectRatio: '3/4', boxSizing: 'border-box',
-        border: '1px solid var(--color-line)', overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--color-line)',
-      }}>
+      <div
+        className={`listing-card-image${isCaption ? ' listing-card-image--caption' : ''}`}
+        style={{
+          border: frameBorder,
+          padding: framePad,
+        }}
+      >
         {frontImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={frontImage}
             alt={listing.title}
-            // First two grid rows load eagerly; the rest wait until scrolled near.
             loading={(position ?? 0) < 8 ? 'eager' : 'lazy'}
             decoding="async"
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            className="listing-card-photo"
+            style={{ width: '100%', height: '100%', objectFit: studio.imageFit }}
           />
         ) : (
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>3 : 4</span>
+          <ListingImagePlaceholder />
+        )}
+        {!isCaption && !unavailable && (
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onSaveToggle(listing.id, isSaved) }}
+            aria-label={isSaved ? 'saved' : 'save'}
+            aria-pressed={isSaved}
+            className="card-save card-save-overlay"
+            data-testid={`save-btn-${listing.id}`}
+          >
+            <span aria-hidden className="card-save-overlay-hit" />
+            <Icon name="save" weight={isSaved ? 'fill' : studio.iconWeight} size={mark} />
+          </button>
         )}
         {unavailable && (
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'rgba(14,14,13,0.78)',
+            background: 'var(--color-overlay)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>SOLD</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink)' }}>sold</span>
           </div>
         )}
       </div>
 
-      {/* Meta — fixed-height lines so cards in same row align pixel-perfect */}
-      <div style={{ marginTop: '12px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
-        {timeLabel ?? formatTimeAgo(listing.created_at)}
-      </div>
-      <div
-        title={listing.title}
-        style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: unavailable ? 'var(--color-ink-soft)' : 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
-        data-testid="card-title"
-      >
-        {truncateTitle(listing.title.toUpperCase())}
-      </div>
+      {isCaption ? (
+        <div className="listing-card-caption">
+          <div
+            className="listing-card-caption-brand"
+            style={{ color: listing.brand ? ink : 'transparent' }}
+            data-testid="card-brand"
+          >
+            {listing.brand || '\u00a0'}
+          </div>
+          <div
+            className="listing-card-caption-title"
+            title={listing.title}
+            style={{ color: ink }}
+            data-testid="card-title"
+          >
+            {truncateTitle(listing.title)}
+          </div>
+          <div className="listing-card-caption-price" style={{ color: ink }} data-testid="card-price">
+            {renderPrice(listing, unavailable, captionPriceStrike)}
+          </div>
+          {factsLine && (
+            <div className="listing-card-caption-facts" data-testid="card-facts">
+              {factsLine}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="listing-card-label">
+          <div
+            style={{ ...brandSlot, color: listing.brand ? ink : 'transparent' }}
+            data-testid="card-brand"
+          >
+            {listing.brand || '\u00a0'}
+          </div>
 
-      {/* Price — strikethrough original if dropped */}
-      <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: unavailable ? 'var(--color-ink-soft)' : 'var(--color-ink)' }}>
-        {listing.is_price_dropped && listing.original_price_cents && !unavailable ? (
-          <>
-            <span style={{ color: 'var(--color-ink-soft)', textDecoration: 'line-through' }}>
-              {formatCents(listing.original_price_cents)}
+          <div
+            title={listing.title}
+            style={{
+              ...titleSlot,
+              marginTop: 4,
+              fontWeight: studio.titleWeight,
+              color: ink,
+            }}
+            data-testid="card-title"
+          >
+            {truncateTitle(listing.title)}
+          </div>
+
+          <div style={{ ...priceSlot, color: ink }} data-testid="card-price">
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {listing.is_price_dropped && listing.original_price_cents && !unavailable ? (
+                <>
+                  <span style={{ color: 'var(--color-ink-soft)', textDecoration: 'line-through' }}>
+                    {formatCents(listing.original_price_cents)}
+                  </span>
+                  <span style={{ marginLeft: '0.4em' }}>{listing.price_display}</span>
+                </>
+              ) : (
+                listing.price_display
+              )}
             </span>
-            {' '}{listing.price_display}
-          </>
-        ) : (
-          listing.price_display
-        )}
-      </div>
+            {showTrust && studio.showFact && (
+              isAuthed ? (
+                <span
+                  title="Authenticated listing"
+                  style={{ display: 'inline-flex', alignItems: 'center', flex: 'none', color: ink }}
+                  data-testid="card-trust"
+                >
+                  <Icon name="verified" size={18} label="Authenticated listing" />
+                </span>
+              ) : (
+                <span
+                  title="Seller ID verified"
+                  aria-label="Seller ID verified"
+                  data-testid="card-trust"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: 'var(--color-ink-soft)',
+                    flex: 'none',
+                    display: 'inline-block',
+                  }}
+                />
+              )
+            )}
+          </div>
 
-      <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-        {listing.size} · {listing.condition_score}/10
-      </div>
+          <div className="listing-card-price-rule" aria-hidden />
 
-      {/* Trust badges — always rendered to reserve height; AUTHENTICATED (item) + VERIFIED (seller) */}
-      {!unavailable && (
-        <div style={{ marginTop: '8px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-          {[listing.authentication_status === 'authenticated' ? 'AUTHENTICATED' : '', isVerified ? 'VERIFIED' : ''].filter(Boolean).join(' · ')}
+          <div className="listing-card-footer">
+            <span style={factsSlot} data-testid="card-facts">
+              {factParts.join(' / ')}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                lineHeight: 1.4,
+                letterSpacing: '-0.01em',
+                color: 'var(--color-ink-soft)',
+                whiteSpace: 'nowrap',
+                flex: 'none',
+              }}
+              data-testid="card-time"
+            >
+              {accession}
+            </span>
+          </div>
         </div>
       )}
     </>
   )
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', cursor: unavailable ? 'default' : 'pointer',
-      outline: '1px solid transparent', outlineOffset: '8px', transition: 'outline-color 120ms linear',
-    }}
+    <div
+      style={{ display: 'flex', flexDirection: 'column', cursor: unavailable ? 'default' : 'pointer' }}
       data-recs-item-id={listing.id}
       data-recs-pos={position ?? 0}
-      onMouseEnter={e => { if (!unavailable) e.currentTarget.style.outlineColor = 'var(--color-line)' }}
-      onMouseLeave={e => (e.currentTarget.style.outlineColor = 'transparent')}
     >
       {unavailable ? (
-        <div style={{ textDecoration: 'none' }}>
-          {cardContent}
-        </div>
+        <div style={{ textDecoration: 'none' }}>{cardContent}</div>
       ) : (
-        <PrefetchLink href={`/listings/${listing.id}`} style={{ textDecoration: 'none' }}
+        <PrefetchLink
+          href={`/listings/${listing.id}`}
+          style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', minWidth: 0 }}
           onClick={() => { trackEvent('product_clicked', { listing_id: listing.id }); onProductClick?.(listing.id) }}
         >
           {cardContent}
         </PrefetchLink>
       )}
-
-      {/* Save toggle */}
-      <button
-        onClick={e => { e.preventDefault(); onSaveToggle(listing.id, isSaved) }}
-        style={{
-          marginTop: '2px', background: 'none', border: 'none', padding: '8px 4px 8px 0',
-          fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em',
-          textTransform: 'uppercase', color: isSaved ? 'var(--color-ink)' : 'var(--color-ink-soft)',
-          cursor: 'pointer', alignSelf: 'flex-start', transition: 'color 120ms linear',
-          minHeight: '44px', boxSizing: 'border-box',
-        }}
-        data-testid={`save-btn-${listing.id}`}
-      >
-        {isSaved ? 'SAVED' : 'SAVE'}
-      </button>
     </div>
   )
 }

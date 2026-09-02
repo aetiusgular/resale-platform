@@ -6,17 +6,18 @@ import { getListing } from './get-listing'
 import { formatCents } from '@/lib/fees'
 import { BOOSTED_POSTS_ENABLED } from '@/lib/flags'
 import { BUMP_ENABLED } from '@/lib/flags'
-import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
+import { CONDITION_DEFINITIONS } from '@/lib/condition'
 import ConditionPopover from './condition-popover'
-import SaveButton from './save-button'
-import MessageSellerButton from './message-seller-button'
+import ListingActions from './listing-actions'
 import BumpButton from './bump-button'
 import CommunitySection from './community-section'
+import ListingGallery from './gallery'
+import PdpSidebar from './pdp-sidebar'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
-import GuestAction from '@/app/components/guest-action'
 import JsonLd from '@/app/components/json-ld'
 import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
+import { isOfflinePreview } from '@/app/preview/offline'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const data = await getListing(id)
 
   // Same behavior as the old status='active' filter for public viewers; the
-  // seller/admin (who can fetch non-active rows) just gets the real title.
+  // seller/admin (who can fetch non-active rows) just get the real title.
   if (!data) return { title: 'Listing not found' }
 
   const title = `${data.title} — ${data.brand} — ${formatCents(data.price_cents)}`
@@ -58,12 +59,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ListingDetailPage({ params }: PageProps) {
   const { id } = await params
-  const supabase = await createClient()
+  const offline = isOfflinePreview()
+  let supabase: Awaited<ReturnType<typeof createClient>> | null = null
+  if (!offline) {
+    try {
+      supabase = await createClient()
+    } catch {
+      // Broken env — continue as guest offline; getListing already fixtures.
+      supabase = null
+    }
+  }
 
   // Fetch user + listing in parallel (both independent). getListing is
   // cache()-shared with generateMetadata — this resolves from the same flight.
   const [{ data: { user } }, listing] = await Promise.all([
-    supabase.auth.getUser(),
+    supabase ? supabase.auth.getUser() : Promise.resolve({ data: { user: null } }),
     getListing(id),
   ])
 
@@ -76,8 +86,18 @@ export default async function ListingDetailPage({ params }: PageProps) {
   let currentUsername = ''
   let isSaved = false
   let originalPriceCents: number | null = null
+  let legitCheckCount = 0
 
-  if (user) {
+  if (supabase) {
+    const { count: lcCount } = await supabase
+      .from('comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('listing_id', id)
+      .eq('thread_type', 'lc')
+    legitCheckCount = lcCount ?? 0
+  }
+
+  if (user && supabase) {
     const [profileResult, saveResult, priceResult] = await Promise.all([
       supabase.from('profiles').select('role, id_verification_status, verified_checker, tier, is_moderator, username').eq('id', user.id).single(),
       supabase.from('saves').select('id').eq('user_id', user.id).eq('listing_id', id).maybeSingle(),
@@ -91,10 +111,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
     isSaved = !!saveResult.data
     originalPriceCents = priceResult.data?.old_price_cents ?? null
   } else if (listing.is_price_dropped) {
-    const { data: firstHistory } = await supabase
-      .from('price_history').select('old_price_cents').eq('listing_id', id)
-      .order('changed_at', { ascending: true }).limit(1).maybeSingle()
-    originalPriceCents = firstHistory?.old_price_cents ?? null
+    if (supabase) {
+      const { data: firstHistory } = await supabase
+        .from('price_history').select('old_price_cents').eq('listing_id', id)
+        .order('changed_at', { ascending: true }).limit(1).maybeSingle()
+      originalPriceCents = firstHistory?.old_price_cents ?? null
+    } else if ('original_price_cents' in listing) {
+      originalPriceCents = listing.original_price_cents ?? null
+    }
   }
 
   // If non-active and not admin/seller, 404
@@ -103,12 +127,34 @@ export default async function ListingDetailPage({ params }: PageProps) {
   }
 
   const images: string[] = Array.isArray(listing.images) ? listing.images : []
-  const frontImage = images[0] ?? null
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
+  const sellerVerified = seller?.id_verification_status === 'verified'
+  const itemAuthenticated = listing.authentication_status === 'authenticated'
+  const trustRows: { label: string; desc: string; href?: string }[] = []
+  if (legitCheckCount > 0) {
+    trustRows.push({
+      label: `${legitCheckCount} legit check${legitCheckCount === 1 ? '' : 's'}`,
+      desc: 'from the community',
+      href: '#legit-checks',
+    })
+  }
+  trustRows.push({ label: 'Escrow', desc: 'held until delivery confirmed' })
 
   // Fee Model v3: buyers pay no platform fee — the listed price is what they pay.
-  const total   = listing.price_cents
+  const total = listing.price_cents
+  const priceLabel = formatCents(total)
   const listedAgo = formatTimeAgo(listing.created_at)
+  const showCommerce = listing.status === 'active' && !isSeller
+  const buyDisabledLabel =
+    listing.status === 'sold'
+      ? 'Sold'
+      : listing.status === 'pending_escrow'
+        ? 'Pending'
+        : listing.status !== 'active'
+          ? 'Unavailable'
+          : isSeller
+            ? null
+            : null
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
@@ -142,251 +188,152 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
       {/* Seller status banners */}
       {isSeller && listing.status === 'pending_review' && (
-        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', padding: '10px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+        <div className="inset-band" style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
           REVIEW: PENDING — your listing is in the queue
         </div>
       )}
       {isSeller && listing.status === 'removed' && listing.rejection_reason && (
-        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-alert)', padding: '10px 16px', fontSize: '13px', color: 'var(--color-alert)' }}>
+        <div className="inset-band" style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-alert)', fontSize: '13px', color: 'var(--color-alert)' }}>
           Listing rejected: {listing.rejection_reason}
         </div>
       )}
       {isAdmin && listing.status !== 'active' && (
-        <div style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>ADMIN VIEW · STATUS: {listing.status.toUpperCase()}</span>
+        <div className="inset-band" style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>ADMIN VIEW | STATUS: {listing.status.toUpperCase()}</span>
           <Link href="/admin/queue" style={{ fontSize: '12px', color: 'var(--color-ink)' }}>← queue</Link>
         </div>
       )}
 
-      <div className="listing-detail-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 80px 64px' }}>
-        <div className="listing-detail-grid" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '48px', alignItems: 'start' }}>
-
-          {/* LEFT: Gallery */}
-          <div>
-            {/* Main image */}
-            <div style={{ aspectRatio: '3/4', boxSizing: 'border-box', border: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
-              {frontImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={frontImage} alt={listing.title} fetchPriority="high" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>3 : 4 — FRONT</span>
-              )}
-            </div>
-
-            {/* Thumbnails */}
-            <div className="listing-thumbnails" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginTop: '16px' }}>
-              {PHOTO_SLOTS.map((slot, idx) => {
-                const url = images[idx]
-                const label = slot.charAt(0) + slot.slice(1).toLowerCase()
-                const isPossession = slot === 'POSSESSION'
-                return (
-                  <div key={slot} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ position: 'relative', aspectRatio: '3/4', boxSizing: 'border-box', border: `1px solid ${idx === 0 ? 'var(--color-ink)' : 'var(--color-line)'}`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                      {url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={url} alt={slot} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-ink-soft)' }}>3 : 4</span>
-                      )}
-                      {isPossession && url && (
-                        <span style={{ position: 'absolute', top: '4px', right: '4px', width: '16px', height: '16px', background: 'var(--color-accent)', borderRadius: '2px', color: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', lineHeight: 1 }}>✓</span>
-                      )}
-                    </div>
-                    <span style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: idx === 0 ? 'var(--color-ink)' : 'var(--color-ink-soft)', textAlign: 'center' }}>{label}</span>
-                  </div>
-                )
-              })}
-            </div>
+      <div className="listing-detail-inner page-inset page-enter" style={{ maxWidth: '1280px', margin: '0 auto', paddingTop: '32px', paddingBottom: '64px' }}>
+        {/*
+          Desktop: gallery (dominant) | sticky commerce
+          Mobile:  gallery → commerce → description (CSS order)
+        */}
+        <div className="pdp-layout">
+          <div className="pdp-gallery-col">
+            <ListingGallery images={images} title={listing.title} />
           </div>
 
-          {/* RIGHT: Purchase panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {/* Title — server-rendered for SEO */}
-            <h1 style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '20px', lineHeight: 1.35, letterSpacing: 0, color: 'var(--color-ink)', margin: 0 }}>
-              {listing.title}
-            </h1>
-            <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '16px', color: 'var(--color-ink)' }}>
-              {listing.brand} · {listing.size}
+          <aside className="pdp-commerce" aria-label="Buy this listing">
+            <div className="pdp-commerce-sticky">
+              {/* Hierarchy: brand → title → price → facts (browse caption cohesion) */}
+              <header className="pdp-record">
+                <p className="pdp-brand">{listing.brand}</p>
+                <h1 className="pdp-title">{listing.title}</h1>
+                <p className="pdp-price">
+                  {listing.is_price_dropped && originalPriceCents ? (
+                    <>
+                      <span className="pdp-price-was">{formatCents(originalPriceCents)}</span>
+                      {priceLabel}
+                    </>
+                  ) : (
+                    priceLabel
+                  )}
+                </p>
+                <p className="pdp-facts">
+                  {listing.size}
+                  <span className="pdp-facts-sep" aria-hidden> · </span>
+                  {listing.condition_score}/10
+                  <span className="pdp-facts-sep" aria-hidden> · </span>
+                  listed {listedAgo}
+                </p>
+              </header>
+
+              <div className="pdp-commerce-chunk">
+                <ListingActions
+                  listingId={id}
+                  title={listing.title}
+                  priceLabel={priceLabel}
+                  initialSaved={isSaved}
+                  guest={!user}
+                  user={!!user}
+                  showCommerce={showCommerce}
+                  buyDisabledLabel={buyDisabledLabel}
+                />
+              </div>
+
+              <div className="pdp-commerce-chunk">
+                <PdpSidebar
+                  sellerUsername={seller?.username ?? null}
+                  sellerVerified={sellerVerified}
+                  listedAgo={listedAgo}
+                />
+              </div>
+
+              <div className="pdp-ledger" aria-label="Provenance ledger">
+                <div className="pdp-ledger-row pdp-ledger-row--inline">
+                  <span className="pdp-ledger-label">condition {listing.condition_score}/10</span>
+                  <ConditionPopover
+                    score={listing.condition_score}
+                    definition={CONDITION_DEFINITIONS[listing.condition_score]}
+                  />
+                </div>
+                {itemAuthenticated && (
+                  <div className="pdp-ledger-row">
+                    <span className="pdp-ledger-label">Authenticated</span>
+                    <span className="pdp-ledger-detail">reviewed pre-publish</span>
+                  </div>
+                )}
+                {sellerVerified && !itemAuthenticated && (
+                  <div className="pdp-ledger-row">
+                    <span className="pdp-ledger-label">Seller ID</span>
+                    <span className="pdp-ledger-detail">confirmed</span>
+                  </div>
+                )}
+                {trustRows.map((row) =>
+                  row.href ? (
+                    <a key={row.label} href={row.href} className="pdp-ledger-row pdp-ledger-row--link">
+                      <span className="pdp-ledger-label">{row.label}</span>
+                      <span className="pdp-ledger-detail">{row.desc}</span>
+                    </a>
+                  ) : (
+                    <div key={row.label} className="pdp-ledger-row">
+                      <span className="pdp-ledger-label">{row.label}</span>
+                      <span className="pdp-ledger-detail">{row.desc}</span>
+                    </div>
+                  ),
+                )}
+              </div>
             </div>
-            {listing.authentication_status === 'authenticated' && (
-              <div style={{ marginTop: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-                ✓ AUTHENTICATED
+          </aside>
+
+          {/* Under gallery on desktop; after commerce on mobile (grid order) */}
+          <div className="pdp-below">
+            {(listing.description || listing.condition_notes) && (
+              <div className="pdp-description">
+                {listing.description && <p>{listing.description}</p>}
+                {listing.condition_notes && (
+                  <p className="pdp-description-notes">{listing.condition_notes}</p>
+                )}
               </div>
             )}
 
-            {/* Condition + popover */}
-            <div style={{ marginTop: '16px', display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
-                CONDITION {listing.condition_score}/10
-              </span>
-              <ConditionPopover
-                score={listing.condition_score}
-                definition={CONDITION_DEFINITIONS[listing.condition_score]}
-              />
-            </div>
+            {isSeller && listing.status === 'active' && BOOSTED_POSTS_ENABLED && (
+              <Link href={`/boost/${listing.id}`} className="pdp-seller-tool">
+                Boost this listing →
+              </Link>
+            )}
 
-            {/* Price block */}
-            <div style={{ marginTop: '24px' }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '28px', color: 'var(--color-ink)' }}>
-                {listing.is_price_dropped && originalPriceCents ? (
-                  <>
-                    <span style={{ color: 'var(--color-ink-soft)', textDecoration: 'line-through', fontWeight: 400, fontSize: '20px', marginRight: '8px' }}>
-                      {formatCents(originalPriceCents)}
-                    </span>
-                    {formatCents(listing.price_cents)}
-                  </>
-                ) : (
-                  formatCents(listing.price_cents)
-                )}
-              </div>
-              <div style={{ marginTop: '4px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                no buyer fee — you pay the listed price. that&apos;s it.
-              </div>
-              {isSeller && listing.status === 'active' && BOOSTED_POSTS_ENABLED && (
-                <Link href={`/boost/${listing.id}`} style={{ display: 'inline-block', marginTop: '10px', fontSize: '13px', color: 'var(--color-accent)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
-                  Boost this listing →
-                </Link>
-              )}
-            </div>
-
-            {/* TRUST STRIP */}
-            <div style={{ marginTop: '24px', border: '1px solid var(--color-line)', borderRadius: '2px' }}>
-              {[
-                { label: 'VERIFIED', desc: 'AI + human reviewed' },
-                { label: 'COMMUNITY CHECKED', desc: '0 legit checks' },
-                { label: 'ESCROW', desc: 'your money is held until you confirm delivery' },
-              ].map((row, i) => (
-                <div key={row.label} style={{ display: 'flex', alignItems: 'baseline', gap: '10px', padding: '12px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--color-line)' }}>
-                  <span style={{ color: 'var(--color-accent)', fontSize: '13px', flex: 'none' }}>✓</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink)', flex: 'none' }}>{row.label}</span>
-                  <span style={{ fontSize: '12px', color: 'var(--color-ink-soft)' }}>{row.desc}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* BUY / OFFER buttons */}
-            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {/* Buy now: authed buyer → checkout; guest → popup (returns to checkout);
-                  otherwise (sold/pending/own listing) → disabled. */}
-              {listing.status === 'active' && !isSeller ? (
-                user ? (
-                  <Link
-                    href={`/checkout/${id}`}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
-                  >
-                    Buy now — {formatCents(total)}
-                  </Link>
-                ) : (
-                  <GuestAction
-                    next={`/checkout/${id}`}
-                    testId="buy-guest"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)' }}
-                  >
-                    Buy now — {formatCents(total)}
-                  </GuestAction>
-                )
-              ) : (
-                <button
-                  disabled
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
-                >
-                  {listing.status === 'sold' ? 'SOLD' : listing.status === 'pending_escrow' ? 'PENDING' : 'Buy now'}
-                </button>
-              )}
-              {listing.status === 'active' && !isSeller ? (
-                user ? (
-                  <a
-                    href={`/messages?listing=${id}`}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}
-                  >
-                    Make offer
-                  </a>
-                ) : (
-                  <GuestAction
-                    next={`/messages?listing=${id}`}
-                    testId="offer-guest"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)' }}
-                  >
-                    Make offer
-                  </GuestAction>
-                )
-              ) : (
-                <button
-                  disabled
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
-                >
-                  Make offer
-                </button>
-              )}
-              {listing.status === 'active' && !isSeller ? (
-                user ? (
-                  <MessageSellerButton listingId={id} />
-                ) : (
-                  <GuestAction
-                    next={`/listings/${id}`}
-                    testId="message-guest"
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid transparent', borderRadius: '2px', font: '500 14px var(--font-ui)' }}
-                  >
-                    Message seller
-                  </GuestAction>
-                )
-              ) : (
-                <button
-                  disabled
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid transparent', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'not-allowed', opacity: 0.4 }}
-                >
-                  Message seller
-                </button>
-              )}
-            </div>
-
-            {/* Seller bump control — own active listing only (G7, behind BUMP_ENABLED) */}
             {BUMP_ENABLED && isSeller && listing.status === 'active' && (
-              <div style={{ marginTop: '16px' }}>
+              <div className="pdp-seller-tool">
                 <BumpButton listingId={id} />
               </div>
             )}
 
-            {/* Seller block */}
-            <div style={{ marginTop: '24px', borderTop: '1px solid var(--color-line)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <Link href={seller?.username ? `/sellers/${seller.username}` : '#'} style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)', textDecoration: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>@{seller?.username ?? '—'}</Link>
-                {/* Tier badge stub — B2 uses Bronze as placeholder */}
-                <span style={{ display: 'inline-flex', alignItems: 'center', height: '22px', padding: '0 8px', border: '1px solid var(--color-line)', borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Bronze</span>
-                {seller?.id_verification_status === 'verified' && (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>VERIFIED ID</span>
-                )}
+            {listing.status === 'active' && !offline && (
+              <div className="pdp-community">
+                <CommunitySection
+                  listingId={id}
+                  isGuest={!user}
+                  canPostLc={
+                    userProfile?.is_moderator === true ||
+                    userProfile?.role === 'admin'
+                  }
+                />
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                SHIPS FROM · US
-              </div>
-            </div>
-
-            {/* Save + meta line */}
-            <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                LISTED {listedAgo.toUpperCase()} · {listing.saves_count ?? 0} SAVED
-              </div>
-              {!isSeller && (
-                user
-                  ? <SaveButton listingId={id} initialSaved={isSaved} />
-                  : <SaveButton listingId={id} initialSaved={false} guest />
-              )}
-            </div>
+            )}
           </div>
         </div>
-
-        {/* Community section — B7 */}
-        {listing.status === 'active' && (
-          <CommunitySection
-            listingId={id}
-            isGuest={!user}
-            canPostLc={
-              userProfile?.is_moderator === true ||
-              userProfile?.role === 'admin'
-            }
-          />
-        )}
       </div>
       <MobileTabBar username={currentUsername} />
     </div>

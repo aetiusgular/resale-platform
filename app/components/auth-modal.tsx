@@ -92,7 +92,7 @@ export default function AuthModal({ next, onClose }: { next: string; onClose: ()
         </button>
 
         <div style={{ textAlign: 'center' }}>
-          <span style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
+          <span style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>archive</span>
           <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
             SIGN IN TO CONTINUE
           </div>

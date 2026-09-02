@@ -30,3 +30,4 @@ tsconfig.tsbuildinfo
 .playwright-mcp/
 moderation-*.png
 .claude/settings.local.json
+.vercel

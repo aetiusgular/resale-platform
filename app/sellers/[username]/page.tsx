@@ -19,6 +19,8 @@ import RecommendModeratorButton from './recommend-moderator-button'
 import SiteHeader from '@/app/components/site-header'
 import MobileTabBar from '@/app/components/mobile-tabbar'
 import GuestAction from '@/app/components/guest-action'
+import { isOfflinePreview } from '@/app/preview/offline'
+import { PREVIEW_LISTINGS } from '@/app/preview/fixtures'
 
 interface PageProps {
   params: Promise<{ username: string }>
@@ -41,25 +43,65 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 function formatTimeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}H AGO`
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}H AGO`
+  if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}D AGO`
-  return `${Math.floor(days / 7)}W AGO`
+  if (days < 7) return `${days}d ago`
+  return `${Math.floor(days / 7)}w ago`
 }
 
 export default async function SellerProfilePage({ params, searchParams }: PageProps) {
   const { username } = await params
   const { tab = 'listings' } = await searchParams
 
-  const supabase = await createClient()
-  // Seller profiles are public — guests (user === null) view freely. Everything
-  // user-scoped (own profile, follow state, moderator recommend) is guarded on `user`.
-  const { data: { user } } = await supabase.auth.getUser()
+  const offlineSeller = () => {
+    const theirs = PREVIEW_LISTINGS.filter((l) => l.seller?.username === username)
+    if (theirs.length === 0) notFound()
+    return (
+      <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
+        <SiteHeader username="" />
+        <div className="seller-profile-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 80px 64px' }}>
+          <h1 style={{ fontFamily: 'var(--font-mono)', fontWeight: 400, fontSize: '20px', margin: 0 }}>@{username}</h1>
+          <p style={{ margin: '8px 0 32px', fontSize: '13px', color: 'var(--color-ink-soft)' }}>
+            {theirs.length} objects · preview
+          </p>
+          <div className="seller-listings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '28px 16px' }}>
+            {theirs.map((l) => (
+              <Link key={l.id} href={`/listings/${l.id}`} style={{ textDecoration: 'none' }}>
+                <div style={{ aspectRatio: '3/4', border: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
+                  {l.brand}
+                </div>
+                <div style={{ marginTop: '10px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>{l.title}</div>
+                <div style={{ marginTop: '2px', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--color-ink)' }}>{l.price_display}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+        <MobileTabBar username="" />
+      </div>
+    )
+  }
 
-  // Fetch current user's profile + target seller in parallel
-  const service = createServiceClientRaw()
+  if (isOfflinePreview()) {
+    return offlineSeller()
+  }
+
+  let supabase!: Awaited<ReturnType<typeof createClient>>
+  let user: { id: string } | null = null
+  let service!: ReturnType<typeof createServiceClientRaw>
+  try {
+    supabase = await createClient()
+    // Seller profiles are public — guests (user === null) view freely. Everything
+    // user-scoped (own profile, follow state, moderator recommend) is guarded on `user`.
+    const auth = await supabase.auth.getUser()
+    user = auth.data.user
+    // Fetch current user's profile + target seller in parallel
+    service = createServiceClientRaw()
+  } catch {
+    return offlineSeller()
+  }
   const [{ data: currentProfile }, { data: seller }] = await Promise.all([
     user
       ? supabase.from('profiles').select('username, role, is_moderator').eq('id', user.id).single()
@@ -297,7 +339,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
             </div>
 
             {listings.length === 0 ? (
-              <p style={{ marginTop: '48px', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.4rem', color: 'var(--color-ink)' }}>
+              <p style={{ marginTop: '48px', fontFamily: 'var(--font-ui)', fontWeight: 300, fontSize: '1.4rem', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>
                 No active listings.
               </p>
             ) : (
@@ -333,7 +375,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                         {formatCents(l.price_cents as number)}
                       </div>
                       <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                        {l.size} · {l.condition_score}/10
+                        {l.size} / {l.condition_score}/10
                       </div>
                     </Link>
                   )
@@ -346,7 +388,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
           <div style={{ marginTop: '48px' }}>
             {reviewsRaw.length === 0 ? (
               <>
-                <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.35rem', lineHeight: 1.35, color: 'var(--color-ink)' }}>
+                <p style={{ fontFamily: 'var(--font-ui)', fontWeight: 300, fontSize: '1.35rem', lineHeight: 1.35, letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>
                   No reviews yet.
                 </p>
                 <p style={{ marginTop: '12px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>

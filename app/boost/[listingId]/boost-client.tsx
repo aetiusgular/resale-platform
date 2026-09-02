@@ -16,7 +16,7 @@ import { BUMP_COOLDOWN_DAYS, PRICE_DROP_BUMP_MIN_PCT } from '@/lib/bump/eligibil
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 const CARD_OPTIONS = {
-  style: { base: { fontFamily: '"Space Mono", monospace', fontSize: '14px', color: 'var(--color-ink)', '::placeholder': { color: 'var(--color-ink-soft)' } }, invalid: { color: 'var(--color-alert)' } },
+  style: { base: { fontFamily: '"IBM Plex Mono", monospace', fontSize: '14px', color: 'var(--color-ink)', '::placeholder': { color: 'var(--color-ink-soft)' } }, invalid: { color: 'var(--color-alert)' } },
 }
 
 type Pkg = { key: string; label: string; amountCents: number; durationDays: number }

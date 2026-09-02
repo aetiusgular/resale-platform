@@ -3,78 +3,39 @@
 import PrefetchLink from './prefetch-link'
 import { usePathname } from 'next/navigation'
 import { useAuthModal } from './auth-modal-provider'
+import Icon, { type IconName } from './icon'
+import { useStudio } from './studio'
 
 interface Props {
   /** Empty string ⇒ signed-out visitor: Sell / Messages / Profile open the popup. */
   username: string
   hasUnread?: boolean
+  /** Lab only — sit in document flow instead of the viewport bottom. */
+  pinned?: boolean
 }
 
-export default function MobileTabBar({ username, hasUnread }: Props) {
+export default function MobileTabBar({ username, hasUnread, pinned = true }: Props) {
   const pathname = usePathname()
   const { openAuthModal } = useAuthModal()
+  const { nav } = useStudio()
   const isGuest = !username
 
-  // `auth: true` tabs require a session — for a guest they open the sign-in popup
-  // instead of navigating. Feed/Discover are the public browse feed either way.
-  const tabs = [
-    { label: 'FEED', href: '/browse', icon: feedIcon, match: (p: string) => p === '/' || p === '/browse', auth: false },
-    { label: 'DISCOVER', href: '/browse', icon: discoverIcon, match: (p: string) => p.startsWith('/browse'), auth: false },
-    { label: 'SELL', href: '/sell', icon: sellIcon, match: (p: string) => p.startsWith('/sell'), auth: true },
-    { label: 'MESSAGES', href: '/messages', icon: messagesIcon, match: (p: string) => p.startsWith('/messages'), auth: true },
-    { label: 'PROFILE', href: username ? `/sellers/${username}` : '/settings', icon: profileIcon, match: (p: string) => p === `/sellers/${username}`, auth: true },
+  const tabs: { label: string; href: string; match: (p: string) => boolean; auth: boolean; testId: string; icon: IconName }[] = [
+    { label: 'Feed', href: '/browse', match: (p) => p === '/' || p === '/browse', auth: false, testId: 'tab-feed', icon: 'feed' },
+    { label: 'Saved', href: '/saved', match: (p) => p.startsWith('/saved'), auth: true, testId: 'tab-saved', icon: 'save' },
+    { label: 'Sell', href: '/sell', match: (p) => p.startsWith('/sell'), auth: true, testId: 'tab-sell', icon: 'sell' },
+    { label: 'Messages', href: '/messages', match: (p) => p.startsWith('/messages'), auth: true, testId: 'tab-messages', icon: 'messages' },
+    { label: 'You', href: username ? `/sellers/${username}` : '/settings', match: (p) => p === `/sellers/${username}` || p.startsWith('/settings'), auth: true, testId: 'tab-profile', icon: 'you' },
   ]
 
-  const tabInner = (tab: (typeof tabs)[number], active: boolean, color: string) => (
-    <>
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke={color}
-        strokeWidth={active ? '2' : '1.5'}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        {tab.icon(active)}
-      </svg>
-      {tab.label === 'MESSAGES' && hasUnread && (
-        <span
-          style={{
-            position: 'absolute',
-            top: '6px',
-            right: 'calc(50% - 14px)',
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: 'var(--color-accent)',
-          }}
-        />
-      )}
-      <span
-        style={{
-          fontFamily: 'var(--font-ui)',
-          fontSize: '10px',
-          fontWeight: active ? 600 : 400,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color,
-          lineHeight: 1,
-        }}
-      >
-        {tab.label}
-      </span>
-    </>
-  )
+  const tabClass = (active: boolean) => `tabbar-link${active ? ' is-active' : ''}`
 
   const tabStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '2px',
+    gap: 4,
     flex: 1,
     height: '56px',
     textDecoration: 'none',
@@ -83,21 +44,23 @@ export default function MobileTabBar({ username, hasUnread }: Props) {
     border: 'none',
     padding: 0,
     cursor: 'pointer',
+    fontFamily: 'var(--font-ui)',
+    fontSize: '11px',
   }
 
   return (
     <nav
       data-testid="mobile-tabbar"
-      className="mobile-only"
+      className={pinned ? 'mobile-only' : undefined}
       style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        position: pinned ? 'fixed' : 'relative',
+        bottom: pinned ? 0 : undefined,
+        left: pinned ? 0 : undefined,
+        right: pinned ? 0 : undefined,
         height: '56px',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingBottom: pinned ? 'env(safe-area-inset-bottom, 0px)' : 0,
         background: 'var(--color-bg)',
-        borderTop: '1px solid var(--color-line)',
+        borderTop: pinned ? '1px solid var(--color-line)' : 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
@@ -107,19 +70,43 @@ export default function MobileTabBar({ username, hasUnread }: Props) {
       {tabs.map((tab) => {
         const active = tab.match(pathname)
         const color = active ? 'var(--color-ink)' : 'var(--color-ink-soft)'
-        const testId = `tab-${tab.label.toLowerCase()}`
 
-        // Guest + auth-required tab → open the popup instead of navigating.
+        const label = (
+          <>
+            {tab.label === 'Messages' && hasUnread && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 'calc(50% - 14px)',
+                  width: 5,
+                  height: 5,
+                  background: 'var(--color-ink)',
+                }}
+              />
+            )}
+            {nav !== 'text' && (
+              <span style={{ color, display: 'flex' }}>
+                <Icon name={tab.icon} size={20} />
+              </span>
+            )}
+            {nav !== 'icon' && (
+              <span style={{ color, fontWeight: active ? 'var(--font-weight-medium)' : 'var(--font-weight-regular)' }}>{tab.label}</span>
+            )}
+          </>
+        )
+
         if (isGuest && tab.auth) {
           return (
             <button
               key={tab.label}
               type="button"
               onClick={() => openAuthModal(tab.href)}
-              data-testid={testId}
+              data-testid={tab.testId}
+              className={tabClass(active)}
               style={tabStyle}
             >
-              {tabInner(tab, active, color)}
+              {label}
             </button>
           )
         }
@@ -128,75 +115,14 @@ export default function MobileTabBar({ username, hasUnread }: Props) {
           <PrefetchLink
             key={tab.label}
             href={tab.href}
-            data-testid={testId}
+            data-testid={tab.testId}
+            className={tabClass(active)}
             style={tabStyle}
           >
-            {tabInner(tab, active, color)}
+            {label}
           </PrefetchLink>
         )
       })}
     </nav>
-  )
-}
-
-/* Simple 20px line icons — inline SVG paths, no icon library */
-
-function feedIcon(active: boolean) {
-  // Grid/home icon
-  return active ? (
-    <>
-      <rect x="3" y="3" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-      <rect x="11" y="3" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-      <rect x="3" y="11" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-      <rect x="11" y="11" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-    </>
-  ) : (
-    <>
-      <rect x="3" y="3" width="6" height="6" />
-      <rect x="11" y="3" width="6" height="6" />
-      <rect x="3" y="11" width="6" height="6" />
-      <rect x="11" y="11" width="6" height="6" />
-    </>
-  )
-}
-
-function discoverIcon(active: boolean) {
-  // Search/compass icon
-  return (
-    <>
-      <circle cx="9" cy="9" r="5" fill={active ? 'var(--color-ink)' : 'none'} />
-      <line x1="13" y1="13" x2="17" y2="17" />
-    </>
-  )
-}
-
-function sellIcon(active: boolean) {
-  // Plus icon
-  return (
-    <>
-      <circle cx="10" cy="10" r="7" fill={active ? 'var(--color-ink)' : 'none'} />
-      <line x1="10" y1="7" x2="10" y2="13" stroke={active ? 'var(--color-bg)' : undefined} />
-      <line x1="7" y1="10" x2="13" y2="10" stroke={active ? 'var(--color-bg)' : undefined} />
-    </>
-  )
-}
-
-function messagesIcon(active: boolean) {
-  // Chat bubble icon
-  return (
-    <path
-      d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8l-4 3V5a1 1 0 0 1 1-1z"
-      fill={active ? 'var(--color-ink)' : 'none'}
-    />
-  )
-}
-
-function profileIcon(active: boolean) {
-  // Person icon
-  return (
-    <>
-      <circle cx="10" cy="7" r="3" fill={active ? 'var(--color-ink)' : 'none'} />
-      <path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" fill={active ? 'var(--color-ink)' : 'none'} />
-    </>
   )
 }

@@ -11,21 +11,11 @@ type Props = {
 }
 
 function savedTimeLabel(savedAt: string): string {
-  const diff = Date.now() - new Date(savedAt).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `SAVED ${mins}M AGO`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `SAVED ${hrs}H AGO`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `SAVED ${days}D AGO`
-  const weeks = Math.floor(days / 7)
-  if (days < 30) return `SAVED ${weeks}W AGO`
-  return `SAVED ${Math.floor(days / 30)}M AGO`
+  return `saved ${formatTimeAgo(savedAt)}`
 }
 
 function soldTimeLabel(createdAt: string): string {
-  // For sold items, show when they were sold (using listing created_at as proxy)
-  return `SOLD ${formatTimeAgo(createdAt).replace(' AGO', '')} AGO`
+  return `sold ${formatTimeAgo(createdAt)}`
 }
 
 export default function SavedClient({ listings: initialListings }: Props) {
@@ -83,8 +73,8 @@ export default function SavedClient({ listings: initialListings }: Props) {
   // Empty state
   if (allVisible.length === 0 && listings.length === 0) {
     return (
-      <div className="content-pad" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px' }}>
-        <h1 style={{ font: '400 28px var(--font-serif)', letterSpacing: 0, color: 'var(--color-ink)', margin: 0, padding: '48px 0 24px' }}>Saved</h1>
+      <div className="page-inset" style={{ maxWidth: '1280px', margin: '0 auto' }}>
+        <h1 style={{ font: '300 28px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0, padding: '48px 0 24px' }}>Saved</h1>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
@@ -94,7 +84,7 @@ export default function SavedClient({ listings: initialListings }: Props) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '80px 0 96px', textAlign: 'center' }}>
-          <span style={{ font: 'italic 400 22px var(--font-serif)', color: 'var(--color-ink)' }}>Nothing saved yet.</span>
+          <span style={{ font: '300 22px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>Nothing saved yet.</span>
           <span style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--color-ink-soft)', maxWidth: '320px' }}>
             Listings you save are kept here, with any price changes noted.
           </span>
@@ -117,11 +107,11 @@ export default function SavedClient({ listings: initialListings }: Props) {
   }
 
   return (
-    <div className="content-pad" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 16px' }}>
-      <h1 style={{ font: '400 28px var(--font-serif)', letterSpacing: 0, color: 'var(--color-ink)', margin: 0, padding: '48px 0 24px' }}>Saved</h1>
+    <div className="page-inset" style={{ maxWidth: '1280px', margin: '0 auto' }}>
+      <h1 style={{ font: '300 28px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0, padding: '48px 0 24px' }}>Saved</h1>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
+        <div style={{ display: 'flex', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
         <TabItem label="Items" count={allVisible.length} active />
         <TabItem label="Searches" count={0} />
         <TabItem label="Sellers" count={0} />
@@ -130,7 +120,7 @@ export default function SavedClient({ listings: initialListings }: Props) {
       {/* Controls row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', padding: '20px 0 32px' }}>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-          {allVisible.length} ITEMS{priceDropCount > 0 ? ` · ${priceDropCount} PRICE DROP${priceDropCount > 1 ? 'S' : ''}` : ''}
+          {allVisible.length} ITEMS{priceDropCount > 0 ? `, ${priceDropCount} PRICE DROP${priceDropCount > 1 ? 'S' : ''}` : ''}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           {soldListings.length > 0 && (
@@ -212,6 +202,7 @@ function SavedCard({
         listing={listing}
         isSaved={true}
         onSaveToggle={() => onRemove()}
+        showSave
         timeLabel={timeLabel}
         unavailable={unavailable}
       />

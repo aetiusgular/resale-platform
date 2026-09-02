@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Styleguide smoke', () => {
-  test('renders and all three font families are applied', async ({ page }) => {
+  test('renders and both font families are applied', async ({ page }) => {
     await page.goto('/styleguide')
 
     // Page loads with correct title
@@ -10,23 +10,17 @@ test.describe('Styleguide smoke', () => {
     // Main heading is visible
     await expect(page.locator('h1')).toBeVisible()
 
-    // Inter — check computed font-family on the explicit font specimen element
-    const interFamily = await page
-      .locator('[data-testid="font-inter"]')
+    // IBM Plex Sans — check computed font-family on the explicit font specimen element
+    const uiFamily = await page
+      .locator('[data-testid="font-ui"]')
       .evaluate((el) => window.getComputedStyle(el).fontFamily)
-    expect(interFamily).toContain('Inter')
+    expect(uiFamily).toContain('IBM Plex Sans')
 
-    // EB Garamond
-    const garamondFamily = await page
-      .locator('[data-testid="font-garamond"]')
-      .evaluate((el) => window.getComputedStyle(el).fontFamily)
-    expect(garamondFamily).toContain('EB Garamond')
-
-    // Space Mono
+    // IBM Plex Mono
     const monoFamily = await page
       .locator('[data-testid="font-mono"]')
       .evaluate((el) => window.getComputedStyle(el).fontFamily)
-    expect(monoFamily).toContain('Space Mono')
+    expect(monoFamily).toContain('IBM Plex Mono')
   })
 
   test('color token swatches render', async ({ page }) => {

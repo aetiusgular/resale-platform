@@ -90,7 +90,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {(!conversations || conversations.length === 0) && (
               <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--color-ink)' }}>No conversations yet.</p>
+                <p style={{ fontFamily: 'var(--font-ui)', fontWeight: 300, fontSize: '1.2rem', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>No conversations yet.</p>
                 <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>Start a conversation from a listing page.</p>
               </div>
             )}
@@ -127,7 +127,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
 
         {/* Desktop empty state — hidden on mobile */}
         <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--color-ink)' }}>Select a conversation</p>
+          <p style={{ fontFamily: 'var(--font-ui)', fontWeight: 300, fontSize: '1.2rem', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>Select a conversation</p>
           <p style={{ fontSize: '12px', color: 'var(--color-ink-soft)' }}>Choose from your messages on the left.</p>
         </div>
       </div>

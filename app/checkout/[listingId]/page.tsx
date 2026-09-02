@@ -85,7 +85,7 @@ export default async function CheckoutPage({ params }: PageProps) {
         padding: '0 80px',
       }}>
         <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>
-          ———
+          archive
         </span>
         <span style={{ font: '600 14px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>
           Checkout

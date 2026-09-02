@@ -3,12 +3,15 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
+import SiteHeader from '@/app/components/site-header'
 import JsonLd from '@/app/components/json-ld'
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/seo-listing'
 import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED, BUMP_ENABLED } from '@/lib/flags'
 import { getFeed } from '@/lib/recs/client'
 import { applyFeedOrder } from '@/lib/recs/rank'
 import { applyBoostOrder } from '@/lib/boosts'
+import { isOfflinePreview } from '@/app/preview/offline'
+import { PREVIEW_LISTINGS, previewFilterCounts } from '@/app/preview/fixtures'
 
 export const metadata: Metadata = {
   title: 'Browse',
@@ -51,15 +54,59 @@ interface PageProps {
   searchParams: Promise<Record<string, string>>
 }
 
+function OfflineBrowse({ params }: { params: Record<string, string> }) {
+  const q = params.q?.trim().toLowerCase() ?? ''
+  const listings = PREVIEW_LISTINGS.filter((l) => {
+    if (q && !`${l.title} ${l.brand}`.toLowerCase().includes(q)) return false
+    if (params.dept && l.department !== params.dept) return false
+    if (params.cat && l.category !== params.cat) return false
+    return true
+  })
+  return (
+    <>
+      <JsonLd data={webSiteJsonLd()} />
+      <JsonLd data={organizationJsonLd()} />
+      <SiteHeader username="" searchValue={params.q?.trim() ?? ''} />
+      <Suspense>
+        <BrowseClient
+          initialListings={listings}
+          totalCount={listings.length}
+          filterCounts={previewFilterCounts()}
+          initialSavedIds={[]}
+          userSizes={{}}
+          hasMore={false}
+          currentOffset={0}
+          username=""
+          authBadgeEnabled={AUTH_BADGE_ENABLED}
+          userId=""
+          recsTelemetryEnabled={false}
+        />
+      </Suspense>
+    </>
+  )
+}
+
 export default async function BrowsePage({ searchParams }: PageProps) {
   const params = await searchParams
-  const supabase = await createClient()
 
-  // Guests browse freely (user === null). Everything user-scoped below — the
-  // personalized feed, the saved-set, the profile size prefs — is guarded on
-  // `user` and simply skipped for a signed-out visitor. Write actions are gated
-  // client-side (auth popup) and server-side (401 + RLS).
-  const { data: { user } } = await supabase.auth.getUser()
+  if (isOfflinePreview()) {
+    return <OfflineBrowse params={params} />
+  }
+
+  let supabase!: Awaited<ReturnType<typeof createClient>>
+  let user: { id: string } | null = null
+  try {
+    supabase = await createClient()
+    // Guests browse freely (user === null). Everything user-scoped below — the
+    // personalized feed, the saved-set, the profile size prefs — is guarded on
+    // `user` and simply skipped for a signed-out visitor. Write actions are gated
+    // client-side (auth popup) and server-side (401 + RLS).
+    const auth = await supabase.auth.getUser()
+    user = auth.data.user
+  } catch {
+    // Broken/partial env or client boot failure — never 500 the grid.
+    return <OfflineBrowse params={params} />
+  }
 
   const q        = params.q?.trim() ?? ''
   const dept     = params.dept ?? ''
@@ -246,6 +293,7 @@ export default async function BrowsePage({ searchParams }: PageProps) {
       {/* Effective homepage (/ redirects here): site-level structured data. */}
       <JsonLd data={webSiteJsonLd()} />
       <JsonLd data={organizationJsonLd()} />
+      <SiteHeader username={username} searchValue={q} />
       <Suspense>
       <BrowseClient
         initialListings={finalListings}

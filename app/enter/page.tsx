@@ -34,26 +34,25 @@ export default function EnterPage() {
           textAlign: 'center',
         }}
       >
-        {/* Wordmark dash */}
         <span
           style={{
-            font: '600 16px var(--font-ui)',
-            letterSpacing: '0.08em',
+            font: '500 15px var(--font-ui)',
+            letterSpacing: 0,
             color: 'var(--color-ink)',
           }}
         >
-          ———
+          archive
         </span>
 
         {/* Tagline */}
         <p
           style={{
             margin: '24px 0 0',
-            fontFamily: 'var(--font-serif)',
-            fontStyle: 'italic',
-            fontWeight: 400,
+            fontFamily: 'var(--font-ui)',
+            fontWeight: 300,
             fontSize: '28px',
             lineHeight: 1.35,
+            letterSpacing: '-0.01em',
             color: 'var(--color-ink)',
             maxWidth: '400px',
           }}
@@ -106,16 +105,6 @@ export default function EnterPage() {
           gap: '24px',
         }}
       >
-        <span
-          style={{
-            font: '500 11px var(--font-ui)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--color-ink-soft)',
-          }}
-        >
-          About
-        </span>
         {[
           { label: 'Terms', href: '/terms' },
           { label: 'Privacy', href: '/privacy' },

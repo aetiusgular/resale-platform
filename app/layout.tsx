@@ -1,30 +1,22 @@
 import type { Metadata } from 'next'
-import { Inter, EB_Garamond, Space_Mono } from 'next/font/google'
+import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import { SEO_INDEXING_ENABLED } from '@/lib/flags'
 import { baseUrl, SITE_NAME, SITE_TAGLINE } from '@/lib/seo'
-import SmoothScroll from '@/app/components/smooth-scroll'
 import AuthModalProvider from '@/app/components/auth-modal-provider'
+import StudioRoot from '@/app/components/studio-root'
 
-const inter = Inter({
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ['latin'],
-  variable: '--font-inter',
-  weight: ['400', '500', '600', '700'],
+  variable: '--font-ibm-plex-sans',
+  weight: ['300', '400', '500'],
   display: 'swap',
 })
 
-const ebGaramond = EB_Garamond({
+const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  variable: '--font-eb-garamond',
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  display: 'swap',
-})
-
-const spaceMono = Space_Mono({
-  subsets: ['latin'],
-  variable: '--font-space-mono',
-  weight: ['400', '700'],
+  variable: '--font-ibm-plex-mono',
+  weight: ['300', '400', '500'],
   display: 'swap',
 })
 
@@ -82,7 +74,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${ebGaramond.variable} ${spaceMono.variable}`}
+      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
     >
       {/* suppressHydrationWarning: browser extensions (Grammarly et al.) inject
           attributes into <body> before React hydrates — not a real mismatch. */}
@@ -94,7 +86,7 @@ export default function RootLayout({
           </>
         )}
         <AuthModalProvider>
-          <SmoothScroll>{children}</SmoothScroll>
+          <StudioRoot>{children}</StudioRoot>
         </AuthModalProvider>
       </body>
     </html>

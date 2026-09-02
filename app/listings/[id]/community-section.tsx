@@ -59,10 +59,10 @@ const TIER_COLOR: Record<TierBadge, string> = {
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}M AGO`
+  if (mins < 60) return `${mins}m ago`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}H AGO`
-  return `${Math.floor(hrs / 24)}D AGO`
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
 }
 
 function agreeCount(actions: { action: string }[]): number {
@@ -124,8 +124,8 @@ export default function CommunitySection({ listingId, canPostLc, isGuest = false
   }
 
   return (
-    <div style={{ marginTop: '96px', maxWidth: '840px' }}>
-      <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: '24px', lineHeight: 1.35, color: 'var(--color-ink)', margin: 0 }}>
+    <div id="legit-checks" style={{ marginTop: '96px', maxWidth: '840px' }}>
+      <h2 style={{ fontFamily: 'var(--font-ui)', fontWeight: 300, fontSize: '24px', lineHeight: 1.35, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>
         The community weighs in.
       </h2>
 
@@ -187,7 +187,7 @@ export default function CommunitySection({ listingId, canPostLc, isGuest = false
               </button>
             </div>
             <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              Moderators only · legit checks are public.
+              Moderators only — legit checks are public.
             </div>
           </>
         ) : (
@@ -265,7 +265,7 @@ function PinnedCard({ comment }: { comment: CommentRow }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
         — <AuthorLine comment={comment} />
         {comment.source === 'human' && comment.profiles?.checker_category && (
-          <span>· {comment.profiles.checker_category.toUpperCase()}</span>
+          <span> | {comment.profiles.checker_category.toUpperCase()}</span>
         )}
       </div>
     </div>

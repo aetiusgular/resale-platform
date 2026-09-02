@@ -23,7 +23,7 @@ export default async function BannedPage() {
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ maxWidth: 440, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <h1 style={{ font: '400 28px var(--font-serif)', color: 'var(--color-ink)', margin: 0 }}>Account suspended</h1>
+        <h1 style={{ font: '300 28px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>Account suspended</h1>
         <p style={{ fontFamily: 'var(--font-ui)', fontSize: 15, lineHeight: 1.6, color: 'var(--color-ink-soft)', margin: 0 }}>
           Your account has been suspended for violating our terms. You can’t browse, buy, or sell while suspended.
         </p>

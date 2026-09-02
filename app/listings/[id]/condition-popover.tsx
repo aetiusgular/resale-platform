@@ -13,8 +13,9 @@ export default function ConditionPopover({ score, definition }: ConditionPopover
   return (
     <div style={{ position: 'relative' }}>
       <button
+        className="listing-buy-hit"
         onClick={() => setOpen((o) => !o)}
-        style={{ fontSize: '12px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textDecorationThickness: '1px', textUnderlineOffset: '3px', padding: '10px 4px 10px 0', minHeight: '44px', boxSizing: 'border-box' }}
+        style={{ font: '400 12px var(--font-ui)', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textDecorationThickness: 'from-font', textUnderlineOffset: '3px', padding: 0 }}
       >
         what {score} means
       </button>

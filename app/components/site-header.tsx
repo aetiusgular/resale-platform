@@ -1,15 +1,17 @@
 /**
  * SiteHeader — shared authenticated page header.
- * Desktop: Wordmark (→ /), search (→ /browse?q=), Sell, SAVED, MESSAGES, avatar.
+ * Desktop: Wordmark (→ /), search (→ /browse?q=), Sell, Saved, Messages, avatar.
  * Mobile (<768px): Wordmark (→ /), search, avatar only — other links in tab bar.
  *
- * Server component: accepts preloaded user data so callers can avoid a
- * second DB round-trip.
+ * Text links only — no bordered SELL / filled SIGN UP pills (Grailed tell).
  */
+import type { CSSProperties } from 'react'
 import PrefetchLink from './prefetch-link'
 import AvatarMenu from './avatar-menu'
 import NotificationBell from './notification-bell'
 import GuestAction from './guest-action'
+import Wordmark from './wordmark'
+import SearchField from './search-field'
 import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
 
 interface Props {
@@ -19,114 +21,93 @@ interface Props {
   searchValue?: string
 }
 
+const textLink: CSSProperties = {
+  fontFamily: 'var(--font-ui)',
+  fontSize: '14px',
+  fontWeight: 'var(--font-weight-regular)',
+  color: 'var(--color-ink-soft)',
+  textDecoration: 'underline',
+  textDecorationThickness: '1px',
+  textUnderlineOffset: '3px',
+  textDecorationColor: 'var(--color-line)',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  minHeight: '44px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '0 2px',
+  whiteSpace: 'nowrap',
+}
+
+const textLinkStrong: CSSProperties = {
+  ...textLink,
+  fontWeight: 'var(--font-weight-medium)',
+  color: 'var(--color-ink)',
+}
+
 export default function SiteHeader({ username, searchValue = '' }: Props) {
   const initials = username.slice(0, 2).toUpperCase()
   const isGuest = !username
 
   return (
-    <header style={{
+    <header className="page-inset" style={{
       height: '56px', borderBottom: '1px solid var(--color-line)',
-      display: 'flex', alignItems: 'center', gap: '16px', padding: '0 16px',
+      display: 'flex', alignItems: 'center', gap: '16px',
       background: 'var(--color-bg)',
     }}>
-      {/* Wordmark */}
-      <PrefetchLink
-        href="/"
-        data-testid="site-wordmark"
-        style={{
-          font: '600 16px var(--font-ui)', letterSpacing: '0.08em',
-          color: 'var(--color-ink)', textDecoration: 'none',
-          flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center',
-        }}
-      >
-        ———
-      </PrefetchLink>
+      <Wordmark />
 
-      {/* Search — navigates to /browse */}
+      {/* Search — navigates to /browse; leading glass only, no SEARCH button */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         <form
           action="/browse"
           method="get"
           style={{ width: '100%', maxWidth: '480px' }}
         >
-          <input
-            name="q"
-            defaultValue={searchValue}
-            placeholder="search designers, items"
-            style={{
-              width: '100%', height: '44px', boxSizing: 'border-box',
-              border: '1px solid var(--color-line)', borderRadius: '2px',
-              padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)',
-              background: 'var(--color-bg)', outline: 'none',
-            }}
-          />
+          <SearchField defaultValue={searchValue} />
         </form>
       </div>
 
-      {/* Right nav */}
+      {/* Right nav — underline text links, not pill buttons */}
       {isGuest ? (
-        <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '20px' }}>
           <GuestAction
             next="/sell"
-            className="desktop-only"
+            className="desktop-only motion-text-link"
             testId="header-sell-guest"
-            style={{
-              display: 'inline-flex', alignItems: 'center',
-              height: '44px', padding: '0 24px',
-              background: 'var(--color-bg)', color: 'var(--color-ink)',
-              border: '1px solid var(--color-ink)', borderRadius: '2px',
-              font: '500 14px var(--font-ui)',
-            }}
+            style={textLink}
           >
             Sell
           </GuestAction>
           <GuestAction
             testId="header-signin"
-            style={{
-              display: 'inline-flex', alignItems: 'center',
-              height: '44px', padding: '0 24px',
-              background: 'var(--color-ink)', color: 'var(--color-bg)',
-              border: '1px solid var(--color-ink)', borderRadius: '2px',
-              font: '500 14px var(--font-ui)', whiteSpace: 'nowrap',
-            }}
+            className="motion-text-link"
+            style={textLinkStrong}
           >
             Sign in
           </GuestAction>
         </nav>
       ) : (
-        <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '20px' }}>
           <PrefetchLink
             href="/sell"
-            className="desktop-only"
-            style={{
-              display: 'inline-flex', alignItems: 'center',
-              height: '44px', padding: '0 24px',
-              background: 'var(--color-bg)', color: 'var(--color-ink)',
-              border: '1px solid var(--color-ink)', borderRadius: '2px',
-              font: '500 14px var(--font-ui)', textDecoration: 'none',
-            }}
+            className="desktop-only motion-text-link"
+            style={{ ...textLink, textDecoration: 'underline' }}
           >
             Sell
           </PrefetchLink>
           <PrefetchLink
             href="/saved"
-            className="desktop-only"
-            style={{
-              font: '500 11px var(--font-ui)', letterSpacing: '0.08em',
-              textTransform: 'uppercase', color: 'var(--color-ink-soft)',
-              textDecoration: 'none',
-            }}
+            className="desktop-only motion-text-link"
+            style={{ ...textLink, textDecoration: 'none' }}
           >
             Saved
           </PrefetchLink>
           <PrefetchLink
             href="/messages"
-            className="desktop-only"
-            style={{
-              font: '500 11px var(--font-ui)', letterSpacing: '0.08em',
-              textTransform: 'uppercase', color: 'var(--color-ink-soft)',
-              textDecoration: 'none',
-            }}
+            className="desktop-only motion-text-link"
+            style={{ ...textLink, textDecoration: 'none' }}
           >
             Messages
           </PrefetchLink>

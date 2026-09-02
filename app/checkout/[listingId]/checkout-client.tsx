@@ -24,7 +24,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 const ELEMENT_OPTIONS = {
   style: {
     base: {
-      fontFamily: '"Space Mono", monospace',
+      fontFamily: '"IBM Plex Mono", monospace',
       fontSize: '14px',
       color: 'var(--color-ink)',
       '::placeholder': { color: 'var(--color-ink-soft)' },

@@ -125,7 +125,7 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
       <header style={{ height: 64, borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 80px' }}>
-        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
+        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>archive</span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
           SALE NO. {orderNum} · SOLD {soldDate.toUpperCase()}
         </span>

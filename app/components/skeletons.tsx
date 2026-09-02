@@ -37,17 +37,17 @@ const navLinkStyle: React.CSSProperties = {
  */
 export function SiteHeaderGhost() {
   return (
-    <header style={{
+    <header className="page-inset" style={{
       height: '56px', borderBottom: '1px solid var(--color-line)',
-      display: 'flex', alignItems: 'center', gap: '16px', padding: '0 16px',
+      display: 'flex', alignItems: 'center', gap: '16px',
       background: 'var(--color-bg)',
     }}>
       <Link href="/" style={{
-        font: '600 16px var(--font-ui)', letterSpacing: '0.08em',
+        font: '500 15px var(--font-ui)', letterSpacing: 0,
         color: 'var(--color-ink)', textDecoration: 'none',
         flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center',
       }}>
-        ———
+        archive
       </Link>
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         <form action="/browse" method="get" style={{ width: '100%', maxWidth: '480px' }}>
@@ -63,17 +63,21 @@ export function SiteHeaderGhost() {
           />
         </form>
       </div>
-      <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '20px' }}>
         <Link href="/sell" className="desktop-only" style={{
-          display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px',
-          background: 'var(--color-bg)', color: 'var(--color-ink)',
-          border: '1px solid var(--color-ink)', borderRadius: '2px',
-          font: '500 14px var(--font-ui)', textDecoration: 'none',
+          font: '400 14px var(--font-ui)', color: 'var(--color-ink-soft)',
+          textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'var(--color-line)',
+          minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 2px',
         }}>
           Sell
         </Link>
-        <Link href="/saved" className="desktop-only" style={navLinkStyle}>Saved</Link>
-        <Link href="/messages" className="desktop-only" style={navLinkStyle}>Messages</Link>
+        <Link href="/enter" style={{
+          font: '400 14px var(--font-ui)', color: 'var(--color-ink)',
+          textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'var(--color-line)',
+          minHeight: '44px', display: 'inline-flex', alignItems: 'center', padding: '0 2px',
+        }}>
+          Sign in
+        </Link>
         <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <AvatarGhost />
         </div>
@@ -96,8 +100,8 @@ export function BrowseHeaderGhost() {
           display: 'flex', alignItems: 'center', gap: '32px', padding: '0 80px',
         }}
       >
-        <Link href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>
-          ———
+        <Link href="/" style={{ font: '500 15px var(--font-ui)', letterSpacing: 0, color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>
+          archive
         </Link>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <form action="/browse" method="get" style={{ width: '100%', maxWidth: '480px' }}>
@@ -127,7 +131,7 @@ export function BrowseHeaderGhost() {
 
       <header className="browse-header-mobile" style={{ display: 'none' }}>
         <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px' }}>
-          <Link href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</Link>
+          <Link href="/" style={{ font: '500 15px var(--font-ui)', letterSpacing: 0, color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>archive</Link>
           <div style={{ flex: 1 }} />
           <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <AvatarGhost />
@@ -158,13 +162,12 @@ export function BrowseHeaderGhost() {
 export function CardGhost() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }} aria-hidden="true">
-      <div className="skeleton" style={{ aspectRatio: '3/4' }} />
-      <Ghost style={{ marginTop: '12px', height: '12px', width: '56px' }} />
-      <Ghost style={{ marginTop: '8px', height: '14px', width: '82%' }} />
-      <Ghost style={{ marginTop: '8px', height: '14px', width: '44%' }} />
-      <Ghost style={{ marginTop: '8px', height: '12px', width: '56%' }} />
-      <div style={{ marginTop: '14px', minHeight: '44px', display: 'flex', alignItems: 'flex-start' }}>
-        <Ghost style={{ height: '11px', width: '36px' }} />
+      <div className="skeleton listing-card-image" style={{ aspectRatio: '3/4' }} />
+      <div className="listing-card-caption">
+        <Ghost style={{ height: 'var(--card-slot-brand)', width: '52%' }} />
+        <Ghost style={{ marginTop: 2, height: 'var(--card-slot-title)', width: '88%' }} />
+        <Ghost style={{ marginTop: 2, height: 'var(--card-slot-price)', width: '40%' }} />
+        <Ghost style={{ marginTop: 2, height: 'var(--card-slot-facts)', width: '56%' }} />
       </div>
     </div>
   )

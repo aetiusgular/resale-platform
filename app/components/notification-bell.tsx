@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Icon from './icon'
 
 type Item = { id: string; type: string; title: string; body: string; url: string | null; read_at: string | null; created_at: string }
 
@@ -59,10 +60,7 @@ export default function NotificationBell() {
         aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ''}`}
         style={{ position: 'relative', width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-ink)' }}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
+        <Icon name="bell" size={20} />
         {unread > 0 && (
           <span style={{ position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', background: 'var(--color-accent)', color: 'var(--color-bg)', borderRadius: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
             {unread > 9 ? '9+' : unread}

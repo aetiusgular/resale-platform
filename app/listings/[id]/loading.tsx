@@ -9,7 +9,7 @@ export default function Loading() {
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
       <SiteHeaderGhost />
 
-      <div className="listing-detail-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 80px 64px' }}>
+      <div className="listing-detail-inner page-inset" style={{ maxWidth: '1280px', margin: '0 auto', paddingTop: '40px', paddingBottom: '64px' }}>
         <div className="listing-detail-grid" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '48px', alignItems: 'start' }}>
           {/* LEFT: gallery */}
           <div>

@@ -69,6 +69,16 @@ export async function middleware(request: NextRequest) {
 
   let response = NextResponse.next({ request: { headers: buildRequestHeaders() } })
 
+  // Local UI preview: no Supabase env → treat everyone as a guest. Auth and
+  // money paths stay closed (non-public routes still redirect to /enter).
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const isPublicPath = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+    if (!isPublicPath) {
+      return applyCsp(NextResponse.redirect(new URL('/enter', request.url)))
+    }
+    return applyCsp(response)
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

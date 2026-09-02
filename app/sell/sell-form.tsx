@@ -209,7 +209,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 
   if (submitted) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', paddingTop: '112px' }}>
-        <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: '28px', lineHeight: 1.35, color: 'var(--color-ink)', margin: 0 }}>
+        <p style={{ fontFamily: 'var(--font-ui)', fontWeight: 300, fontSize: '28px', lineHeight: 1.35, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>
           In the queue.
         </p>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>

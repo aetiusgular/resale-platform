@@ -22,7 +22,7 @@ export default async function VerifyPage() {
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100svh', boxSizing: 'border-box', padding: '0 24px 40px' }}>
       <div style={{ padding: '40px 0 0', textAlign: 'center' }}>
-        <span style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
+        <span style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>archive</span>
       </div>
 
       <div style={{ marginTop: '40px', maxWidth: '480px', margin: '40px auto 0', border: '1px solid var(--color-line)', borderRadius: '2px' }}>

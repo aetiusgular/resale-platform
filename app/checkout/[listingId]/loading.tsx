@@ -11,7 +11,7 @@ export default function Loading() {
         height: 64, borderBottom: '1px solid var(--color-line)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 80px',
       }}>
-        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
+        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>archive</span>
         <span style={{ font: '600 14px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>Checkout</span>
         <Ghost style={{ height: 11, width: 96 }} />
       </header>

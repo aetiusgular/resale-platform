@@ -8,12 +8,12 @@ export const metadata: Metadata = {
 /* ─── Token data ─────────────────────────────────────────────────────────── */
 
 const COLORS = [
-  { name: '--color-bg',       hex: '#1E1D1A', label: 'Background',    usage: 'All page backgrounds — warm charcoal' },
-  { name: '--color-ink',      hex: '#E7E3DA', label: 'Ink',           usage: 'Primary text, solid buttons' },
-  { name: '--color-ink-soft', hex: '#9C978C', label: 'Ink Soft',      usage: 'Secondary text, metadata' },
-  { name: '--color-line',     hex: '#34322C', label: 'Line',          usage: 'All borders — 1px only' },
-  { name: '--color-accent',   hex: '#F1EEE7', label: 'Accent',        usage: 'Highlight, active states, verified' },
-  { name: '--color-alert',    hex: '#CE6A5C', label: 'Alert',         usage: 'Errors + disputes only' },
+  { name: '--color-bg',       hex: '#121110', label: 'Background',    usage: 'All page backgrounds — near-black, slight warm' },
+  { name: '--color-ink',      hex: '#F4F1EA', label: 'Ink',           usage: 'Primary text, solid buttons' },
+  { name: '--color-ink-soft', hex: '#C8C3B8', label: 'Ink Soft',      usage: 'Secondary text, metadata' },
+  { name: '--color-line',     hex: '#3A3833', label: 'Line',          usage: 'All borders — 1px only' },
+  { name: '--color-accent',   hex: '#F4F1EA', label: 'Accent',        usage: 'Same as ink — weight, not a second hue' },
+  { name: '--color-alert',    hex: '#E07064', label: 'Alert',         usage: 'Errors + disputes only' },
 ]
 
 const TYPE_SCALE = [
@@ -23,6 +23,12 @@ const TYPE_SCALE = [
   { size: '16px', var: '--text-base',label: 'Body Large / 16' },
   { size: '14px', var: '--text-sm',  label: 'Body / 14 (base)' },
   { size: '12px', var: '--text-xs',  label: 'Caption / 12' },
+]
+
+const FONT_WEIGHTS = [
+  { var: '--font-weight-light',   weight: 300, label: 'Light',   usage: 'Secondary meta, facts, de-emphasized labels' },
+  { var: '--font-weight-regular', weight: 400, label: 'Regular', usage: 'Body, nav, inactive chrome, most UI labels' },
+  { var: '--font-weight-medium',  weight: 500, label: 'Medium',  usage: 'Card titles, prices, active states — sparingly' },
 ]
 
 /* ─── Components ─────────────────────────────────────────────────────────── */
@@ -150,65 +156,55 @@ export default function StyleguidePage() {
       <div style={{ marginBottom: 'var(--section-gap)' }}>
         <p
           style={{
-            fontFamily: 'var(--font-serif)',
+            fontFamily: 'var(--font-ui)',
+            fontWeight: 300,
             fontSize: 'var(--text-lg)',
+            letterSpacing: '-0.01em',
             color: 'var(--color-ink-soft)',
             marginBottom: 'var(--spacing-1)',
-            fontStyle: 'italic',
           }}
-          data-testid="specimen-garamond"
+          data-testid="specimen-lead"
         >
           Secondhand, done properly.
         </p>
         <h1
           style={{ fontSize: 'var(--text-2xl)', letterSpacing: 'var(--tracking-tight)' }}
-          data-testid="specimen-inter"
+          data-testid="specimen-ui"
         >
           Styleguide
         </h1>
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)', marginTop: 'var(--spacing-1)' }}>
           Design tokens extracted from <code>design-reference/tokens/</code>. Source of truth for all build prompts.
+          {' '}Live playground: <a href="/styleguide/lab">/styleguide/lab</a>
         </p>
       </div>
 
       {/* ── Fonts ── */}
-      <Section title="Typography — Three Families">
+      <Section title="Typography — Two Families">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
           <div>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginBottom: 4 }}>UI / Inter — headers, nav, buttons, body</p>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginBottom: 4 }}>UI / IBM Plex Sans — chrome, body, editorial leads</p>
             <p
               style={{ fontFamily: 'var(--font-ui)', fontSize: 'var(--text-xl)' }}
-              data-font="Inter"
+              data-font="IBM Plex Sans"
             >
-              Inter — The quick brown fox
+              IBM Plex Sans — The quick brown fox
             </p>
             <p style={{ fontFamily: 'var(--font-ui)', fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
-              400 / 500 / 600 / 700 · Sentence case in chrome · ALL CAPS for nav + labels
+              300 / 400 / 500 · Direct grotesk · Light for meta and leads · Medium for active states
             </p>
           </div>
           <div>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginBottom: 4 }}>Serif / EB Garamond — one moment per screen</p>
-            <p
-              style={{ fontFamily: 'var(--font-serif)', fontSize: 'var(--text-xl)', fontStyle: 'italic' }}
-              data-font="EB Garamond"
-            >
-              EB Garamond — The quick brown fox
-            </p>
-            <p style={{ fontFamily: 'var(--font-ui)', fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
-              400 / 400 italic · 1.35–1.75rem · Editorial, section intros
-            </p>
-          </div>
-          <div>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginBottom: 4 }}>Mono / Space Mono — all listing data</p>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginBottom: 4 }}>Mono / IBM Plex Mono — all listing data</p>
             <p
               style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xl)' }}
-              data-font="Space Mono"
+              data-font="IBM Plex Mono"
               data-testid="specimen-mono"
             >
-              Space Mono — $125.00 · US 8 · 9/10
+              IBM Plex Mono — $125.00 · US 8 · 9/10
             </p>
             <p style={{ fontFamily: 'var(--font-ui)', fontSize: 'var(--text-sm)', color: 'var(--color-ink-soft)' }}>
-              400 / 700 · Titles, prices, sizes, condition, timestamps, usernames
+              300 / 400 / 500 · Accession labels, prices, sizes, condition, timestamps
             </p>
           </div>
         </div>
@@ -226,6 +222,22 @@ export default function StyleguidePage() {
               </p>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
                 {cssVar} · {size}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* ── Font weights ── */}
+      <Section title="Font Weights — Light / Regular / Medium">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+          {FONT_WEIGHTS.map(({ var: cssVar, weight, label, usage }) => (
+            <div key={cssVar} style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-3)' }}>
+              <p style={{ fontFamily: 'var(--font-ui)', fontSize: 'var(--text-base)', fontWeight: weight, minWidth: 200, flexShrink: 0 }}>
+                {label}
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
+                {cssVar} · {weight} · {usage}
               </p>
             </div>
           ))}
@@ -363,9 +375,8 @@ export default function StyleguidePage() {
 
       {/* Hidden font specimens for Playwright font assertions */}
       <div aria-hidden="true" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
-        <span data-testid="font-inter"   style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Inter</span>
-        <span data-testid="font-garamond" style={{ fontFamily: "'EB Garamond', Georgia, serif" }}>EB Garamond</span>
-        <span data-testid="font-mono"    style={{ fontFamily: "'Space Mono', monospace" }}>Space Mono</span>
+        <span data-testid="font-ui"   style={{ fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>IBM Plex Sans</span>
+        <span data-testid="font-mono" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>IBM Plex Mono</span>
       </div>
     </main>
   )

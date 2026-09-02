@@ -10,7 +10,7 @@ test.describe('Browse — public for guests', () => {
     await page.goto('/browse')
     await expect(page).toHaveURL(/\/browse/)
     // Guest header shows a Sign in button (also proves the auth-modal provider mounted).
-    await expect(page.getByTestId('browse-signin')).toBeVisible()
+    await expect(page.getByTestId('header-signin')).toBeVisible()
   })
 
   test('/ routes an unauthenticated user to /browse', async ({ page }) => {
@@ -41,6 +41,32 @@ test.describe('API /api/saved-searches — unauthenticated', () => {
       data: { query: { q: 'jacket' } },
     })
     expect(res.status()).toBe(401)
+  })
+})
+
+test.describe('Browse — category rail', () => {
+  test('overflow categories hidden by default; more toggle expands and collapses', async ({ page }) => {
+    await page.goto('/browse')
+
+    await expect(page.getByTestId('filter-cat-Outerwear')).toBeVisible()
+    await expect(page.getByTestId('filter-cat-Accessories')).toHaveCount(0)
+
+    const moreBtn = page.getByTestId('filter-cat-more')
+    await expect(moreBtn).toBeVisible()
+    await expect(moreBtn).toHaveAttribute('aria-expanded', 'false')
+    await expect(moreBtn).toContainText('more')
+
+    await moreBtn.click()
+    await expect(page.getByTestId('filter-cat-Accessories')).toBeVisible()
+
+    const lessBtn = page.getByTestId('filter-cat-less')
+    await expect(lessBtn).toBeVisible()
+    await expect(lessBtn).toHaveAttribute('aria-expanded', 'true')
+    await expect(lessBtn).toContainText('less')
+
+    await lessBtn.click()
+    await expect(page.getByTestId('filter-cat-Accessories')).toHaveCount(0)
+    await expect(page.getByTestId('filter-cat-more')).toBeVisible()
   })
 })
 
