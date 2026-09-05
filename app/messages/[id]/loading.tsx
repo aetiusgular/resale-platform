@@ -1,60 +1,48 @@
 /**
- * /messages/[id] loading skeleton — thread view with sidebar (desktop) and
- * back-chevron header (mobile).
+ * /messages/[id] loading skeleton — inbox list (desktop) + thread pane with the
+ * bar / scroll / composer structure of thread-client.tsx.
  */
 import Link from 'next/link'
 import { SiteHeaderGhost, Ghost, TabBarGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
+    <div className="app-shell has-tabbar">
       <SiteHeaderGhost />
-
-      {/* Mobile thread header */}
-      <div className="mobile-only" style={{ height: '48px', borderBottom: '1px solid var(--color-line)', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <Link href="/messages" style={{ fontSize: '20px', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', lineHeight: 1, minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center' }}>
-          ‹
-        </Link>
-        <Ghost style={{ height: '14px', width: '96px' }} />
-      </div>
-
-      <div className="messages-layout" style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '360px 1fr', alignItems: 'stretch', minHeight: 'calc(100vh - 56px)' }}>
-        {/* Sidebar — desktop only */}
-        <div className="messages-sidebar desktop-only" style={{ borderRight: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--color-line)' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>Messages</h1>
+      <div className="msgs msgs--thread">
+        <aside className="msgs__list desktop-only" aria-hidden="true">
+          <div className="msgs__head"><Ghost style={{ height: 22, width: 110 }} /></div>
+          <div className="msgs__scroll">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="conv" style={{ cursor: 'default' }}>
+                <Ghost style={{ width: 40, height: 40, flexShrink: 0 }} />
+                <div className="grow">
+                  <Ghost style={{ height: 11, width: 96 }} />
+                  <Ghost style={{ height: 11, width: '70%', marginTop: 8 }} />
+                </div>
+              </div>
+            ))}
           </div>
-          {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} style={{ padding: '14px 24px', borderBottom: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column', gap: '8px' }} aria-hidden="true">
-              <Ghost style={{ height: '13px', width: '96px' }} />
-              <Ghost style={{ height: '13px', width: '70%' }} />
-            </div>
-          ))}
-        </div>
-
-        {/* Thread pane */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* Listing context bar */}
-          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Ghost style={{ width: '40px', height: '52px', flexShrink: 0 }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Ghost style={{ height: '13px', width: '160px' }} />
-              <Ghost style={{ height: '12px', width: '64px' }} />
-            </div>
+        </aside>
+        <div className="thread">
+          <div className="thread__bar">
+            <Link href="/messages" className="thread__back" aria-label="Back to inbox">←</Link>
+            <Ghost style={{ width: 28, height: 28, flexShrink: 0 }} />
+            <Ghost style={{ height: 12, width: 110 }} />
+            <span className="spacer" />
+            <Ghost style={{ height: 8, width: 120 }} />
           </div>
-          {/* Bubbles */}
-          <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <Ghost style={{ height: '36px', width: '45%' }} />
-            <Ghost style={{ height: '36px', width: '38%', alignSelf: 'flex-end' }} />
-            <Ghost style={{ height: '36px', width: '52%' }} />
+          <div className="thread__scroll" aria-hidden="true" style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Ghost style={{ height: 36, width: '45%' }} />
+            <Ghost style={{ height: 36, width: '38%', alignSelf: 'flex-end' }} />
+            <Ghost style={{ height: 36, width: '52%' }} />
+            <Ghost style={{ height: 88, width: '60%', alignSelf: 'flex-end' }} />
           </div>
-          {/* Composer */}
-          <div style={{ padding: '16px 24px', borderTop: '1px solid var(--color-line)' }}>
-            <Ghost style={{ height: '44px', width: '100%' }} />
+          <div className="thread__composer" aria-hidden="true">
+            <Ghost style={{ height: 40, width: '100%' }} />
           </div>
         </div>
       </div>
-
       <TabBarGhost />
     </div>
   )

@@ -1,42 +1,50 @@
 /**
- * /orders/[id] loading skeleton — minimal header + two-column order layout
- * (mirrors order-buyer/order-seller: 1fr / 360px).
+ * /orders/[id] loading skeleton — header + two-column order layout
+ * (mirrors order-buyer/order-seller: timeline main + summary side).
  */
-import Link from 'next/link'
-import { Ghost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, Ghost, PageHeadGhost, TabBarGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
-      <header style={{ height: 64, borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 80px' }}>
-        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
-        <Link href="/orders" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>
-          All orders
-        </Link>
-      </header>
-
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 24px 96px', display: 'grid', gridTemplateColumns: '1fr 360px', gap: 64, alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Ghost style={{ height: 11, width: 96 }} />
-          <Ghost style={{ height: 28, width: '60%' }} />
-          <Ghost style={{ height: 13, width: '40%' }} />
-          <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Ghost style={{ height: 13, width: '100%' }} />
-            <Ghost style={{ height: 13, width: '88%' }} />
-            <Ghost style={{ height: 13, width: '72%' }} />
+    <div className="app-shell has-tabbar">
+      <SiteHeaderGhost />
+      <main className="page-main">
+        <Ghost style={{ height: 9, width: 140, marginBottom: 12 }} />
+        <PageHeadGhost ruled />
+        <div className="split mt-24" aria-hidden="true">
+          <div className="split__main">
+            <Ghost style={{ height: 11, width: 130 }} />
+            <div className="timeline" style={{ paddingTop: 12 }}>
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="timeline__step">
+                  <span className="timeline__dot" />
+                  <div className="grow">
+                    <Ghost style={{ height: 10, width: 160 + (i % 2) * 40 }} />
+                    <Ghost style={{ height: 8, width: 110, marginTop: 6 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Ghost style={{ height: 40, width: 300, marginTop: 32 }} />
           </div>
-          <Ghost style={{ marginTop: 24, height: 44, width: 240 }} />
-        </div>
-
-        <div style={{ border: '1px solid var(--color-line)', borderRadius: 2, padding: 16, display: 'flex', gap: 16 }}>
-          <Ghost style={{ width: 72, height: 96, flexShrink: 0 }} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Ghost style={{ height: 13, width: '80%' }} />
-            <Ghost style={{ height: 12, width: '50%' }} />
-            <Ghost style={{ height: 13, width: '35%' }} />
+          <div className="split__side">
+            <div className="panel">
+              <Ghost style={{ height: 9, width: 90 }} />
+              <div className="row" style={{ gap: 12, paddingTop: 12 }}>
+                <Ghost style={{ width: 44, height: 56, flexShrink: 0 }} />
+                <div className="grow">
+                  <Ghost style={{ height: 11, width: '60%' }} />
+                  <Ghost style={{ height: 12, width: '80%', marginTop: 8 }} />
+                </div>
+              </div>
+              <Ghost style={{ height: 30, width: '100%', marginTop: 14 }} />
+              <Ghost style={{ height: 30, width: '100%', marginTop: 8 }} />
+            </div>
+            <div className="panel"><Ghost style={{ height: 9, width: 60 }} /><Ghost style={{ height: 22, width: '50%', marginTop: 12 }} /></div>
           </div>
         </div>
-      </div>
+      </main>
+      <TabBarGhost />
     </div>
   )
 }

@@ -1,22 +1,19 @@
 'use client'
 
+/**
+ * /onboarding/setup — quick preferences (step 3): sizes (saved to profiles.sizes so
+ * the MY SIZES filter works from the first browse), optional taste picks for the
+ * recs cold-start, and a shipping note. Skippable.
+ */
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
-
-type SizeCategory = 'tops' | 'bottoms' | 'shoes'
-
-const TOP_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-const BOTTOM_SIZES = ['26', '28', '30', '32', '34', '36', '38']
-const SHOE_SIZES = ['6', '7', '8', '9', '10', '11', '12', '13']
+import { AuthPage } from '@/app/components/auth-frame'
+import { SETTINGS_SIZE_GROUPS, sizeKey, type UserSizes } from '@/lib/sizes'
 
 export default function SetupPage() {
   const router = useRouter()
-  const [selectedSizes, setSelectedSizes] = useState<Record<SizeCategory, string[]>>({
-    tops: [],
-    bottoms: [],
-    shoes: [],
-  })
+  const [sizes, setSizes] = useState<UserSizes>({})
   const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,18 +21,14 @@ export default function SetupPage() {
   const [aesthetics, setAesthetics] = useState<{ key: string; display_name: string }[]>([])
   const [selectedAesthetics, setSelectedAesthetics] = useState<string[]>([])
 
-  function toggleSize(cat: SizeCategory, size: string) {
-    setSelectedSizes((prev) => {
-      const current = prev[cat]
-      const next = current.includes(size)
-        ? current.filter((s) => s !== size)
-        : [...current, size]
-      return { ...prev, [cat]: next }
+  const toggleSize = (cat: string, size: string) =>
+    setSizes((prev) => {
+      const cur = prev[cat] ?? []
+      return { ...prev, [cat]: cur.includes(size) ? cur.filter((s) => s !== size) : [...cur, size] }
     })
-  }
 
   // Fetch the engine's aesthetic options once. Fail-soft: on off/unreachable the
-  // proxy returns { aesthetics: [] } and the card below renders nothing.
+  // proxy returns { aesthetics: [] } and the picker renders nothing.
   useEffect(() => {
     let cancelled = false
     fetch('/api/recs/aesthetics', { cache: 'no-store' })
@@ -44,16 +37,13 @@ export default function SetupPage() {
         if (!cancelled && Array.isArray(d.aesthetics)) setAesthetics(d.aesthetics.slice(0, 16))
       })
       .catch(() => {})
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
-  function toggleAesthetic(key: string) {
-    setSelectedAesthetics((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    )
-  }
+  const toggleAesthetic = (key: string) =>
+    setSelectedAesthetics((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
+
+  const sizeCount = Object.values(sizes).reduce((n, g) => n + g.length, 0)
 
   async function handleContinue() {
     setLoading(true)
@@ -63,19 +53,22 @@ export default function SetupPage() {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (user) {
-      const quickSetup = {
-        sizes: selectedSizes,
-        address: address.trim() || null,
-      }
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ quick_setup: quickSetup })
+        .update({ quick_setup: { sizes, address: address.trim() || null } })
         .eq('id', user.id)
-
       if (updateError) {
         setLoading(false)
         setError(updateError.message)
         return
+      }
+      if (sizeCount > 0) {
+        // Same contract as Settings → My sizes; powers the browse MY SIZES filter.
+        await fetch('/api/settings/sizes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sizes }),
+        }).catch(() => {})
       }
     }
 
@@ -89,282 +82,65 @@ export default function SetupPage() {
         keepalive: true,
       }).catch(() => {})
     }
-    router.push('/browse')
-  }
-
-  async function handleSkip() {
-    router.push('/browse')
+    router.push(sizeCount > 0 ? '/browse?my_sizes=1' : '/browse')
   }
 
   return (
-    <div
-      style={{
-        background: 'var(--color-bg)',
-        minHeight: '100svh',
-        boxSizing: 'border-box',
-        padding: '0 24px 40px',
-      }}
-    >
-      <div style={{ padding: '40px 0 0' }}>
-        <div
-          style={{
-            font: '500 11px var(--font-ui)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--color-ink-soft)',
-          }}
-        >
-          Set up once, checkout in seconds
-        </div>
+    <AuthPage cta={{ href: '/browse', label: 'SKIP — GO TO BROWSE →' }}>
+      <div className="step-list">
+        <span className="step-list__item is-done">01 ACCOUNT</span>
+        <span className="step-list__item is-done">02 VERIFY</span>
+        <span className="step-list__item is-on">03 SIZES</span>
       </div>
+      <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>QUICK SETUP</div>
+      <h1 className="auth-form__title">Set up once, browse in your size.</h1>
+      <p className="auth-form__sub">Your sizes power the MY SIZES filter and size alerts — never shown publicly. Everything here can change later in Settings.</p>
 
-      <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-        {/* MY SIZES */}
-        <div
-          style={{
-            marginTop: '24px',
-            border: '1px solid var(--color-line)',
-            borderRadius: '2px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              borderBottom: '1px solid var(--color-line)',
-            }}
-          >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink)' }}>
-              1 · MY SIZES
-            </span>
-          </div>
-          <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <SizeGroup
-              label="Tops"
-              sizes={TOP_SIZES}
-              selected={selectedSizes.tops}
-              onToggle={(s) => toggleSize('tops', s)}
-            />
-            <SizeGroup
-              label="Bottoms"
-              sizes={BOTTOM_SIZES}
-              selected={selectedSizes.bottoms}
-              onToggle={(s) => toggleSize('bottoms', s)}
-            />
-            <SizeGroup
-              label="Shoes"
-              sizes={SHOE_SIZES}
-              selected={selectedSizes.shoes}
-              onToggle={(s) => toggleSize('shoes', s)}
-            />
-          </div>
-        </div>
-
-        {/* SHIPPING ADDRESS */}
-        <div
-          style={{
-            marginTop: '16px',
-            border: '1px solid var(--color-line)',
-            borderRadius: '2px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              borderBottom: '1px solid var(--color-line)',
-            }}
-          >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink)' }}>
-              2 · SHIPPING ADDRESS
-            </span>
-          </div>
-          <div style={{ padding: '14px 16px' }}>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="123 Main St, City, State ZIP"
-              style={{
-                width: '100%',
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: 'var(--color-ink)',
-                letterSpacing: '0.04em',
-              }}
-            />
-          </div>
-        </div>
-
-        {/* MY AESTHETIC (recs cold-start) — only shown when the engine returns options */}
-        {aesthetics.length > 0 && (
-          <div style={{ marginTop: '16px', border: '1px solid var(--color-line)', borderRadius: '2px' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                borderBottom: '1px solid var(--color-line)',
-              }}
-            >
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink)' }}>
-                3 · MY AESTHETIC
-              </span>
-            </div>
-            <div style={{ padding: '14px 16px' }}>
-              <div
-                style={{
-                  font: '500 10px var(--font-ui)',
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  color: 'var(--color-ink-soft)',
-                  marginBottom: '8px',
-                }}
-              >
-                Pick a few to tune your feed
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {aesthetics.map((a) => {
-                  const active = selectedAesthetics.includes(a.key)
-                  return (
-                    <button
-                      key={a.key}
-                      onClick={() => toggleAesthetic(a.key)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        height: '26px',
-                        padding: '0 9px',
-                        border: `1px solid ${active ? 'var(--color-ink)' : 'var(--color-line)'}`,
-                        borderRadius: '2px',
-                        background: active ? 'var(--color-ink)' : 'var(--color-bg)',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '11px',
-                        color: active ? 'var(--color-bg)' : 'var(--color-ink)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {a.display_name}
-                    </button>
-                  )
-                })}
-              </div>
+      <div className="sec-head" style={{ marginTop: 8 }}><span className="sec-head__label">1 — MY SIZES</span><span className="page-note">{sizeCount} SELECTED</span></div>
+      {SETTINGS_SIZE_GROUPS.menswear.map((g) => {
+        const key = sizeKey('menswear', g.id)
+        return (
+          <div key={g.id}>
+            <div className="chip-grid__label">{g.label}</div>
+            <div className="chip-grid" style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}>
+              {g.scale.map((s) => {
+                const on = (sizes[key] ?? []).includes(s)
+                return (
+                  <button key={s} type="button" className={`size-cell${on ? ' is-on' : ''}`} aria-pressed={on} onClick={() => toggleSize(key, s)}>{s}</button>
+                )
+              })}
             </div>
           </div>
-        )}
+        )
+      })}
 
-        {error && (
-          <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--color-alert)' }}>
-            {error}
+      {aesthetics.length > 0 && (
+        <>
+          <div className="sec-head"><span className="sec-head__label">2 — WHAT YOU COLLECT</span><span className="page-note">OPTIONAL · TUNES YOUR FEED</span></div>
+          <div className="option-grid">
+            {aesthetics.map((a) => {
+              const on = selectedAesthetics.includes(a.key)
+              return (
+                <button key={a.key} type="button" className={`option-cell${on ? ' is-on' : ''}`} aria-pressed={on} onClick={() => toggleAesthetic(a.key)}>
+                  <span className="option-cell__t">{a.display_name}</span>
+                </button>
+              )
+            })}
           </div>
-        )}
+        </>
+      )}
 
-        {/* Actions */}
-        <div
-          style={{
-            marginTop: '28px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            alignItems: 'center',
-          }}
-        >
-          <button
-            onClick={handleContinue}
-            disabled={loading}
-            style={{
-              height: '44px',
-              width: '100%',
-              background: 'var(--color-ink)',
-              color: 'var(--color-bg)',
-              border: '1px solid var(--color-ink)',
-              borderRadius: '2px',
-              font: '500 14px var(--font-ui)',
-              letterSpacing: '-0.01em',
-              cursor: loading ? 'default' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? 'Saving…' : 'Continue'}
-          </button>
-          <button
-            onClick={handleSkip}
-            disabled={loading}
-            style={{
-              font: '500 13px var(--font-ui)',
-              color: 'var(--color-ink)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            skip all — do this later
-          </button>
-        </div>
+      <div className="sec-head"><span className="sec-head__label">{aesthetics.length > 0 ? '3' : '2'} — SHIPPING</span><span className="page-note">OPTIONAL · PRE-FILLS CHECKOUT</span></div>
+      <div className="field-block">
+        <label className="field-label" htmlFor="setup-address">CITY OR FULL ADDRESS</label>
+        <input id="setup-address" className="input-sans" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Add later in Settings if you prefer" autoComplete="street-address" />
       </div>
-    </div>
-  )
-}
 
-function SizeGroup({
-  label,
-  sizes,
-  selected,
-  onToggle,
-}: {
-  label: string
-  sizes: string[]
-  selected: string[]
-  onToggle: (size: string) => void
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          font: '500 10px var(--font-ui)',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: 'var(--color-ink-soft)',
-          marginBottom: '6px',
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-        {sizes.map((size) => {
-          const active = selected.includes(size)
-          return (
-            <button
-              key={size}
-              onClick={() => onToggle(size)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                height: '26px',
-                padding: '0 9px',
-                border: `1px solid ${active ? 'var(--color-ink)' : 'var(--color-line)'}`,
-                borderRadius: '2px',
-                background: active ? 'var(--color-ink)' : 'var(--color-bg)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: active ? 'var(--color-bg)' : 'var(--color-ink)',
-                cursor: 'pointer',
-              }}
-            >
-              {size}
-            </button>
-          )
-        })}
-      </div>
-    </div>
+      {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
+      <button type="button" className="btn-primary" onClick={handleContinue} disabled={loading}>
+        {loading ? 'SAVING…' : 'CONTINUE TO BROWSE →'}
+      </button>
+      <button type="button" className="btn-ghost" style={{ marginTop: 6 }} onClick={() => router.push('/browse')}>SKIP FOR NOW</button>
+    </AuthPage>
   )
 }

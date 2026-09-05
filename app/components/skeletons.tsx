@@ -2,169 +2,58 @@
  * Skeleton primitives for route loading.tsx files.
  *
  * Server-safe (no client JS): static ghosts plus REAL chrome where it costs
- * nothing — wordmark/nav links and the search form work while the route loads
- * (the search form is a plain GET to /browse, no JS needed). No data-testids
- * here: e2e selectors must only ever match the real components.
+ * nothing — wordmark and a plain GET search form work while the route loads.
+ * No data-testids here: e2e selectors must only ever match the real components.
  *
  * Ghost blocks use `.skeleton` (defined in globals.css).
  */
 import Link from 'next/link'
+import { BRAND_STAGE, BRAND_WORDMARK } from './brand'
+import { SearchIcon } from './icons'
 
-export function Ghost({ style }: { style?: React.CSSProperties }) {
-  return <div className="skeleton" style={style} aria-hidden="true" />
+export function Ghost({ style, className }: { style?: React.CSSProperties; className?: string }) {
+  return <div className={`skeleton${className ? ` ${className}` : ''}`} style={style} aria-hidden="true" />
 }
 
-/** 32px avatar circle stand-in (initials unknown while loading). */
-function AvatarGhost() {
-  return (
-    <span style={{
-      width: '32px', height: '32px', borderRadius: '50%',
-      border: '1px solid var(--color-line)', background: 'var(--color-bg)',
-      display: 'flex', flexShrink: 0,
-    }} aria-hidden="true" />
-  )
-}
-
-const navLinkStyle: React.CSSProperties = {
-  font: '500 11px var(--font-ui)', letterSpacing: '0.08em',
-  textTransform: 'uppercase', color: 'var(--color-ink-soft)',
-  textDecoration: 'none',
-}
-
-/**
- * SiteHeader stand-in — same 56px chrome, real links, real search form,
- * ghost avatar. Mirrors app/components/site-header.tsx.
- */
+/** SiteHeader stand-in — same sticky 64px chrome, real wordmark + search form, ghost actions. */
 export function SiteHeaderGhost() {
   return (
-    <header style={{
-      height: '56px', borderBottom: '1px solid var(--color-line)',
-      display: 'flex', alignItems: 'center', gap: '16px', padding: '0 16px',
-      background: 'var(--color-bg)',
-    }}>
-      <Link href="/" style={{
-        font: '600 16px var(--font-ui)', letterSpacing: '0.08em',
-        color: 'var(--color-ink)', textDecoration: 'none',
-        flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center',
-      }}>
-        ———
+    <header className="header">
+      <Link className="header__brand" href="/" title="Home">
+        <span className="header__logo">{BRAND_WORDMARK}</span>
+        <span className="header__alpha">{BRAND_STAGE}</span>
       </Link>
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        <form action="/browse" method="get" style={{ width: '100%', maxWidth: '480px' }}>
-          <input
-            name="q"
-            placeholder="search designers, items"
-            style={{
-              width: '100%', height: '44px', boxSizing: 'border-box',
-              border: '1px solid var(--color-line)', borderRadius: '2px',
-              padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)',
-              background: 'var(--color-bg)', outline: 'none',
-            }}
-          />
-        </form>
+      <form action="/browse" method="get" className="search" role="search">
+        <SearchIcon />
+        <input name="q" placeholder="Search designers, items, sellers" aria-label="Search" autoComplete="off" />
+      </form>
+      <div className="header__actions" aria-hidden="true">
+        <Ghost style={{ width: 44, height: 12 }} />
+        <Ghost style={{ width: 52, height: 12 }} />
+        <Ghost style={{ width: 70, height: 12 }} />
+        <span className="header__divider" />
+        <Ghost style={{ width: 30, height: 30 }} />
       </div>
-      <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <Link href="/sell" className="desktop-only" style={{
-          display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px',
-          background: 'var(--color-bg)', color: 'var(--color-ink)',
-          border: '1px solid var(--color-ink)', borderRadius: '2px',
-          font: '500 14px var(--font-ui)', textDecoration: 'none',
-        }}>
-          Sell
-        </Link>
-        <Link href="/saved" className="desktop-only" style={navLinkStyle}>Saved</Link>
-        <Link href="/messages" className="desktop-only" style={navLinkStyle}>Messages</Link>
-        <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <AvatarGhost />
-        </div>
-      </nav>
     </header>
   )
 }
 
-/**
- * Browse header stand-in — mirrors the inline desktop (64px) + mobile headers
- * in app/browse/browse-client.tsx, including the mobile sticky controls row.
- */
-export function BrowseHeaderGhost() {
-  return (
-    <>
-      <header
-        className="browse-header-desktop"
-        style={{
-          height: '64px', borderBottom: '1px solid var(--color-line)',
-          display: 'flex', alignItems: 'center', gap: '32px', padding: '0 80px',
-        }}
-      >
-        <Link href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>
-          ———
-        </Link>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <form action="/browse" method="get" style={{ width: '100%', maxWidth: '480px' }}>
-            <input
-              name="q"
-              placeholder="search designers, items"
-              style={{
-                width: '100%', height: '44px', boxSizing: 'border-box',
-                border: '1px solid var(--color-line)', borderRadius: '2px',
-                padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)',
-                background: 'var(--color-bg)', outline: 'none',
-              }}
-            />
-          </form>
-        </div>
-        <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <Link href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
-            Sell
-          </Link>
-          <Link href="/saved" style={navLinkStyle}>Saved</Link>
-          <Link href="/messages" style={navLinkStyle}>Messages</Link>
-          <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AvatarGhost />
-          </div>
-        </nav>
-      </header>
+/** Alias kept for the browse loading route. */
+export const BrowseHeaderGhost = SiteHeaderGhost
 
-      <header className="browse-header-mobile" style={{ display: 'none' }}>
-        <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px' }}>
-          <Link href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</Link>
-          <div style={{ flex: 1 }} />
-          <div style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AvatarGhost />
-          </div>
-        </div>
-        <div style={{ padding: '12px 16px 0' }}>
-          <form action="/browse" method="get">
-            <input
-              name="q"
-              placeholder="search designers, items"
-              style={{ width: '100%', height: '44px', boxSizing: 'border-box', border: '1px solid var(--color-line)', borderRadius: '2px', padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }}
-            />
-          </form>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 16px 12px', borderBottom: '1px solid var(--color-line)', background: 'var(--color-bg)' }}>
-          <Ghost style={{ height: '44px', width: '104px' }} />
-          <Ghost style={{ height: '16px', width: '96px' }} />
-        </div>
-      </header>
-    </>
-  )
-}
-
-/**
- * One listing-card ghost — line heights mirror app/components/listing-card.tsx
- * so the grid doesn't shift when real cards replace it.
- */
+/** One listing-card ghost — line heights mirror app/components/listing-card.tsx. */
 export function CardGhost() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }} aria-hidden="true">
-      <div className="skeleton" style={{ aspectRatio: '3/4' }} />
-      <Ghost style={{ marginTop: '12px', height: '12px', width: '56px' }} />
-      <Ghost style={{ marginTop: '8px', height: '14px', width: '82%' }} />
-      <Ghost style={{ marginTop: '8px', height: '14px', width: '44%' }} />
-      <Ghost style={{ marginTop: '8px', height: '12px', width: '56%' }} />
-      <div style={{ marginTop: '14px', minHeight: '44px', display: 'flex', alignItems: 'flex-start' }}>
-        <Ghost style={{ height: '11px', width: '36px' }} />
+    <div className="card" aria-hidden="true" style={{ cursor: 'default' }}>
+      <div className="card__media skeleton" />
+      <div className="card__row1">
+        <Ghost style={{ height: 11, width: '52%' }} />
+        <Ghost style={{ height: 11, width: 18 }} />
+      </div>
+      <Ghost style={{ height: 12, width: '78%', marginTop: 6 }} />
+      <div className="card__row2">
+        <Ghost style={{ height: 12, width: 48 }} />
+        <Ghost style={{ height: 9, width: 40 }} />
       </div>
     </div>
   )
@@ -179,49 +68,42 @@ export function CardGhosts({ count }: { count: number }) {
   )
 }
 
-/**
- * Mobile tab bar stand-in — same fixed 56px bar, ghost tabs. Not interactive
- * (the PROFILE href needs the username, which isn't known while loading).
- */
+/** Mobile tab bar stand-in — same fixed bar, ghost tabs (not interactive). */
 export function TabBarGhost() {
   return (
-    <nav
-      className="mobile-only"
-      aria-hidden="true"
-      style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, height: '56px',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        background: 'var(--color-bg)', borderTop: '1px solid var(--color-line)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-        zIndex: 100,
-      }}
-    >
+    <nav className="tabbar mobile-only" aria-hidden="true">
       {Array.from({ length: 5 }, (_, i) => (
-        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', flex: 1, height: '56px' }}>
-          <Ghost style={{ width: '20px', height: '20px' }} />
-          <Ghost style={{ width: '40px', height: '8px' }} />
+        <div key={i} className="tabbar__btn">
+          <Ghost style={{ width: 15, height: 15 }} />
+          <Ghost style={{ width: 34, height: 7 }} />
         </div>
       ))}
     </nav>
   )
 }
 
+/** Page-title stand-in (page-head with ghost title + note). */
+export function PageHeadGhost({ ruled }: { ruled?: boolean }) {
+  return (
+    <div className={`page-head${ruled ? ' page-head--ruled' : ''}`} aria-hidden="true">
+      <Ghost style={{ height: 26, width: 140 }} />
+      <Ghost style={{ height: 9, width: 180 }} />
+    </div>
+  )
+}
+
 /** Order/inbox row ghost — thumbnail + two lines, right-aligned column. */
 export function RowGhost() {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px',
-      border: '1px solid var(--color-line)', borderRadius: 2,
-    }} aria-hidden="true">
-      <Ghost style={{ width: 56, height: 56, flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <Ghost style={{ height: 13, width: '60%' }} />
-        <Ghost style={{ height: 11, width: '40%' }} />
+    <div className="order-row" aria-hidden="true">
+      <Ghost style={{ width: 44, height: 56, flexShrink: 0 }} />
+      <div className="order-row__main" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Ghost style={{ height: 11, width: '48%' }} />
+        <Ghost style={{ height: 12, width: '66%' }} />
+        <Ghost style={{ height: 8, width: '36%' }} />
       </div>
-      <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-        <Ghost style={{ height: 11, width: 64 }} />
-        <Ghost style={{ height: 13, width: 48 }} />
-      </div>
+      <Ghost style={{ height: 13, width: 48 }} />
+      <Ghost style={{ height: 14, width: 70 }} />
     </div>
   )
 }

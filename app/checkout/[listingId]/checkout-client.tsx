@@ -1,9 +1,11 @@
 'use client'
 
 /**
- * CheckoutClient — mounts Stripe Elements and handles payment submission.
- * On mount, calls POST /api/checkout to create the PaymentIntent + lock the listing.
- * Uses individual CardNumber/Expiry/CVC elements to match the design.
+ * CheckoutClient — design "Checkout": order summary + escrow explainer on the
+ * side, shipping address + card on the main column. Mounts Stripe Elements and
+ * handles payment submission. On mount, calls POST /api/checkout to create the
+ * PaymentIntent + lock the listing; the response's orderSummary (server-computed,
+ * offer-aware) is what the totals display.
  */
 import { useState, useEffect, useCallback } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
@@ -16,67 +18,81 @@ import {
   useElements,
 } from '@stripe/react-stripe-js'
 import { useRouter } from 'next/navigation'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
-// Stripe Elements appearance matching design tokens
+// Stripe Elements appearance matching design tokens (mono data fields)
 const ELEMENT_OPTIONS = {
   style: {
     base: {
-      fontFamily: '"Space Mono", monospace',
-      fontSize: '14px',
-      color: 'var(--color-ink)',
-      '::placeholder': { color: 'var(--color-ink-soft)' },
+      fontFamily: '"IBM Plex Mono", "SFMono-Regular", Menlo, monospace',
+      fontSize: '13px',
+      fontWeight: '300',
+      '::placeholder': { color: '#9d9d98' },
     },
-    invalid: { color: 'var(--color-alert)' },
   },
 }
 
+type Amounts = { item_cents: number; shipping_cents: number; total_cents: number; buyer_fee_cents?: number; discount_cents?: number }
+
 interface Props {
   listingId: string
-  totalCents: number
+  offerId: string | null
+  listing: { title: string; brand: string; size: string; image: string | null }
+  preview: Amounts
   savedAddress: Record<string, string> | null
 }
 
-function PaymentForm({ listingId, totalCents, savedAddress }: Props) {
+function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Props) {
   const stripe = useStripe()
   const elements = useElements()
   const router = useRouter()
 
   const [address, setAddress] = useState({
-    fullName:    savedAddress?.fullName    ?? '',
-    street:      savedAddress?.street      ?? '',
-    apt:         savedAddress?.apt         ?? '',
-    city:        savedAddress?.city        ?? '',
-    stateZip:    savedAddress?.stateZip    ?? '',
-    country:     savedAddress?.country     ?? 'United States',
+    fullName: savedAddress?.fullName ?? savedAddress?.name ?? '',
+    street: savedAddress?.street ?? savedAddress?.street1 ?? '',
+    apt: savedAddress?.apt ?? savedAddress?.street2 ?? '',
+    city: savedAddress?.city ?? '',
+    stateZip: savedAddress?.stateZip ?? [savedAddress?.state, savedAddress?.zip].filter(Boolean).join(' '),
+    country: savedAddress?.country ?? 'United States',
   })
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  // `loading` starts true: the PaymentIntent is created on mount (below) and the
+  // flag flips off in that request's finally — no synchronous setState in the effect.
+  const [loading, setLoading] = useState(true)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [amounts, setAmounts] = useState<Amounts>(preview)
 
-  // On mount: create PaymentIntent + lock listing
-  const initCheckout = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, shippingAddress: address }),
+  // On mount: create PaymentIntent + lock listing. Promise chain (not async/await)
+  // so every state update happens inside a resolved callback.
+  const initCheckout = useCallback(() => {
+    return fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listingId, ...(offerId ? { offerId } : {}), shippingAddress: address }),
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) {
+          setError(data.error ?? 'Listing is no longer available')
+          return
+        }
+        setClientSecret(data.clientSecret)
+        if (data.orderSummary) {
+          setAmounts({
+            item_cents: data.orderSummary.item_cents,
+            shipping_cents: data.orderSummary.shipping_cents,
+            total_cents: data.orderSummary.total_cents,
+            buyer_fee_cents: data.orderSummary.buyer_fee_cents,
+            discount_cents: data.orderSummary.discount_cents,
+          })
+        }
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error ?? 'Listing is no longer available')
-        return
-      }
-      setClientSecret(data.clientSecret)
-    } catch {
-      setError('Network error — please try again')
-    } finally {
-      setLoading(false)
-    }
-  }, [listingId]) // eslint-disable-line react-hooks/exhaustive-deps
+      .catch(() => setError('Network error — please try again'))
+      .finally(() => setLoading(false))
+  }, [listingId, offerId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     initCheckout()
@@ -114,206 +130,139 @@ function PaymentForm({ listingId, totalCents, savedAddress }: Props) {
     }
   }
 
-  const fieldStyle: React.CSSProperties = {
-    position: 'relative',
-    height: 44,
-    border: '1px solid var(--color-line)',
-    borderRadius: 2,
-    display: 'flex',
-    alignItems: 'center',
-    padding: '0 12px',
-    boxSizing: 'border-box',
-    fontSize: 14,
-    color: 'var(--color-ink)',
-    background: 'var(--color-bg)',
-  }
+  const field = (k: keyof typeof address) => ({
+    value: address[k],
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setAddress((a) => ({ ...a, [k]: e.target.value })),
+  })
 
-  const labelStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: 6,
-    top: -8,
-    background: 'var(--color-bg)',
-    padding: '0 4px',
-    font: '500 11px var(--font-ui)',
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    color: 'var(--color-ink-soft)',
-    whiteSpace: 'nowrap',
-  }
-
-  const sectionLabel: React.CSSProperties = {
-    font: '500 11px var(--font-ui)',
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    color: 'var(--color-ink-soft)',
-    borderBottom: '1px solid var(--color-line)',
-    paddingBottom: 12,
-  }
+  const summary = (
+    <div className="split__side">
+      <div className="panel">
+        <div className="panel__title">{offerId ? 'YOUR ORDER — ACCEPTED OFFER' : 'YOUR ORDER'}</div>
+        <div className="review-item" style={{ marginTop: 0, border: 'none', padding: 0 }}>
+          <span className="review-item__thumb" style={{ background: 'var(--tone-2)', overflow: 'hidden' }}>
+            {listing.image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={listing.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            )}
+          </span>
+          <div className="review-item__main">
+            <div className="review-item__row"><span className="review-item__brand">{listing.brand.toUpperCase()}</span></div>
+            <div className="review-item__title" style={{ whiteSpace: 'normal' }}>{listing.title}</div>
+            <div className="review-item__meta">SIZE {listing.size.toUpperCase()}</div>
+          </div>
+        </div>
+        <div style={{ paddingTop: 12 }}>
+          <div className="kv"><span className="kv__k">ITEM</span><span className="kv__v">{formatCents(amounts.item_cents)}</span></div>
+          <div className="kv"><span className="kv__k">BUYER FEE</span><span className="kv__v kv__v--dim">{amounts.buyer_fee_cents ? formatCents(amounts.buyer_fee_cents) : 'NONE'}</span></div>
+          <div className="kv"><span className="kv__k">SHIPPING</span><span className="kv__v">{amounts.shipping_cents ? formatCents(amounts.shipping_cents) : 'INCLUDED'}</span></div>
+          {!!amounts.discount_cents && amounts.discount_cents > 0 && (
+            <div className="kv"><span className="kv__k">REWARD</span><span className="kv__v">−{formatCents(amounts.discount_cents)}</span></div>
+          )}
+          <div className="kv kv--total"><span className="kv__k">TOTAL</span><span className="kv__v" data-testid="checkout-total">{formatCents(amounts.total_cents)}</span></div>
+        </div>
+        {!clientSecret && !error && <div className="mono-note" style={{ paddingTop: 10 }}>CONFIRMING PRICE WITH THE SERVER…</div>}
+      </div>
+      <div className="panel">
+        <div className="panel__title">ESCROW</div>
+        <div className="kv"><span className="kv__k">01</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>YOUR PAYMENT IS HELD, NOT SENT TO THE SELLER</span></div>
+        <div className="kv"><span className="kv__k">02</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>SELLER SHIPS ON A PREPAID, TRACKED LABEL</span></div>
+        <div className="kv"><span className="kv__k">03</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>FUNDS RELEASE WHEN YOU CONFIRM DELIVERY, OR 3 DAYS AFTER</span></div>
+      </div>
+    </div>
+  )
 
   if (error && !clientSecret) {
     return (
-      <div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-alert)', marginBottom: 16 }}>
-          {error}
+      <div className="split">
+        <div className="split__main">
+          <div className="empty" style={{ textAlign: 'left', padding: '24px 0' }}>
+            <div className="empty__title">Checkout couldn&rsquo;t start.</div>
+            <div className="alert-line">{error.toUpperCase()}</div>
+            <div className="empty__cta"><PrefetchLink href="/browse" className="btn-ghost btn-ghost--inline">BROWSE OTHER LISTINGS →</PrefetchLink></div>
+          </div>
         </div>
-        <a href="/browse" style={{ font: '500 14px var(--font-ui)', color: 'var(--color-ink)', textDecoration: 'underline' }}>
-          Browse other listings
-        </a>
+        {summary}
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Shipping address */}
-      <div style={sectionLabel}>Shipping address</div>
-      <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <div style={fieldStyle}>
-          <span style={labelStyle}>Full name</span>
-          <input
-            value={address.fullName}
-            onChange={e => setAddress(a => ({ ...a, fullName: e.target.value }))}
-            required
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--color-ink)', width: '100%', fontFamily: 'var(--font-ui)' }}
-            placeholder="Full name"
-          />
+    <form onSubmit={handleSubmit} className="split">
+      <div className="split__main">
+        <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">01 — SHIPPING ADDRESS</span><span className="page-note">US ONLY</span></div>
+        <div className="field-block">
+          <label className="field-label" htmlFor="co-name">FULL NAME</label>
+          <input id="co-name" className="input-sans" required placeholder="Name on the label" autoComplete="name" {...field('fullName')} />
         </div>
-        <div style={fieldStyle}>
-          <span style={labelStyle}>Street address</span>
-          <input
-            value={address.street}
-            onChange={e => setAddress(a => ({ ...a, street: e.target.value }))}
-            required
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--color-ink)', width: '100%', fontFamily: 'var(--font-ui)' }}
-            placeholder="Street address"
-          />
-        </div>
-        <div style={fieldStyle}>
-          <span style={labelStyle}>Apt, unit — optional</span>
-          <input
-            value={address.apt}
-            onChange={e => setAddress(a => ({ ...a, apt: e.target.value }))}
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--color-ink)', width: '100%', fontFamily: 'var(--font-ui)' }}
-            placeholder="Apt, unit — optional"
-          />
-        </div>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ ...fieldStyle, flex: 2 }}>
-            <span style={labelStyle}>City</span>
-            <input
-              value={address.city}
-              onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
-              required
-              style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 14, color: 'var(--color-ink)', width: '100%', fontFamily: 'var(--font-ui)' }}
-              placeholder="City"
-            />
+        <div className="field-grid field-grid--2-1">
+          <div>
+            <label className="field-label" htmlFor="co-street">STREET ADDRESS</label>
+            <input id="co-street" className="input-sans" required placeholder="Street and number" autoComplete="address-line1" {...field('street')} />
           </div>
-          <div style={{ ...fieldStyle, flex: 1 }}>
-            <span style={labelStyle}>State · ZIP</span>
-            <input
-              value={address.stateZip}
-              onChange={e => setAddress(a => ({ ...a, stateZip: e.target.value }))}
-              required
-              style={{ border: 'none', outline: 'none', background: 'transparent', fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--color-ink)', width: '100%' }}
-              placeholder="NY 10001"
-            />
+          <div>
+            <label className="field-label" htmlFor="co-apt">APT / UNIT</label>
+            <input id="co-apt" className="input-sans" placeholder="Optional" autoComplete="address-line2" {...field('apt')} />
           </div>
         </div>
-        <div style={{ ...fieldStyle, justifyContent: 'space-between' }}>
-          <span style={labelStyle}>Country</span>
-          <span style={{ fontSize: 14, color: 'var(--color-ink)' }}>{address.country}</span>
-          <span style={{ fontSize: 10, color: 'var(--color-ink-soft)' }}>▾</span>
+        <div className="field-grid field-grid--2-1-1">
+          <div>
+            <label className="field-label" htmlFor="co-city">CITY</label>
+            <input id="co-city" className="input-sans" required autoComplete="address-level2" {...field('city')} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="co-statezip">STATE · ZIP</label>
+            <input id="co-statezip" className="input-mono" required placeholder="NY 10001" {...field('stateZip')} />
+          </div>
+          <div>
+            <div className="field-label">COUNTRY</div>
+            <div className="select-row" style={{ cursor: 'default' }}>{address.country}<span className="select-row__caret">US</span></div>
+          </div>
+        </div>
+
+        <div className="sec-head"><span className="sec-head__label">02 — CARD</span><span className="page-note">HANDLED BY STRIPE · NEVER STORED HERE</span></div>
+        <div className="field-block">
+          <div className="field-label">CARD NUMBER</div>
+          <div className="stripe-field"><CardNumberElement options={ELEMENT_OPTIONS} /></div>
+        </div>
+        <div className="field-grid">
+          <div>
+            <div className="field-label">EXPIRY</div>
+            <div className="stripe-field"><CardExpiryElement options={ELEMENT_OPTIONS} /></div>
+          </div>
+          <div>
+            <div className="field-label">CVC</div>
+            <div className="stripe-field"><CardCvcElement options={ELEMENT_OPTIONS} /></div>
+          </div>
+        </div>
+
+        {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
+
+        <div className="save-row save-row--left" style={{ paddingTop: 28 }}>
+          <button type="submit" className="btn-primary btn-primary--inline" disabled={loading || !stripe || !clientSecret} data-testid="pay-button">
+            {loading ? (clientSecret ? 'PROCESSING…' : 'LOADING…') : `PAY ${formatCents(amounts.total_cents)} — HELD IN ESCROW`}
+          </button>
+          <span className="page-note">RELEASED TO THE SELLER ONLY AFTER YOU CONFIRM DELIVERY</span>
         </div>
       </div>
-
-      {/* Card section */}
-      <div style={{ marginTop: 48, border: '1px solid var(--color-line)', borderRadius: 2 }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-line)', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>
-          Card
-        </div>
-        <div style={{ padding: '28px 16px 20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <div style={fieldStyle}>
-            <span style={labelStyle}>Card number</span>
-            <div style={{ width: '100%' }}>
-              <CardNumberElement options={ELEMENT_OPTIONS} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div style={{ ...fieldStyle, flex: 1 }}>
-              <span style={labelStyle}>Expiry</span>
-              <div style={{ width: '100%' }}>
-                <CardExpiryElement options={ELEMENT_OPTIONS} />
-              </div>
-            </div>
-            <div style={{ ...fieldStyle, flex: 1 }}>
-              <span style={labelStyle}>CVC</span>
-              <div style={{ width: '100%' }}>
-                <CardCvcElement options={ELEMENT_OPTIONS} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div style={{ marginTop: 16, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-alert)' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Pay button */}
-      <div style={{ marginTop: 32 }}>
-        <button
-          type="submit"
-          disabled={loading || !stripe || !clientSecret}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            whiteSpace: 'nowrap',
-            height: 44,
-            width: '100%',
-            background: loading ? 'var(--color-ink-soft)' : 'var(--color-ink)',
-            color: 'var(--color-bg)',
-            border: '1px solid var(--color-ink)',
-            borderRadius: 2,
-            font: '500 14px var(--font-ui)',
-            letterSpacing: '-0.01em',
-            cursor: loading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {loading ? (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>
-              {clientSecret ? 'Processing…' : 'Loading…'}
-            </span>
-          ) : (
-            <>
-              Pay{' '}
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13 }}>
-                {formatCents(totalCents)}
-              </span>
-              {' '}— held in escrow
-            </>
-          )}
-        </button>
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-ink-soft)', textAlign: 'center' }}>
-          your payment is held until you confirm delivery. seller is paid after.
-        </div>
-      </div>
+      {summary}
     </form>
   )
 }
 
-export default function CheckoutClient({ listingId, totalCents, savedAddress }: Props) {
+export default function CheckoutClient(props: Props) {
   return (
-    <Elements stripe={stripePromise}>
-      <PaymentForm
-        listingId={listingId}
-        totalCents={totalCents}
-        savedAddress={savedAddress}
-      />
-    </Elements>
+    <main className="page-main">
+      <div className="crumb"><PrefetchLink href={`/listings/${props.listingId}`}>← BACK TO LISTING</PrefetchLink></div>
+      <div className="page-head page-head--ruled">
+        <h1 className="page-title">Checkout</h1>
+        <span className="page-note">EVERY SALE IN ESCROW · NO BUYER FEE</span>
+      </div>
+      <div className="mt-24">
+        <Elements stripe={stripePromise}>
+          <PaymentForm {...props} />
+        </Elements>
+      </div>
+    </main>
   )
 }

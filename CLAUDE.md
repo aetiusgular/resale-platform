@@ -4,7 +4,7 @@
 ## Stack versions (as of B0)
 - **Next.js** 15.3+ · App Router · TypeScript strict
 - **React** 19
-- **Tailwind CSS** 4 (CSS-based config via `@theme` in `app/globals.css`)
+- **Tailwind CSS** 4 — installed but no longer imported; styling is plain CSS with custom-property tokens (see Design token rules)
 - **@supabase/ssr** 0.6+ · **@supabase/supabase-js** 2.50+
 - **Vitest** 3 · **Playwright** 1.50+
 - **pnpm** 11 — no npm/yarn anywhere
@@ -53,12 +53,22 @@ founder explicitly reinstates a routing policy. Quality is the only bar.
 - Cascades: document the delete behavior in a comment above every FK.
 - `pg_cron` and `pgcrypto` extensions enabled on the hosted project (SETUP_CHECKLIST §2).
 
-## Design token rules
-- Tokens live in `app/globals.css` under `@theme`. Source of truth: `design-reference/tokens/`.
-- Six colours only: `--color-bg` `--color-ink` `--color-ink-soft` `--color-line` `--color-accent` `--color-alert`.
-- Three fonts: `--font-ui` (Inter), `--font-serif` (EB Garamond), `--font-mono` (Space Mono — ALL listing data).
-- Type scale: 12/14/16/20/28/40. Radius: 2px everywhere. Grid: 8px. Control height: 44px.
-- No new colours, no new fonts, no gradients, no dark mode — match `design-reference/` exports exactly.
+## Design token rules (ARCHIVE system, ui/archive-redesign)
+- Tokens are plain CSS custom properties at the top of `app/globals.css`: `:root` holds the light
+  palette, `[data-theme='dark']` the dark one. No Tailwind `@theme` (Tailwind is no longer imported).
+  Source of truth: the approved design review (`Downloads/frontend` reference app, theme.css + app.css).
+- Colour vocabulary (the ONLY colours components may use): `--bg` `--ink` `--on-ink` `--sub` `--faint`
+  `--line` `--line-row` `--line-mid` `--line-hover` `--hover` `--scrim` `--sold-scrim` `--badge-bg/bd/fg`
+  `--tone-1…8` (image placeholders) `--alert` (errors + disputes only). Legacy aliases
+  (`--color-bg`, `--color-ink`, `--color-ink-soft`, `--color-line`, `--color-accent`, `--color-alert`)
+  resolve to the new palette so nothing old breaks; don't use them in new code.
+- Two fonts: `--font-sans` (Archivo 300/400/500 — chrome and copy) and `--font-mono` (IBM Plex Mono
+  300/400 — ALL data: prices, sizes, counts, labels, timestamps, tags). Loaded via next/font/google.
+- Radius 0 everywhere. 1px hairlines. Control height 40px. No gradients, no shadows.
+- Light, dark and system themes are all supported (`archive-theme` in localStorage, applied before
+  first paint by the inline script in `app/layout.tsx`; `app/components/theme.tsx` owns the store).
+  Components never branch on theme — tokens only.
+- `/styleguide` is the living reference: tokens, type, controls, cards, timeline, rules.
 - `design-reference/` is never imported by app code. Reference only for ui-verifier.
 
 ## Verify scripts
@@ -88,12 +98,16 @@ Every build prompt Bn ends with:
 ## File layout
 ```
 app/                  Next.js App Router
-  globals.css         Design tokens (@theme) + base styles
-  layout.tsx          Fonts (next/font/google), html shell
-  styleguide/         Token showcase + listing-card skeleton
+  globals.css         Design tokens (:root / [data-theme='dark']) + the full component sheet
+  layout.tsx          Fonts (next/font/google), theme bootstrap script, html shell
+  components/         Shared chrome: app-shell, site-header, account/notification popouts, theme, cards
+  styleguide/         Living styleguide — tokens, type, controls, cards
 lib/
   fees.ts             (B5) Fee math — single source of truth
   supabase/           Server + browser client factories
+  browse/filters.ts   ONE browse URL parser + WHERE/ORDER builder (page 1 + /api/browse)
+  taxonomy.ts         Department / category tree / colours / measurement labels (pure)
+  sizes.ts            Size scales + dept-scoped profiles.sizes contract (pure)
 design-reference/     Design exports — NEVER imported by app code
 supabase/
   migrations/         SQL migrations — every table has RLS

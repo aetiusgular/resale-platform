@@ -29,8 +29,17 @@ const usd = (cents: number) =>
 export default function FeesPage() {
   const tiers = [...FEE_TIERS].reverse() // base tier first
   return (
-    <LegalDoc>
-      <h1>Fee Schedule</h1>
+    <LegalDoc
+      kicker="LEGAL / FEES"
+      title="Fee schedule"
+      note="RENDERED LIVE FROM THE FEE CONSTANTS"
+      toc={[
+        { id: 'seller-commission', label: 'Seller commission' },
+        { id: 'welcome-pricing', label: 'Welcome pricing' },
+        { id: 'shipping', label: 'Shipping' },
+        { id: 'boosts', label: 'Boosts' },
+      ]}
+    >
       <p>
         Free to join. Free to list. Buyers pay no platform fee: the total at checkout is
         the item price, shipping, and tax, and nothing else. This schedule is incorporated
@@ -39,7 +48,7 @@ export default function FeesPage() {
         notice.
       </p>
 
-      <h2>Seller commission</h2>
+      <h2 id="seller-commission">Seller commission</h2>
       <p>
         Commission is charged on the item price and already includes payment processing.
         Your rate falls as your trailing 365-day sales activity grows (both thresholds must
@@ -68,14 +77,14 @@ export default function FeesPage() {
         {pct(SMALL_ORDER_CAP_BPS)}. Minimum commission per sale: {usd(MIN_FEE_CENTS)}.
       </p>
 
-      <h2>Welcome pricing</h2>
+      <h2 id="welcome-pricing">Welcome pricing</h2>
       <p>
         Your first {WELCOME_SALES} sales carry 0% commission. On those sales you cover only
         the payment-processing cost of {pct(STRIPE_PCT_BPS)} + {usd(STRIPE_FIXED_CENTS)}{' '}
         per transaction; from sale {WELCOME_SALES + 1} the table above applies.
       </p>
 
-      <h2>Shipping</h2>
+      <h2 id="shipping">Shipping</h2>
       <p>
         Buyers pay shipping; sellers never set it. Each listing is priced by category at
         the higher of a carrier-based quote and the category floor, and includes a{' '}
@@ -98,7 +107,7 @@ export default function FeesPage() {
         </tbody>
       </table>
 
-      <h2>Boosts (promoted placement)</h2>
+      <h2 id="boosts">Boosts (promoted placement)</h2>
       <p>
         Bumping a listing is free (see the listing page for your next eligible bump).
         Boosts are one-time purchases that pin a listing to the top of browse with a

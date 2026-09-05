@@ -16,9 +16,10 @@ import { aggregateRating } from '@/lib/reviews/rating'
 import { FOLLOWS_ENABLED, REVIEWS_ENABLED } from '@/lib/flags'
 import FollowButton from './follow-button'
 import RecommendModeratorButton from './recommend-moderator-button'
-import SiteHeader from '@/app/components/site-header'
-import MobileTabBar from '@/app/components/mobile-tabbar'
+import AppShell from '@/app/components/app-shell'
 import GuestAction from '@/app/components/guest-action'
+import PrefetchLink from '@/app/components/prefetch-link'
+import SellerListingsGrid from './seller-listings'
 
 interface PageProps {
   params: Promise<{ username: string }>
@@ -74,7 +75,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const [{ data: sellerOrders }, { data: buyerStats }, { data: listingsRaw }] = await Promise.all([
     service.from('orders').select('id, state').eq('seller_id', seller.id),
     service.from('buyer_stats').select('purchase_count, dispute_count, pays_fast').eq('user_id', seller.id).single(),
-    service.from('listings').select('id, title, price_cents, images, condition_score, size, is_price_dropped, created_at').eq('seller_id', seller.id).eq('status', 'active').order('created_at', { ascending: false }).limit(48),
+    service.from('listings').select('id, title, brand, category, department, price_cents, images, condition_score, size, is_price_dropped, saves_count, authentication_status, created_at').eq('seller_id', seller.id).eq('status', 'active').order('created_at', { ascending: false }).limit(48),
   ])
 
   const totalSales = (sellerOrders ?? []).filter(o => o.state === 'released').length
@@ -143,115 +144,61 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   }
 
   const activeTab = tab === 'reviews' ? 'reviews' : 'listings'
+  const isOwn = seller.id === user?.id
+  const cards = listings.map((l) => ({
+    id: l.id as string,
+    title: l.title as string,
+    brand: (l.brand as string) ?? '',
+    category: (l.category as string) ?? '',
+    department: (l.department as string) ?? '',
+    size: (l.size as string) ?? '',
+    condition_score: l.condition_score as number,
+    price_cents: l.price_cents as number,
+    saves_count: (l.saves_count as number) ?? 0,
+    is_price_dropped: !!l.is_price_dropped,
+    images: Array.isArray(l.images) ? (l.images as string[]) : [],
+    created_at: l.created_at as string,
+    seller: { username: seller.username as string, id_verification_status: seller.id_verification_status as string },
+    authentication_status: (l.authentication_status as string) ?? 'none',
+    original_price_cents: null,
+    price_display: formatCents(l.price_cents as number),
+  }))
+  const meta: string[] = [
+    isVerified ? 'VERIFIED ID' : '',
+    sellerIsModerator ? 'MODERATOR' : '',
+    isChecker && checkerCategory ? `VERIFIED CHECKER — ${(checkerCategory as string).toUpperCase()}` : '',
+    `MEMBER SINCE ${memberYear}`,
+    `${totalSales} ${totalSales === 1 ? 'SALE' : 'SALES'}${totalSales > 0 ? ` · ${disputeRate} DISPUTES` : ''}`,
+    `${buyerStats?.purchase_count ?? 0} PURCHASES${buyerStats?.pays_fast ? ' · PAYS FAST' : ''}`,
+    REVIEWS_ENABLED && rating.count > 0 ? `★ ${rating.average?.toFixed(1)} · ${rating.count} ${rating.count === 1 ? 'REVIEW' : 'REVIEWS'}` : '',
+  ].filter(Boolean)
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
-      <SiteHeader username={currentUsername} />
-
+    <AppShell username={currentUsername}>
       <JsonLd data={profilePageJsonLd(seller.username as string)} />
-
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 80px 96px' }} className="seller-profile-inner">
-
-        {/* Profile header */}
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-          {/* Avatar */}
-          <div style={{
-            flex: 'none', width: '64px', height: '64px', borderRadius: '50%',
-            border: '1px solid var(--color-line)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-mono)', fontSize: '18px', color: 'var(--color-ink-soft)',
-          }}>
-            {avatarInitials}
-          </div>
-
-          {/* Info */}
-          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '20px', color: 'var(--color-ink)' }}>
-                @{seller.username}
-              </span>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', height: '22px', padding: '0 8px',
-                border: '1px solid var(--color-ink)', borderRadius: '2px',
-                fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em',
-                textTransform: 'uppercase', color: 'var(--color-ink)',
-              }}>
-                {tierLabel}
-              </span>
+      <main className="saved-main">
+        <div className="seller-head">
+          <span className="seller-head__init">{avatarInitials}</span>
+          <div className="grow">
+            <div className="row row--wrap" style={{ gap: 12 }}>
+              <h1 className="seller-head__name">@{seller.username}</h1>
+              <span className="tag">{tierLabel}</span>
+              {isVerified && <span className="tag tag--ink">VERIFIED</span>}
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              {isVerified && (
-                <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-                  VERIFIED ID
-                </span>
-              )}
-              {sellerIsModerator && (
-                <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-                  MODERATOR
-                </span>
-              )}
-              {isChecker && checkerCategory && (
-                <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-                  VERIFIED CHECKER — {(checkerCategory as string).toUpperCase()}
-                </span>
-              )}
-              <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
-                MEMBER SINCE {memberYear}
-              </span>
-            </div>
-
-            {/* Two-sided stats */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
-                AS SELLER · {totalSales} SALES{totalSales > 0 ? ` · ${disputeRate} DISPUTES` : ''}
-              </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
-                AS BUYER · {buyerStats?.purchase_count ?? 0} PURCHASES
-                {buyerStats?.pays_fast ? ' · PAYS FAST' : ''}
-              </span>
-              {REVIEWS_ENABLED && rating.count > 0 && (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
-                  RATING · ★ {rating.average?.toFixed(1)} · {rating.count} REVIEW{rating.count === 1 ? '' : 'S'}
-                </span>
-              )}
+            <div className="seller-head__meta">
+              {meta.map((m, i) => <span key={i}>{i > 0 ? '· ' : ''}{m}</span>)}
             </div>
           </div>
-
-          {/* Action buttons. Guests see Message (→ popup); Follow/Recommend are authed-only. */}
-          {seller.id !== user?.id && (
-            <div style={{ marginLeft: 'auto', flex: 'none', display: 'flex', gap: '8px' }}>
+          {!isOwn ? (
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {user ? (
-                <Link
-                  href={`/messages?seller=${seller.id}`}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    height: '44px', padding: '0 24px',
-                    background: 'var(--color-bg)', color: 'var(--color-ink)',
-                    border: '1px solid var(--color-ink)', borderRadius: '2px',
-                    font: '500 14px var(--font-ui)', textDecoration: 'none',
-                  }}
-                >
-                  Message
-                </Link>
+                <Link href={`/messages?seller=${seller.id}`} className="btn-ghost btn-ghost--inline">MESSAGE</Link>
               ) : (
-                <GuestAction
-                  next={`/messages?seller=${seller.id}`}
-                  testId="seller-message-guest"
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    height: '44px', padding: '0 24px',
-                    background: 'var(--color-bg)', color: 'var(--color-ink)',
-                    border: '1px solid var(--color-ink)', borderRadius: '2px',
-                    font: '500 14px var(--font-ui)',
-                  }}
-                >
-                  Message
-                </GuestAction>
+                <GuestAction next={`/messages?seller=${seller.id}`} testId="seller-message-guest" className="btn-ghost btn-ghost--inline">MESSAGE</GuestAction>
               )}
-              {user && FOLLOWS_ENABLED && (
-                <FollowButton sellerId={seller.id as string} initialFollowing={isFollowing} />
-              )}
+              {FOLLOWS_ENABLED && (user
+                ? <FollowButton sellerId={seller.id as string} initialFollowing={isFollowing} />
+                : <GuestAction next={`/sellers/${username}`} testId="seller-follow-guest" className="btn-follow">FOLLOW</GuestAction>)}
               {canRecommendModerator && (
                 <RecommendModeratorButton
                   nomineeId={seller.id as string}
@@ -261,126 +208,56 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                 />
               )}
             </div>
+          ) : (
+            <div className="row" style={{ gap: 8 }}>
+              <PrefetchLink href="/settings" className="btn-ghost btn-ghost--inline">EDIT PROFILE</PrefetchLink>
+              <PrefetchLink href="/sell" className="btn-follow">MANAGE LISTINGS</PrefetchLink>
+            </div>
           )}
         </div>
 
-        {/* Tabs */}
-        <div style={{ marginTop: '64px', display: 'flex', gap: '32px', borderBottom: '1px solid var(--color-line)' }}>
-          {(['listings', 'reviews'] as const).map(t => (
-            <Link
-              key={t}
-              href={`/sellers/${username}?tab=${t}`}
-              style={{
-                position: 'relative', paddingBottom: '12px', paddingTop: '12px',
-                font: '500 12px var(--font-ui)', letterSpacing: '0.08em',
-                textTransform: 'uppercase', textDecoration: 'none',
-                color: activeTab === t ? 'var(--color-ink)' : 'var(--color-ink-soft)',
-                minHeight: '44px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center',
-              }}
-            >
-              {t === 'listings' ? `Listings (${listings.length})` : 'Reviews'}
-              {activeTab === t && (
-                <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />
-              )}
-            </Link>
-          ))}
+        <div className="tabs-line" role="tablist">
+          <PrefetchLink role="tab" aria-selected={activeTab === 'listings'} className={`tab-mono${activeTab === 'listings' ? ' is-active' : ''}`} href={`/sellers/${username}`}>LISTINGS ({listings.length})</PrefetchLink>
+          <PrefetchLink role="tab" aria-selected={activeTab === 'reviews'} className={`tab-mono${activeTab === 'reviews' ? ' is-active' : ''}`} href={`/sellers/${username}?tab=reviews`}>REVIEWS{REVIEWS_ENABLED ? ` (${reviewsRaw.length})` : ''}</PrefetchLink>
+          <span className="spacer" />
+          {activeTab === 'listings' && <span className="link-underline tabs-line__sort" style={{ textDecoration: 'none' }}>SORT: NEWEST</span>}
         </div>
 
-        {/* Tab content */}
         {activeTab === 'listings' ? (
-          <>
-            {/* Sort */}
-            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-              <span style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>
-                Sort: Newest <span style={{ color: 'var(--color-ink-soft)', fontSize: '10px' }}>▾</span>
-              </span>
+          cards.length === 0 ? (
+            <div className="empty">
+              <div className="empty__title">No active listings.</div>
+              <div className="empty__sub">{isOwn ? 'LIST SOMETHING — IT GOES LIVE AFTER A QUICK REVIEW' : 'CHECK BACK, OR FOLLOW TO HEAR ABOUT NEW DROPS'}</div>
+              {isOwn && <div className="empty__cta"><PrefetchLink href="/sell/new" className="btn-ghost btn-ghost--inline">NEW LISTING →</PrefetchLink></div>}
             </div>
-
-            {listings.length === 0 ? (
-              <p style={{ marginTop: '48px', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.4rem', color: 'var(--color-ink)' }}>
-                No active listings.
-              </p>
-            ) : (
-              <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '40px 24px' }}
-                className="seller-listings-grid"
-                data-testid="seller-listings-grid"
-              >
-                {listings.map(l => {
-                  const images: string[] = Array.isArray(l.images) ? l.images : []
-                  const frontImage = images[0] ?? null
-                  return (
-                    <Link key={l.id} href={`/listings/${l.id}`} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
-                      <div style={{
-                        aspectRatio: '3/4', boxSizing: 'border-box',
-                        border: '1px solid var(--color-line)', overflow: 'hidden',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: 'var(--color-line)',
-                      }}>
-                        {frontImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={frontImage} alt={l.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>3 : 4</span>
-                        )}
-                      </div>
-                      <div style={{ marginTop: '12px', minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>
-                        {formatTimeAgo(l.created_at)}
-                      </div>
-                      <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', lineHeight: 1.4, color: 'var(--color-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {(l.title as string).toUpperCase()}
-                      </div>
-                      <div style={{ marginTop: '4px', minHeight: '20px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
-                        {formatCents(l.price_cents as number)}
-                      </div>
-                      <div style={{ marginTop: '4px', minHeight: '18px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                        {l.size} · {l.condition_score}/10
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </>
+          ) : (
+            <SellerListingsGrid listings={cards} isGuest={!user} own={isOwn} />
+          )
         ) : (
-          /* Reviews tab — real reviews (G9) or empty state */
-          <div style={{ marginTop: '48px' }}>
+          <div className="rows-wrap">
             {reviewsRaw.length === 0 ? (
-              <>
-                <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.35rem', lineHeight: 1.35, color: 'var(--color-ink)' }}>
-                  No reviews yet.
-                </p>
-                <p style={{ marginTop: '12px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-                  Reviews are written after completed orders.
-                </p>
-              </>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '640px' }}>
-                {(reviewsRaw as Array<{ id: string; stars: number; body: string; created_at: string; reviewer_id: string }>).map((r) => (
-                  <div key={r.id} style={{ border: '1px solid var(--color-line)', borderRadius: '2px', padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ color: 'var(--color-accent)', fontSize: '14px', letterSpacing: '2px' }} aria-label={`${r.stars} out of 5 stars`}>
-                        {'★'.repeat(r.stars)}{'☆'.repeat(5 - r.stars)}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink)' }}>
-                        @{nameById.get(r.reviewer_id) ?? 'user'}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>
-                        {formatTimeAgo(r.created_at)}
-                      </span>
-                    </div>
-                    {r.body && (
-                      <p style={{ marginTop: '8px', fontFamily: 'var(--font-ui)', fontSize: '14px', lineHeight: 1.5, color: 'var(--color-ink)' }}>
-                        {r.body}
-                      </p>
-                    )}
-                  </div>
-                ))}
+              <div className="empty">
+                <div className="empty__title">No reviews yet.</div>
+                <div className="empty__sub">REVIEWS ARE WRITTEN AFTER COMPLETED ORDERS</div>
               </div>
+            ) : (
+              (reviewsRaw as Array<{ id: string; stars: number; body: string; created_at: string; reviewer_id: string }>).map((r) => (
+                <div key={r.id} className="lc-comment" style={{ maxWidth: 640, borderBottom: '1px solid var(--line-row)', paddingTop: 14 }}>
+                  <span className="seller-init seller-init--sm">{(nameById.get(r.reviewer_id) ?? 'u').slice(0, 2).toUpperCase()}</span>
+                  <div className="lc-comment__body">
+                    <div className="lc-comment__who">
+                      @{(nameById.get(r.reviewer_id) ?? 'user').toUpperCase()}
+                      <span className="tag tag--ink" aria-label={`${r.stars} out of 5`}>{r.stars} / 5</span>
+                      <span className="lc-comment__meta" style={{ marginTop: 0 }}>{formatTimeAgo(r.created_at)}</span>
+                    </div>
+                    {r.body && <p className="lc-comment__text">{r.body}</p>}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         )}
-      </div>
-      <MobileTabBar username={currentUsername} />
-    </div>
+      </main>
+    </AppShell>
   )
 }

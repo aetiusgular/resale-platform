@@ -9,6 +9,7 @@ import OrderBuyerView from './order-buyer'
 import OrderSellerView from './order-seller'
 import ReviewPrompt from './review-prompt'
 import { REVIEWS_ENABLED } from '@/lib/flags'
+import AppShell from '@/app/components/app-shell'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -60,15 +61,16 @@ export default async function OrderPage({ params }: PageProps) {
   const isBuyer  = order.buyer_id  === user.id
   const isSeller = order.seller_id === user.id
 
+  const { data: viewerProfile } = await supabase
+    .from('profiles')
+    .select('role, username')
+    .eq('id', user.id)
+    .single()
+  const viewerUsername = (viewerProfile?.username as string) ?? ''
+
   if (!isBuyer && !isSeller) {
     // Admin check — admin can view any order
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') notFound()
+    if (viewerProfile?.role !== 'admin') notFound()
   }
 
   // Post-release review prompt (G9). Eligible = a party to a RELEASED order who has
@@ -107,12 +109,14 @@ export default async function OrderPage({ params }: PageProps) {
       .single()
 
     return (
-      <OrderSellerView
-        order={order}
-        listing={listing ?? { title: 'Unknown', brand: '', size: '', images: [] }}
-        buyerStats={buyerStats ?? null}
-        reviewPrompt={reviewEligible ? <ReviewPrompt orderId={order.id} counterpartyLabel={buyerStats?.username ?? 'buyer'} /> : null}
-      />
+      <AppShell username={viewerUsername}>
+        <OrderSellerView
+          order={order}
+          listing={listing ?? { title: 'Unknown', brand: '', size: '', images: [] }}
+          buyerStats={buyerStats ?? null}
+          reviewPrompt={reviewEligible ? <ReviewPrompt orderId={order.id} counterpartyLabel={buyerStats?.username ?? 'buyer'} /> : null}
+        />
+      </AppShell>
     )
   }
 
@@ -124,11 +128,13 @@ export default async function OrderPage({ params }: PageProps) {
     .single()
 
   return (
-    <OrderBuyerView
-      order={order}
-      listing={listing ?? { title: 'Unknown', brand: '', size: '', images: [] }}
-      sellerUsername={sellerProfile?.username ?? 'seller'}
-      reviewPrompt={reviewEligible ? <ReviewPrompt orderId={order.id} counterpartyLabel={sellerProfile?.username ?? 'seller'} /> : null}
-    />
+    <AppShell username={viewerUsername}>
+      <OrderBuyerView
+        order={order}
+        listing={listing ?? { title: 'Unknown', brand: '', size: '', images: [] }}
+        sellerUsername={sellerProfile?.username ?? 'seller'}
+        reviewPrompt={reviewEligible ? <ReviewPrompt orderId={order.id} counterpartyLabel={sellerProfile?.username ?? 'seller'} /> : null}
+      />
+    </AppShell>
   )
 }

@@ -1,39 +1,14 @@
 'use client'
 
 /**
- * Seller order status / sale view.
- * Shows buyer record, timeline, payout details, PROTECTED card.
- * Matches design reference 1d (Checkout & Orders.dc.html).
+ * Seller order view (design "Checkout & Orders"): buyer record, escrow
+ * timeline, CONFIRM → PRINT LABEL / MARK SHIPPED actions, payout + protection.
  */
 import { useState } from 'react'
-import Link from 'next/link'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
-import { STATE_LABELS, autoReleaseAt, type OrderState } from '@/lib/orders'
-
-interface OrderData {
-  id: string
-  listing_id: string
-  buyer_id: string
-  seller_id: string
-  state: string
-  item_cents: number
-  buyer_fee_cents: number
-  seller_fee_cents: number
-  shipping_cents: number
-  total_cents: number
-  transfer_cents: number
-  carrier: string | null
-  tracking_number: string | null
-  shipping_label_url: string | null
-  paid_at: string | null
-  seller_confirmed_at: string | null
-  shipped_at: string | null
-  delivered_at: string | null
-  released_at: string | null
-  disputed_at: string | null
-  cancelled_at: string | null
-  created_at: string
-}
+import { autoReleaseAt, STATE_LABELS, type OrderState } from '@/lib/orders'
+import { Timeline, SummaryPanel, ProtectedPanel, countdown, orderNumber, type OrderData, type ListingSnap } from './order-frame'
 
 interface BuyerStats {
   username: string | null
@@ -44,34 +19,15 @@ interface BuyerStats {
 
 interface Props {
   order: OrderData
-  listing: { title: string; brand: string; size: string; images: string[] }
+  listing: ListingSnap
   buyerStats: BuyerStats | null
   reviewPrompt?: React.ReactNode
-}
-
-const TIMELINE_STATES: OrderState[] = [
-  'paid_held', 'seller_confirmed', 'shipped', 'delivered', 'released',
-]
-
-function formatTs(ts: string | null): string {
-  if (!ts) return ''
-  const d = new Date(ts)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 function memberDuration(since: string | null): string {
   if (!since) return ''
   const months = Math.floor((Date.now() - new Date(since).getTime()) / (1000 * 60 * 60 * 24 * 30))
   return months < 1 ? 'NEW' : `${months}MO`
-}
-
-function countdown(to: Date): string {
-  const ms = to.getTime() - Date.now()
-  if (ms <= 0) return '0H'
-  const days  = Math.floor(ms / 86400000)
-  const hours = Math.floor((ms % 86400000) / 3600000)
-  return days > 0 ? `${days}D ${hours}H` : `${hours}H`
 }
 
 export default function OrderSellerView({ order, listing, buyerStats, reviewPrompt }: Props) {
@@ -81,23 +37,18 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
   const [tracking, setTracking] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const orderNum = order.id.slice(0, 5).toUpperCase()
-  const soldDate = new Date(order.created_at).toLocaleDateString('en-US', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  })
-  const image = listing.images?.find(Boolean) ?? null
-  const currentState = order.state as OrderState
-  const isTerminal = ['released', 'refunded', 'cancelled'].includes(currentState)
-  const reached = TIMELINE_STATES.indexOf(currentState)
+  const state = order.state as OrderState
   const releaseDate = order.delivered_at ? autoReleaseAt(new Date(order.delivered_at)) : null
-
-  const stateTs: Partial<Record<OrderState, string | null>> = {
-    paid_held:        order.paid_at,
-    seller_confirmed: order.seller_confirmed_at,
-    shipped:          order.shipped_at,
-    delivered:        order.delivered_at,
-    released:         order.released_at,
-  }
+  const sold = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
+  const buyer = buyerStats?.username ?? 'buyer'
+  const headline =
+    state === 'paid_held' ? 'Sold — confirm to start.'
+    : state === 'seller_confirmed' ? 'Ship it.'
+    : state === 'shipped' ? 'In transit.'
+    : state === 'delivered' ? 'Delivered — payout pending.'
+    : state === 'released' ? 'Paid out.'
+    : state === 'disputed' ? 'Dispute open.'
+    : STATE_LABELS[state]
 
   async function handleConfirm() {
     setLoading(true); setError(null)
@@ -123,175 +74,87 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
-      <header style={{ height: 64, borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 80px' }}>
-        <span style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
-          SALE NO. {orderNum} · SOLD {soldDate.toUpperCase()}
-        </span>
-        <Link href="/orders" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>
-          All sales
-        </Link>
-      </header>
+    <main className="page-main">
+      <div className="crumb"><PrefetchLink href="/orders">ORDERS</PrefetchLink> / {orderNumber(order.id)}</div>
+      <div className="page-head page-head--ruled">
+        <h1 className="page-title">{headline}</h1>
+        <span className="page-note">ORDER {orderNumber(order.id)} · SOLD {sold} · {STATE_LABELS[state]}</span>
+      </div>
+      <div className="split mt-24">
+        <div className="split__main">
+          <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">ESCROW TIMELINE</span><span className="page-note">SELLING TO @{buyer.toUpperCase()}</span></div>
+          <Timeline order={order} />
 
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 24px 96px', display: 'grid', gridTemplateColumns: '1fr 360px', gap: 64, alignItems: 'start' }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>
-            Sale status
-          </h1>
-
-          {reviewPrompt}
-
-          {/* Buyer record */}
-          {buyerStats && (
-            <div style={{ marginTop: 28, border: '1px solid var(--color-line)', borderRadius: 2, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', flex: 'none' }}>Buyer</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, color: 'var(--color-ink)' }}>@{buyerStats.username}</span>
-              <span style={{ whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>
-                {buyerStats.purchase_count} PURCHASES · {buyerStats.dispute_count} DISPUTES · MEMBER {memberDuration(buyerStats.member_since)}
-              </span>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column' }}>
-            {TIMELINE_STATES.map((state, i) => {
-              const ts = stateTs[state]
-              const isDone    = reached > i
-              const isCurrent = reached === i && !isTerminal
-              const isPending = reached < i
-
-              let dotStyle: React.CSSProperties
-              if (isDone) {
-                dotStyle = { width: 18, height: 18, boxSizing: 'border-box', border: '1px solid var(--color-accent)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-accent)' }
-              } else if (isCurrent && state === 'delivered') {
-                dotStyle = { width: 18, height: 18, borderRadius: 2, background: 'var(--color-accent)', animation: 'pvPulse 2s ease-in-out infinite' }
-              } else if (isCurrent) {
-                dotStyle = { width: 18, height: 18, boxSizing: 'border-box', border: '1px solid var(--color-accent)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-accent)' }
-              } else {
-                dotStyle = { width: 18, height: 18, boxSizing: 'border-box', border: '1px solid var(--color-line)', borderRadius: 2, display: 'block' }
-              }
-
-              return (
-                <div key={state} style={{ display: 'flex', gap: 20 }}>
-                  <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span style={dotStyle}>{isDone && '✓'}</span>
-                    {i < TIMELINE_STATES.length - 1 && <span style={{ width: 1, flex: 1, background: 'var(--color-line)', margin: '4px 0' }} />}
-                  </div>
-                  <div style={{ paddingBottom: i < TIMELINE_STATES.length - 1 ? 36 : 0 }}>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', color: isPending ? 'var(--color-ink-soft)' : 'var(--color-ink)' }}>
-                      {STATE_LABELS[state]}
-                      {state === 'shipped' && order.tracking_number && <> · <span style={{ fontWeight: 400 }}>TRACKING {order.tracking_number}</span></>}
-                    </div>
-                    <div style={{ marginTop: 3, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-ink-soft)' }}>
-                      {ts ? formatTs(ts) : (isPending ? 'PENDING' : '')}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Seller actions */}
-          <div style={{ marginTop: 48, maxWidth: 440 }}>
-            {/* Confirm action */}
-            {currentState === 'paid_held' && (
+          <div className="mt-32" style={{ maxWidth: 440 }}>
+            {state === 'paid_held' && (
               <>
-                <button onClick={handleConfirm} disabled={loading} style={{ height: 44, width: '100%', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: 2, font: '500 14px var(--font-ui)', cursor: loading ? 'not-allowed' : 'pointer' }}>
-                  {loading ? 'Confirming…' : 'Confirm order'}
+                <button type="button" className="btn-primary btn-primary--lg" onClick={handleConfirm} disabled={loading} data-testid="confirm-order">
+                  {loading ? 'CONFIRMING…' : 'CONFIRM ORDER →'}
                 </button>
+                <div className="mono-note" style={{ paddingTop: 10 }}>CONFIRMING UNLOCKS THE PREPAID LABEL · SHIP WITHIN 3 DAYS</div>
               </>
             )}
-
-            {/* Ship action */}
-            {currentState === 'seller_confirmed' && (
+            {state === 'seller_confirmed' && (
               order.shipping_label_url ? (
-                <form onSubmit={handleShip} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', borderBottom: '1px solid var(--color-line)', paddingBottom: 8 }}>
-                    Prepaid label ready
-                  </div>
-                  <a href={order.shipping_label_url} target="_blank" rel="noopener noreferrer" style={{ height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-ink)', borderRadius: 2, font: '500 14px var(--font-ui)', color: 'var(--color-ink)', textDecoration: 'none' }}>
-                    Print shipping label →
-                  </a>
-                  <span style={{ fontSize: 12, color: 'var(--color-ink-soft)' }}>Shipping was paid by the buyer. Print the label, drop it off, then mark shipped.</span>
-                  <button type="submit" disabled={shipLoading} style={{ height: 44, background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: 2, font: '500 14px var(--font-ui)', cursor: shipLoading ? 'not-allowed' : 'pointer' }}>
-                    {shipLoading ? 'Saving…' : 'Mark as shipped'}
-                  </button>
+                <form onSubmit={handleShip}>
+                  <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">PREPAID LABEL READY</span></div>
+                  <a href={order.shipping_label_url} target="_blank" rel="noopener noreferrer" className="btn-ink" style={{ marginTop: 14 }} data-testid="print-label">PRINT SHIPPING LABEL →</a>
+                  <div className="settings-note" style={{ paddingTop: 10 }}>Shipping was paid by the buyer. Print the label, drop it off, then mark shipped.</div>
+                  <button type="submit" className="btn-primary" disabled={shipLoading} data-testid="mark-shipped">{shipLoading ? 'SAVING…' : 'MARK AS SHIPPED'}</button>
                 </form>
               ) : (
-              <form onSubmit={handleShip} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', borderBottom: '1px solid var(--color-line)', paddingBottom: 8 }}>
-                  Mark as shipped
-                </div>
-                <input value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="Carrier (e.g. USPS)" required style={{ height: 44, border: '1px solid var(--color-line)', borderRadius: 2, padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }} />
-                <input value={tracking} onChange={e => setTracking(e.target.value)} placeholder="Tracking number" required style={{ height: 44, border: '1px solid var(--color-line)', borderRadius: 2, padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }} />
-                <button type="submit" disabled={shipLoading} style={{ height: 44, background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: 2, font: '500 14px var(--font-ui)', cursor: shipLoading ? 'not-allowed' : 'pointer' }}>
-                  {shipLoading ? 'Saving…' : 'Mark as shipped'}
-                </button>
-              </form>
+                <form onSubmit={handleShip}>
+                  <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">MARK AS SHIPPED</span></div>
+                  <div className="field-grid">
+                    <div>
+                      <label className="field-label" htmlFor="ship-carrier">CARRIER</label>
+                      <input id="ship-carrier" className="input-sans" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="USPS, UPS, FedEx" required />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="ship-tracking">TRACKING NUMBER</label>
+                      <input id="ship-tracking" className="input-mono" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking number" required />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn-primary" disabled={shipLoading} data-testid="mark-shipped">{shipLoading ? 'SAVING…' : 'MARK AS SHIPPED'}</button>
+                </form>
               )
             )}
-
-            {/* Payout info + PROTECTED card (delivered/released) */}
-            {(currentState === 'delivered' || currentState === 'released') && (
-              <>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-ink)' }}>
-                  PAYOUT {formatCents(order.transfer_cents)}
-                  {currentState === 'delivered' && releaseDate && ` — AUTO-RELEASES IN ${countdown(releaseDate)}`}
-                  {currentState === 'released' && ' — RELEASED'}
-                </div>
-                <div style={{ marginTop: 20, border: '1px solid var(--color-line)', borderRadius: 2 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-line)', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>Protected</div>
-                  {[
-                    'carrier scan confirms delivery',
-                    'your listing photos are archived as evidence',
-                    'disputes require buyer photos within 72h',
-                  ].map((text, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '11px 16px', borderTop: i > 0 ? '1px solid var(--color-line)' : undefined }}>
-                      <span style={{ color: 'var(--color-accent)', fontSize: 12, flex: 'none' }}>✓</span>
-                      <span style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--color-ink)' }}>{text}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
+            {(state === 'delivered' || state === 'released') && (
+              <div className="kv"><span className="kv__k">PAYOUT</span><span className="kv__v">{formatCents(order.transfer_cents)}{state === 'delivered' && releaseDate ? ` — AUTO-RELEASES IN ${countdown(releaseDate)}` : ' — RELEASED'}</span></div>
             )}
-
-            {error && <div style={{ marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-alert)' }}>{error}</div>}
-          </div>
-        </div>
-
-        {/* Right rail */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Order/payout card */}
-          <div style={{ border: '1px solid var(--color-line)', borderRadius: 2 }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-line)', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>Order</div>
-            <div style={{ padding: 16, display: 'flex', gap: 16 }}>
-              {image ? <img src={image} alt={listing.title} style={{ flex: 'none', width: 64, aspectRatio: '3/4', objectFit: 'cover', border: '1px solid var(--color-line)' }} /> : <div style={{ flex: 'none', width: 64, aspectRatio: '3/4', border: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--color-ink-soft)' }}>3 : 4</div>}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, lineHeight: 1.4, color: 'var(--color-ink)' }}>{listing.title.toUpperCase()}</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-ink-soft)', marginTop: 4 }}>{listing.brand.toUpperCase()} · {listing.size.toUpperCase()}</div>
+            {state === 'disputed' && (
+              <div className="push-banner" style={{ borderColor: 'var(--alert)' }}>
+                <span>The buyer opened a dispute. A moderator reviews both sides; your listing photos are already archived as evidence.</span>
               </div>
-            </div>
-            <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 7 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink)' }}><span>SOLD FOR</span><span>{formatCents(order.item_cents)}</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-ink-soft)' }}><span>SELLER FEE</span><span>−{formatCents(order.seller_fee_cents)}</span></div>
-              <div style={{ borderTop: '1px solid var(--color-line)', marginTop: 3, paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, color: 'var(--color-ink)' }}><span>PAYOUT</span><span>{formatCents(order.transfer_cents)}</span></div>
-            </div>
+            )}
+            {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
           </div>
-
-          {/* Buyer mini-card */}
+          {reviewPrompt}
+        </div>
+        <div className="split__side">
+          <SummaryPanel order={order} listing={listing} role="seller" />
           {buyerStats && (
-            <div style={{ border: '1px solid var(--color-line)', borderRadius: 2, padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, color: 'var(--color-ink)' }}>@{buyerStats.username}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-ink-soft)' }}>
-                {buyerStats.purchase_count} PURCHASES · {buyerStats.dispute_count} DISPUTES
+            <div className="panel">
+              <div className="panel__title">BUYER RECORD</div>
+              <div className="row" style={{ gap: 10 }}>
+                <span className="seller-init seller-init--sm">{buyer.slice(0, 2).toUpperCase()}</span>
+                <span className="row-line__handle">@{buyer}</span>
+              </div>
+              <div className="mono-note" style={{ paddingTop: 8 }}>
+                {buyerStats.purchase_count} PURCHASES · {buyerStats.dispute_count} DISPUTES · MEMBER {memberDuration(buyerStats.member_since)}
+              </div>
+              <div className="save-row save-row--left" style={{ paddingTop: 12 }}>
+                <PrefetchLink href={`/messages?listing=${order.listing_id}`} className="link-underline link-underline--ink">MESSAGE BUYER →</PrefetchLink>
               </div>
             </div>
           )}
+          <ProtectedPanel lines={[
+            'CARRIER SCAN CONFIRMS DELIVERY',
+            'YOUR LISTING PHOTOS ARE ARCHIVED AS EVIDENCE',
+            'DISPUTES REQUIRE BUYER PHOTOS WITHIN 72H',
+          ]} />
         </div>
       </div>
-
-      <style>{`@keyframes pvPulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
-    </div>
+    </main>
   )
 }

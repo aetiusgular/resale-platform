@@ -2,9 +2,10 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { isUuid } from '@/lib/security/uuid'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { SAVED_SEARCH_ALERTS_ENABLED } from '@/lib/flags'
+import { NOTIFICATIONS_ENABLED, SAVED_SEARCH_ALERTS_ENABLED } from '@/lib/flags'
 import { dispatchSavedSearchAlerts } from '@/lib/search/dispatch'
 import { recsIndexListing } from '@/lib/recs/sync'
+import { notify } from '@/lib/notify'
 
 export async function POST(
   _request: NextRequest,
@@ -36,7 +37,7 @@ export async function POST(
   // Gate: seller must have payouts_enabled before listing can go active.
   const { data: listing } = await service
     .from('listings')
-    .select('seller_id')
+    .select('seller_id, title')
     .eq('id', id)
     .eq('status', 'pending_review')
     .single()
@@ -80,6 +81,16 @@ export async function POST(
   after(async () => {
     await recsIndexListing(createServiceClientRaw(), id, 'created')
   })
+
+  // "Listing approved — now live" to the seller (ALERTS bucket, design 14A).
+  if (NOTIFICATIONS_ENABLED) {
+    after(async () => {
+      await notify(createServiceClientRaw(), listing.seller_id, 'listing_approved', {
+        listingId: id,
+        itemTitle: (listing as { title?: string | null }).title ?? undefined,
+      })
+    })
+  }
 
   return NextResponse.json({ ok: true })
 }

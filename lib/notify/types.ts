@@ -1,10 +1,24 @@
 // G2 notification domain types (shared client/server-safe).
 export type NotifyChannel = 'in_app' | 'email' | 'push'
-export type NotifyCategory = 'offers' | 'orders' | 'messages' | 'alerts'
+// Per-event preference buckets (Settings → Notifications rows). 'alerts' is the
+// catch-all for platform notices that never get a row of their own.
+export type NotifyCategory =
+  | 'offers'        // offers on my listings
+  | 'offer_result'  // offer accepted / declined / countered
+  | 'messages'      // new messages
+  | 'sold'          // item sold
+  | 'price_drops'   // price drops on saved items
+  | 'search_alerts' // saved search alerts
+  | 'orders'        // order & shipping updates
+  | 'alerts'
 export type NotifyEvent =
   | 'offer_received'
   | 'offer_accepted'
+  | 'offer_declined'
+  | 'offer_countered'
   | 'sale'
+  | 'price_drop'
+  | 'listing_approved'
   | 'shipped'
   | 'delivered'
   | 'dispute'
@@ -23,6 +37,9 @@ export type NotifyContext = {
   orderId?: string
   listingId?: string
   conversationId?: string
+  offerId?: string         // offer_received/countered: lets the notifications popout act inline
+  oldAmountCents?: number  // price_drop: the price before the cut
+  brand?: string           // price_drop / listing_approved: card sub-line
   preview?: string         // message snippet
   appUrl?: string          // absolute base for email links
   tierSide?: 'buyer' | 'seller'  // tier_expiry: which side's rate is at risk
@@ -34,8 +51,12 @@ export type NotifyContext = {
 
 export type NotificationPrefs = {
   email_offers: boolean; push_offers: boolean
-  email_orders: boolean; push_orders: boolean
+  email_offer_result: boolean; push_offer_result: boolean
   email_messages: boolean; push_messages: boolean
+  email_sold: boolean; push_sold: boolean
+  email_price_drops: boolean; push_price_drops: boolean
+  email_search_alerts: boolean; push_search_alerts: boolean
+  email_orders: boolean; push_orders: boolean
   email_alerts: boolean; push_alerts: boolean
 }
 

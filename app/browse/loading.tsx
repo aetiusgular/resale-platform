@@ -1,45 +1,42 @@
 /**
  * /browse loading skeleton — enables partial prefetch on this dynamic route and
- * paints the browse chrome + card grid instantly on navigation.
+ * paints the browse chrome (header, filter rail, results head, card grid)
+ * instantly on navigation. Mirrors browse-client.tsx's .layout / .rail / .main.
  */
-import { BrowseHeaderGhost, CardGhosts, Ghost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, CardGhosts, Ghost, TabBarGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
-      <BrowseHeaderGhost />
-
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 80px' }} className="browse-desktop-inner">
-        {/* Results header row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', padding: '32px 0 28px' }}>
-          <Ghost style={{ height: '14px', width: '128px' }} />
-          <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <Ghost style={{ height: '44px', width: '144px' }} />
-            <Ghost style={{ height: '14px', width: '96px' }} />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', paddingBottom: '64px' }}>
-          {/* Filter rail */}
-          <aside className="desktop-only" style={{ width: '240px', flex: 'none', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Ghost style={{ height: '11px', width: '72px' }} />
-                <Ghost style={{ height: '14px', width: '160px' }} />
-                <Ghost style={{ height: '14px', width: '128px' }} />
-              </div>
-            ))}
-          </aside>
-
-          {/* Grid */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="skeleton-grid-4">
-              <CardGhosts count={12} />
+    <div className="app-shell has-tabbar">
+      <SiteHeaderGhost />
+      <div className="layout">
+        <aside className="rail" aria-hidden="true">
+          <div className="rail__top"><span className="rail__title">FILTER</span></div>
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} style={{ padding: '14px 0', borderBottom: '1px solid var(--line-row)' }}>
+              <Ghost style={{ height: 9, width: 72 }} />
+              <Ghost style={{ height: 11, width: 150, marginTop: 12 }} />
+              <Ghost style={{ height: 11, width: 118, marginTop: 8 }} />
+            </div>
+          ))}
+        </aside>
+        <main className="main">
+          <div className="results" aria-hidden="true">
+            <div className="results__lead">
+              <Ghost style={{ height: 30, width: 96 }} />
+              <Ghost style={{ height: 11, width: 140 }} />
+            </div>
+            <div className="results__actions desktop-only">
+              <Ghost style={{ height: 11, width: 92 }} />
+              <Ghost style={{ height: 11, width: 70 }} />
+              <Ghost style={{ height: 11, width: 110 }} />
             </div>
           </div>
-        </div>
+          <div className="grid">
+            <CardGhosts count={12} />
+          </div>
+        </main>
       </div>
-
       <TabBarGhost />
     </div>
   )

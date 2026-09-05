@@ -1,29 +1,31 @@
 /**
- * /sellers/[username] loading skeleton — profile head + listings grid.
+ * /sellers/[username] loading skeleton — seller head + tabs + listings grid.
  */
 import { SiteHeaderGhost, CardGhosts, Ghost, TabBarGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
+    <div className="app-shell has-tabbar">
       <SiteHeaderGhost />
-
-      <div className="seller-profile-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '48px 80px 96px' }}>
-        <Ghost style={{ height: '28px', width: '224px' }} />
-        <div style={{ display: 'flex', gap: '24px', marginTop: '16px' }}>
-          <Ghost style={{ height: '13px', width: '80px' }} />
-          <Ghost style={{ height: '13px', width: '80px' }} />
-          <Ghost style={{ height: '13px', width: '80px' }} />
-        </div>
-
-        <div style={{ marginTop: '48px' }}>
-          <Ghost style={{ height: '11px', width: '112px' }} />
-          <div className="skeleton-grid-4" style={{ marginTop: '24px' }}>
-            <CardGhosts count={8} />
+      <main className="saved-main">
+        <div className="seller-head" aria-hidden="true">
+          <Ghost style={{ width: 64, height: 64 }} />
+          <div className="grow">
+            <Ghost style={{ height: 22, width: 200 }} />
+            <Ghost style={{ height: 9, width: 260, marginTop: 12 }} />
+            <Ghost style={{ height: 11, width: 320, marginTop: 10 }} />
           </div>
+          <Ghost style={{ height: 32, width: 96 }} />
+          <Ghost style={{ height: 32, width: 84 }} />
         </div>
-      </div>
-
+        <div className="tabs-line tabs-line--tight" aria-hidden="true">
+          <Ghost style={{ height: 10, width: 70, marginBottom: 10 }} />
+          <Ghost style={{ height: 10, width: 60, marginBottom: 10 }} />
+        </div>
+        <div className="saved-grid">
+          <CardGhosts count={10} />
+        </div>
+      </main>
       <TabBarGhost />
     </div>
   )

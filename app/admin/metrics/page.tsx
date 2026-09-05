@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
+import AdminFrame from '../admin-frame'
 
 export const metadata = { title: 'Admin — Metrics', robots: { index: false, follow: false } }
 export const revalidate = 300 // refresh every 5 min in prod
@@ -18,11 +19,12 @@ export default async function AdminMetricsPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, username')
     .eq('id', user.id)
     .single()
 
   if (profile?.role !== 'admin') redirect('/')
+  const username = (profile?.username as string) ?? ''
 
   const service = createServiceClientRaw()
 
@@ -74,78 +76,73 @@ export default async function AdminMetricsPage() {
   }
   const totalSignups = (signupRows ?? []).length
 
-  return (
-    <div style={{ fontFamily: 'var(--font-mono)', padding: '32px', maxWidth: '960px' }}>
-      <h1 style={{ fontSize: '20px', marginBottom: '32px' }}>Platform Metrics</h1>
+  const maxSignups = Math.max(1, ...Object.values(signupsByDay))
 
-      {/* GMV */}
-      <section style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '14px', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Revenue
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '16px' }}>
+  return (
+    <AdminFrame username={username} section="metrics" title="Platform metrics." note="REFRESHES EVERY 5 MIN">
+      <section>
+        <div className="sec-head"><span className="sec-head__label">REVENUE</span><span className="page-note">RELEASED ORDERS ONLY</span></div>
+        <div className="stat-grid">
           <Stat label="GMV (released)" value={formatCents(gmvCents)} />
           <Stat label="Total orders" value={String(totalOrders)} />
           <Stat label="Dispute rate" value={`${disputeRate}%`} />
         </div>
       </section>
 
-      {/* Listings */}
-      <section style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '14px', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Listings
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
+      <section>
+        <div className="sec-head"><span className="sec-head__label">LISTINGS</span><span className="page-note">BY STATUS</span></div>
+        <div className="stat-grid">
           {(['active','pending_review','sold','removed','pending_escrow'] as const).map(s => (
-            <Stat key={s} label={s} value={String(listingsByStatus[s] ?? 0)} />
+            <Stat key={s} label={s.replace('_', ' ')} value={String(listingsByStatus[s] ?? 0)} />
           ))}
         </div>
       </section>
 
-      {/* Orders */}
-      <section style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '14px', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Orders by state
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px' }}>
-          {Object.entries(ordersByState).map(([state, count]) => (
-            <Stat key={state} label={state} value={String(count)} />
-          ))}
-        </div>
-      </section>
-
-      {/* Signups */}
-      <section style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '14px', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Signups (last 14 days)
-        </h2>
-        <p style={{ fontSize: '28px', marginBottom: '12px' }}>{totalSignups}</p>
-        <table style={{ fontSize: '12px', borderCollapse: 'collapse', width: '100%' }}>
-          <tbody>
-            {Object.entries(signupsByDay).map(([day, count]) => (
-              <tr key={day}>
-                <td style={{ padding: '4px 8px 4px 0', color: '#666' }}>{day}</td>
-                <td style={{ padding: '4px 8px' }}>{count}</td>
-                <td style={{ padding: '4px 8px' }}>
-                  <span style={{ display: 'inline-block', height: '8px', background: '#1a1a1a', width: `${Math.min(count * 12, 200)}px` }} />
-                </td>
-              </tr>
+      <section>
+        <div className="sec-head"><span className="sec-head__label">ORDERS</span><span className="page-note">BY STATE</span></div>
+        {Object.keys(ordersByState).length === 0 ? (
+          <div className="admin-empty">NO ORDERS YET</div>
+        ) : (
+          <div className="stat-grid">
+            {Object.entries(ordersByState).map(([state, count]) => (
+              <Stat key={state} label={state.replace(/_/g, ' ')} value={String(count)} />
             ))}
-          </tbody>
-        </table>
+          </div>
+        )}
       </section>
 
-    </div>
+      <section>
+        <div className="sec-head"><span className="sec-head__label">SIGNUPS</span><span className="page-note">LAST 14 DAYS · {totalSignups} TOTAL</span></div>
+        {Object.keys(signupsByDay).length === 0 ? (
+          <div className="admin-empty">NO SIGNUPS IN THE LAST 14 DAYS</div>
+        ) : (
+          <div style={{ overflowX: 'auto', paddingTop: 8 }}>
+            <table className="admin-table">
+              <thead>
+                <tr><th style={{ width: 120 }}>DAY</th><th style={{ width: 60 }}>COUNT</th><th>&nbsp;</th></tr>
+              </thead>
+              <tbody>
+                {Object.entries(signupsByDay).map(([day, count]) => (
+                  <tr key={day}>
+                    <td>{day}</td>
+                    <td style={{ color: 'var(--ink)', fontWeight: 400 }}>{count}</td>
+                    <td><span className="bar" style={{ width: `${Math.max(4, Math.round((count / maxSignups) * 240))}px` }} aria-hidden="true" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </AdminFrame>
   )
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ border: '1px solid #e5e5e5', padding: '16px', borderRadius: '2px' }}>
-      <div style={{ fontSize: '11px', color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: '24px', fontFamily: 'var(--font-mono)' }}>{value}</div>
+    <div className="stat">
+      <div className="stat__k">{label}</div>
+      <div className="stat__v">{value}</div>
     </div>
   )
 }

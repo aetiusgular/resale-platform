@@ -1,9 +1,14 @@
 'use client'
 
+/**
+ * Listing-page save control — the square bookmark next to MESSAGE SELLER
+ * (design 4A). Optimistic; guests get the sign-in popup instead of the API.
+ */
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { trackEvent } from '@/lib/analytics'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
+import { HeartIcon } from '@/app/components/icons'
 
 export default function SaveButton({
   listingId,
@@ -27,7 +32,7 @@ export default function SaveButton({
     }
     setLoading(true)
     const prevSaved = saved
-    setSaved(s => !s) // optimistic
+    setSaved((s) => !s) // optimistic
 
     const res = await fetch('/api/saves', {
       method: prevSaved ? 'DELETE' : 'POST',
@@ -45,21 +50,16 @@ export default function SaveButton({
 
   return (
     <button
+      type="button"
       onClick={toggle}
       disabled={loading}
+      className={`btn-square${saved ? ' is-on' : ''}`}
+      title={saved ? 'Unsave' : 'Save'}
+      aria-pressed={saved}
+      aria-label={saved ? 'Remove from saved' : 'Save item'}
       data-testid="listing-save-btn"
-      style={{
-        height: '44px', padding: '0 20px',
-        background: saved ? 'var(--color-ink)' : 'var(--color-bg)',
-        color: saved ? 'var(--color-bg)' : 'var(--color-ink)',
-        border: '1px solid var(--color-ink)', borderRadius: '2px',
-        fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em',
-        textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer',
-        transition: 'all 120ms linear', opacity: loading ? 0.6 : 1,
-        whiteSpace: 'nowrap',
-      }}
     >
-      {saved ? 'SAVED' : 'SAVE'}
+      <HeartIcon filled={saved} size={12} />
     </button>
   )
 }

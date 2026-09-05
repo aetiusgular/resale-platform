@@ -18,13 +18,13 @@ export default function AppleIcon() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          background: '#131210',
+          background: '#161616',
           paddingLeft: 40,
         }}
       >
-        <div style={{ width: 101, height: 11, background: '#EDE8DC', marginBottom: 17 }} />
-        <div style={{ width: 101, height: 11, background: '#EDE8DC', marginBottom: 17 }} />
-        <div style={{ width: 68, height: 11, background: '#EDE8DC' }} />
+        <div style={{ width: 101, height: 9, background: '#f5f5f3', marginBottom: 17 }} />
+        <div style={{ width: 101, height: 9, background: '#f5f5f3', marginBottom: 17 }} />
+        <div style={{ width: 68, height: 9, background: '#f5f5f3' }} />
       </div>
     ),
     size

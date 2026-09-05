@@ -18,6 +18,14 @@ function parts(event: NotifyEvent, ctx: NotifyContext): { title: string; body: s
       return { title: 'New offer', body: `${who} offered ${money(ctx.amountCents)} on ${item}.`, url: ctx.conversationId ? `/messages/${ctx.conversationId}` : '/messages' }
     case 'offer_accepted':
       return { title: 'Offer accepted', body: `${who} accepted your ${money(ctx.amountCents)} offer on ${item}. Complete checkout to secure it.`, url: ctx.listingId ? `/checkout/${ctx.listingId}` : '/messages' }
+    case 'offer_declined':
+      return { title: 'Offer declined', body: `${who} declined your ${money(ctx.amountCents)} offer on ${item}.`, url: ctx.conversationId ? `/messages/${ctx.conversationId}` : '/messages' }
+    case 'offer_countered':
+      return { title: `Counter received — ${money(ctx.amountCents)}`, body: `${who} countered on ${item}. Accept, counter or decline from the thread.`, url: ctx.conversationId ? `/messages/${ctx.conversationId}` : '/messages' }
+    case 'price_drop':
+      return { title: `Saved item now ${money(ctx.amountCents)}`, body: `${item}${ctx.oldAmountCents ? ` — was ${money(ctx.oldAmountCents)}` : ''}.`, url: ctx.listingId ? `/listings/${ctx.listingId}` : '/saved' }
+    case 'listing_approved':
+      return { title: 'Listing approved — now live', body: `${item} passed review and is live on the archive.`, url: ctx.listingId ? `/listings/${ctx.listingId}` : '/sell' }
     case 'sale':
       return { title: 'Your item sold', body: `${item} sold for ${money(ctx.amountCents)}. Confirm and ship to get paid.`, url: ctx.orderId ? `/orders/${ctx.orderId}` : '/orders' }
     case 'shipped':

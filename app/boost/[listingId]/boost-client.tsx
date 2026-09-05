@@ -5,18 +5,29 @@
  * Calls POST /api/boosts for a PaymentIntent, then confirms with Stripe Elements.
  * A boost is a standalone platform charge (no Connect transfer). On success the
  * webhook activates the boost and floats the listing to the top of browse.
+ *
+ * Layout follows the settings/checkout pattern: ruled page head, numbered
+ * section heads, option cells for the packages, a Stripe card field, and a
+ * side panel that restates what a boost does next to the free bump.
  */
 import { useState } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import Link from 'next/link'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
 import { BUMP_COOLDOWN_DAYS, PRICE_DROP_BUMP_MIN_PCT } from '@/lib/bump/eligibility'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 const CARD_OPTIONS = {
-  style: { base: { fontFamily: '"Space Mono", monospace', fontSize: '14px', color: 'var(--color-ink)', '::placeholder': { color: 'var(--color-ink-soft)' } }, invalid: { color: 'var(--color-alert)' } },
+  style: {
+    base: {
+      fontFamily: '"IBM Plex Mono", "SFMono-Regular", Menlo, monospace',
+      fontSize: '13px',
+      fontWeight: '300',
+      '::placeholder': { color: '#9d9d98' },
+    },
+  },
 }
 
 type Pkg = { key: string; label: string; amountCents: number; durationDays: number }
@@ -34,12 +45,8 @@ interface Props {
   freeBump: FreeBump | null
 }
 
-function box(selected: boolean) {
-  return {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '14px 16px', border: `1px solid ${selected ? 'var(--color-ink)' : 'var(--color-line)'}`,
-    borderRadius: 2, cursor: 'pointer', background: selected ? 'var(--color-bg-alt, #f6f4ef)' : 'var(--color-bg)',
-  } as const
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()
 }
 
 function BoostForm({ listingId, title, brand, active, boostedUntil, packages, freeBump }: Props) {
@@ -53,6 +60,7 @@ function BoostForm({ listingId, title, brand, active, boostedUntil, packages, fr
 
   const currentlyBoosted = !!boostedUntil && new Date(boostedUntil).getTime() > nowMs
   const pkg = packages.find((p) => p.key === selected) ?? null
+  const perDay = (p: Pkg) => Math.round(p.amountCents / p.durationDays)
 
   async function handlePay(e: React.FormEvent) {
     e.preventDefault()
@@ -77,97 +85,130 @@ function BoostForm({ listingId, title, brand, active, boostedUntil, packages, fr
     }
   }
 
+  const side = (
+    <div className="split__side">
+      <div className="panel">
+        <div className="panel__title">THIS LISTING</div>
+        <div className="row-line__handle" style={{ fontWeight: 300 }}>{title}</div>
+        <div className="mono-note" style={{ paddingTop: 6 }}>{brand.toUpperCase()}{currentlyBoosted && boostedUntil ? ` · PROMOTED UNTIL ${shortDate(boostedUntil)}` : ''}</div>
+      </div>
+      <div className="panel">
+        <div className="panel__title">WHAT A BOOST DOES</div>
+        <div className="kv"><span className="kv__k">01</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>PINNED TO THE TOP OF BROWSE FOR THE WHOLE PERIOD</span></div>
+        <div className="kv"><span className="kv__k">02</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>LABELLED PROMOTED · CAPPED PER PAGE</span></div>
+        <div className="kv"><span className="kv__k">03</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>CHARGED ONCE · NO AUTO-RENEWAL</span></div>
+      </div>
+      {freeBump && (
+        <div className="panel">
+          <div className="panel__title">THE FREE ALTERNATIVE</div>
+          <p className="settings-note" style={{ margin: 0 }}>
+            {freeBump.availableNow ? (
+              <>
+                A free bump is available now — one refresh to the top of browse every {BUMP_COOLDOWN_DAYS} days. It lifts the listing once; a boost keeps it pinned.
+              </>
+            ) : (
+              <>
+                Your free bump (one refresh every {BUMP_COOLDOWN_DAYS} days) is next available {freeBump.nextAtIso ? shortDate(freeBump.nextAtIso) : 'soon'}, or drop the price {PRICE_DROP_BUMP_MIN_PCT}% to bump early.
+              </>
+            )}
+          </p>
+          {freeBump.availableNow && (
+            <div className="save-row save-row--left" style={{ paddingTop: 12 }}>
+              <PrefetchLink href={`/listings/${listingId}`} className="link-underline link-underline--ink">BUMP FOR FREE INSTEAD →</PrefetchLink>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
   if (done) {
     return (
-      <div style={{ maxWidth: 480, margin: '80px auto', padding: '0 24px', textAlign: 'center' }}>
-        <h1 style={{ font: '600 22px var(--font-ui)', color: 'var(--color-ink)' }}>Boost activated</h1>
-        <p style={{ fontSize: 14, color: 'var(--color-ink-soft)', marginTop: 8 }}>
-          {title.toUpperCase()} is now promoted to the top of browse for {pkg?.durationDays} days.
-        </p>
-        <Link href={`/listings/${listingId}`} style={{ display: 'inline-block', marginTop: 24, height: 44, lineHeight: '44px', padding: '0 24px', background: 'var(--color-ink)', color: 'var(--color-bg)', textDecoration: 'none', borderRadius: 2, font: '500 14px var(--font-ui)' }}>
-          View listing
-        </Link>
+      <div className="split">
+        <div className="split__main">
+          <div className="empty" style={{ textAlign: 'left', padding: '24px 0' }}>
+            <div className="empty__title">Boost activated.</div>
+            <div className="empty__sub">{title.toUpperCase()} IS PROMOTED AT THE TOP OF BROWSE FOR {pkg?.durationDays} DAYS</div>
+            <div className="empty__cta">
+              <PrefetchLink href={`/listings/${listingId}`} className="btn-primary btn-primary--inline" data-testid="boost-view-listing">VIEW LISTING →</PrefetchLink>
+            </div>
+          </div>
+        </div>
+        {side}
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: 520, margin: '48px auto', padding: '0 24px' }}>
-      <h1 style={{ font: '600 22px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>Boost this listing</h1>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-ink-soft)', marginTop: 4 }}>
-        {title.toUpperCase()} · {brand.toUpperCase()}
-      </p>
+    <form onSubmit={handlePay} className="split">
+      <div className="split__main">
+        {!active && (
+          <div className="push-banner" style={{ marginTop: 0, marginBottom: 20, borderColor: 'var(--alert)' }}>
+            <span>Only active listings can be boosted. This one isn&rsquo;t active right now.</span>
+          </div>
+        )}
+        {currentlyBoosted && boostedUntil && (
+          <div className="push-banner" style={{ marginTop: 0, marginBottom: 20 }}>
+            <span>Already promoted until {new Date(boostedUntil).toLocaleDateString()}. Buying another package extends the promotion.</span>
+          </div>
+        )}
 
-      {!active && (
-        <p style={{ marginTop: 16, fontSize: 13, color: 'var(--color-alert)' }}>
-          Only active listings can be boosted. This listing isn&apos;t active right now.
-        </p>
-      )}
-      {currentlyBoosted && (
-        <p style={{ marginTop: 12, fontSize: 13, color: 'var(--color-ink-soft)' }}>
-          Already boosted until {new Date(boostedUntil as string).toLocaleDateString()}. Buying another extends promotion.
-        </p>
-      )}
-      {/* Free alternative (G7 bump) — the other half of the visibility economy: bump once
-          every 7 days free vs pay to stay pinned for the whole package period. */}
-      {freeBump && (
-        <p style={{ marginTop: 12, fontSize: 13, color: 'var(--color-ink-soft)' }}>
-          {freeBump.availableNow ? (
-            <>
-              Prefer free? A{' '}
-              <Link href={`/listings/${listingId}`} style={{ color: 'var(--color-ink)' }}>
-                bump
-              </Link>{' '}
-              is available now — one free refresh to the top of browse every {BUMP_COOLDOWN_DAYS} days.
-              A boost keeps this listing pinned up top, labelled Promoted, for the whole period.
-            </>
-          ) : (
-            <>
-              Your free bump (one refresh to the top every {BUMP_COOLDOWN_DAYS} days) is next
-              available {freeBump.nextAtIso ? new Date(freeBump.nextAtIso).toLocaleDateString() : 'soon'} —
-              or drop the price {PRICE_DROP_BUMP_MIN_PCT}% to bump early. A boost pins this listing
-              up top, labelled Promoted, for the whole period.
-            </>
-          )}
-        </p>
-      )}
-
-      <form onSubmit={handlePay} style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {packages.map((p) => (
-          <label key={p.key} style={box(selected === p.key)}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <input type="radio" name="pkg" value={p.key} checked={selected === p.key} onChange={() => setSelected(p.key)} />
-              <span style={{ font: '500 14px var(--font-ui)', color: 'var(--color-ink)' }}>{p.label}</span>
-            </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--color-ink)' }}>{formatCents(p.amountCents)}</span>
-          </label>
-        ))}
-
-        <div style={{ marginTop: 12, padding: '12px 14px', border: '1px solid var(--color-line)', borderRadius: 2 }}>
-          <CardElement options={CARD_OPTIONS} />
+        <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">01 — PACKAGE</span><span className="page-note">PICK ONE</span></div>
+        <div className="option-grid" role="radiogroup" aria-label="Boost package" data-testid="boost-packages">
+          {packages.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              role="radio"
+              aria-checked={selected === p.key}
+              className={`option-cell${selected === p.key ? ' is-on' : ''}`}
+              onClick={() => setSelected(p.key)}
+              data-testid={`boost-pkg-${p.key}`}
+            >
+              <span className="option-cell__t">{p.label}</span>
+              <span className="option-cell__s">{formatCents(p.amountCents)} · {p.durationDays} DAYS · {formatCents(perDay(p))}/DAY</span>
+            </button>
+          ))}
         </div>
 
-        {error && <p style={{ fontSize: 13, color: 'var(--color-alert)' }}>{error}</p>}
+        <div className="sec-head"><span className="sec-head__label">02 — CARD</span><span className="page-note">HANDLED BY STRIPE · NEVER STORED HERE</span></div>
+        <div className="field-block">
+          <div className="field-label">CARD</div>
+          <div className="stripe-field"><CardElement options={CARD_OPTIONS} /></div>
+        </div>
 
-        <button
-          type="submit"
-          disabled={!stripe || loading || !active || !pkg}
-          style={{ marginTop: 8, height: 48, background: 'var(--color-ink)', color: 'var(--color-bg)', border: 'none', borderRadius: 2, font: '500 14px var(--font-ui)', cursor: loading || !active ? 'not-allowed' : 'pointer', opacity: loading || !active ? 0.6 : 1 }}
-        >
-          {loading ? 'Processing…' : pkg ? `Pay ${formatCents(pkg.amountCents)} — boost ${pkg.durationDays} days` : 'Select a package'}
-        </button>
-        <p style={{ fontSize: 11, color: 'var(--color-ink-soft)', textAlign: 'center' }}>
-          Promoted listings are labelled and capped per page. Charged once; no auto-renewal.
-        </p>
-      </form>
-    </div>
+        {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
+
+        <div className="save-row save-row--left" style={{ paddingTop: 28 }}>
+          <button
+            type="submit"
+            className="btn-primary btn-primary--inline"
+            disabled={!stripe || loading || !active || !pkg}
+            data-testid="boost-pay"
+          >
+            {loading ? 'PROCESSING…' : pkg ? `PAY ${formatCents(pkg.amountCents)} — BOOST ${pkg.durationDays} DAYS` : 'SELECT A PACKAGE'}
+          </button>
+          <span className="page-note">CHARGED ONCE · NO AUTO-RENEWAL</span>
+        </div>
+      </div>
+      {side}
+    </form>
   )
 }
 
 export default function BoostClient(props: Props) {
   return (
-    <Elements stripe={stripePromise}>
-      <BoostForm {...props} />
-    </Elements>
+    <main className="page-main">
+      <div className="crumb"><PrefetchLink href="/sell">SELL</PrefetchLink> / <PrefetchLink href={`/listings/${props.listingId}`}>LISTING</PrefetchLink> / BOOST</div>
+      <div className="page-head page-head--ruled">
+        <h1 className="page-title">Boost this listing.</h1>
+        <span className="page-note">PROMOTED · TOP OF BROWSE</span>
+      </div>
+      <div className="mt-24">
+        <Elements stripe={stripePromise}>
+          <BoostForm {...props} />
+        </Elements>
+      </div>
+    </main>
   )
 }

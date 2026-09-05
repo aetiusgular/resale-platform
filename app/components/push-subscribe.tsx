@@ -1,18 +1,19 @@
 'use client'
 
 /**
- * "Enable push on this device" control for the notifications settings pane (G2).
- * Registers /sw.js, requests permission, subscribes via the PushManager with the public
- * VAPID key, and stores the subscription. Capability detection + state updates all happen
- * in async callbacks (never synchronously in the effect body), so no set-state-in-effect.
- * Renders an inert hint when push isn't configured (no NEXT_PUBLIC_VAPID_PUBLIC_KEY) or
- * unsupported by the browser.
+ * Web-push on this device (G2). `usePushStatus()` registers /sw.js, requests
+ * permission, subscribes via the PushManager with the public VAPID key and stores
+ * the subscription; it powers both the notifications popout prompt and the
+ * Settings → Notifications pane. Capability detection + state updates all happen
+ * in async callbacks (never synchronously in the effect body). Reports
+ * 'unconfigured' when NEXT_PUBLIC_VAPID_PUBLIC_KEY is missing and 'unsupported'
+ * when the browser can't do push.
  */
 import { useEffect, useState } from 'react'
 
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
-type Status = 'unknown' | 'unsupported' | 'unconfigured' | 'subscribed' | 'unsubscribed' | 'denied' | 'working'
+export type PushStatus = 'unknown' | 'unsupported' | 'unconfigured' | 'subscribed' | 'unsubscribed' | 'denied' | 'working'
 
 function urlB64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4)
@@ -24,8 +25,8 @@ function urlB64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   return arr
 }
 
-export default function PushSubscribe() {
-  const [status, setStatus] = useState<Status>('unknown')
+export function usePushStatus() {
+  const [status, setStatus] = useState<PushStatus>('unknown')
 
   useEffect(() => {
     let cancelled = false
@@ -88,27 +89,40 @@ export default function PushSubscribe() {
     }
   }
 
-  const hint = (text: string) => (
-    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-ink-soft)' }}>{text}</span>
-  )
+  return { status, subscribe, unsubscribe }
+}
 
-  return (
-    <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-      <span style={{ font: '600 13px var(--font-ui)', color: 'var(--color-ink)' }}>Push on this device</span>
-      {status === 'unknown' && hint('Checking…')}
-      {status === 'unconfigured' && hint('Push isn’t configured yet.')}
-      {status === 'unsupported' && hint('Not supported in this browser.')}
-      {status === 'denied' && hint('Blocked — allow notifications in your browser settings.')}
-      {status === 'unsubscribed' && (
-        <button onClick={subscribe} style={{ height: 36, padding: '0 20px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: 2, font: '500 13px var(--font-ui)', cursor: 'pointer' }}>Enable push</button>
-      )}
-      {status === 'subscribed' && (
-        <>
-          {hint('Enabled')}
-          <button onClick={unsubscribe} style={{ height: 36, padding: '0 16px', background: 'var(--color-bg)', color: 'var(--color-ink-soft)', border: '1px solid var(--color-line)', borderRadius: 2, font: '500 13px var(--font-ui)', cursor: 'pointer' }}>Disable</button>
-        </>
-      )}
-      {status === 'working' && hint('…')}
-    </div>
-  )
+export function pushStatusLine(status: PushStatus): string {
+  switch (status) {
+    case 'unknown': return 'CHECKING…'
+    case 'unconfigured': return 'PUSH ISN’T CONFIGURED YET'
+    case 'unsupported': return 'NOT SUPPORTED IN THIS BROWSER'
+    case 'denied': return 'BLOCKED — ALLOW NOTIFICATIONS IN YOUR BROWSER SETTINGS'
+    case 'subscribed': return 'PUSH ENABLED — THIS BROWSER'
+    case 'unsubscribed': return 'PUSH IS OFF IN THIS BROWSER'
+    case 'working': return '…'
+  }
+}
+
+/** Settings → Notifications: push banner / status line. */
+export default function PushSubscribe() {
+  const { status, subscribe, unsubscribe } = usePushStatus()
+
+  if (status === 'unsubscribed') {
+    return (
+      <div className="push-banner">
+        <span>Push is off in this browser.</span>
+        <button type="button" className="link-underline link-underline--ink" onClick={subscribe}>ENABLE PUSH →</button>
+      </div>
+    )
+  }
+  if (status === 'subscribed') {
+    return (
+      <div className="push-banner">
+        <span>Push is on in this browser.</span>
+        <button type="button" className="link-underline" onClick={unsubscribe}>DISABLE</button>
+      </div>
+    )
+  }
+  return <div className="push-note">{pushStatusLine(status)}</div>
 }

@@ -2,11 +2,13 @@
  * POST /api/conversations/[id]/offers/[offerId]/decline
  * Decline an open offer. Only the RECIPIENT may decline.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { canRespond } from '@/lib/offers'
 import type { Offer, Conversation } from '@/lib/offers'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 
 interface RouteContext {
   params: Promise<{ id: string; offerId: string }>
@@ -51,6 +53,24 @@ export async function POST(_req: NextRequest, { params }: RouteContext) {
 
   if (error || !updated) {
     return NextResponse.json({ error: 'Offer no longer open' }, { status: 409 })
+  }
+
+  // "Offer declined" to whoever made it (OFFER RESULT bucket, design 14A).
+  if (NOTIFICATIONS_ENABLED) {
+    after(async () => {
+      const [{ data: actor }, { data: l }] = await Promise.all([
+        service.from('profiles').select('username').eq('id', user.id).single(),
+        service.from('listings').select('title, brand').eq('id', conv.listing_id).single(),
+      ])
+      await notify(service, offer.from_user, 'offer_declined', {
+        actorName: (actor as { username?: string } | null)?.username,
+        itemTitle: (l as { title?: string } | null)?.title,
+        brand: (l as { brand?: string } | null)?.brand,
+        amountCents: offer.amount_cents,
+        conversationId,
+        offerId,
+      })
+    })
   }
 
   return NextResponse.json({ offer: updated })

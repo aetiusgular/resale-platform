@@ -4,11 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 import { formatCents } from '@/lib/fees'
 import BrowseClient from './browse-client'
 import JsonLd from '@/app/components/json-ld'
+import AppShell from '@/app/components/app-shell'
+import { flattenSizes, normalizeSizes, type UserSizes } from '@/lib/sizes'
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/seo-listing'
-import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED, BUMP_ENABLED } from '@/lib/flags'
+import { AUTH_BADGE_ENABLED, RECS_ENABLED, RECS_TELEMETRY_ENABLED, BOOSTED_POSTS_ENABLED } from '@/lib/flags'
 import { getFeed } from '@/lib/recs/client'
 import { applyFeedOrder } from '@/lib/recs/rank'
 import { applyBoostOrder } from '@/lib/boosts'
+import { applyBrowseOrder, applyBrowseWhere, isDiscoveryView, parseBrowseParams } from '@/lib/browse/filters'
 
 export const metadata: Metadata = {
   title: 'Browse',
@@ -27,7 +30,9 @@ export type BrowseListing = {
   brand: string
   category: string
   department: string
+  subcategory: string | null
   size: string
+  color: string | null
   condition_score: number
   price_cents: number
   saves_count: number
@@ -36,6 +41,10 @@ export type BrowseListing = {
   created_at: string
   seller: { username: string; id_verification_status: string } | null
   authentication_status: string
+  /** status === 'sold' (SHOW ONLY → Sold items) */
+  sold: boolean
+  /** The viewer's own listing — the card shows BUMP ↗ instead of the timestamp */
+  own: boolean
   // Derived on server
   original_price_cents: number | null
   price_display: string
@@ -45,6 +54,14 @@ export type BrowseListing = {
 export type FilterCounts = {
   departments: Record<string, number>
   categories: Record<string, number>
+  /** category → subcategory → count (rail: expandable CATEGORY trees) */
+  subcategories: Record<string, Record<string, number>>
+  /** Top designers among active listings — label → count, sorted desc */
+  brands: Array<{ label: string; count: number }>
+  /** Distinct designers with an active listing (rail: "VIEW ALL n →") */
+  brandsTotal: number
+  colors: Record<string, number>
+  showOnly: { authenticated: number; verified: number; dropped: number; sold: number }
 }
 
 interface PageProps {
@@ -61,124 +78,74 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   // client-side (auth popup) and server-side (401 + RLS).
   const { data: { user } } = await supabase.auth.getUser()
 
-  const q        = params.q?.trim() ?? ''
-  const dept     = params.dept ?? ''
-  const cat      = params.cat ?? ''
-  const size     = params.size ?? ''
-  const brand    = params.brand ?? ''
-  const minPrice = params.min_price ? Math.round(parseFloat(params.min_price) * 100) : null
-  const maxPrice = params.max_price ? Math.round(parseFloat(params.max_price) * 100) : null
-  const condMin  = params.cond ? parseInt(params.cond, 10) : null
-  const verified = params.verified === '1'
-  const authenticated = params.authenticated === '1'
-  const dropped  = params.dropped === '1'
-  const sort     = params.sort ?? 'newest'
-  const offset   = params.offset ? parseInt(params.offset, 10) : 0
+  const f = parseBrowseParams(params)
+  const q = f.q
+
+  // Profile (sizes + username + hide-not-my-size) is needed before the listing
+  // query when MY SIZES is on, so it is fetched up front for members.
+  const { data: profileData } = user
+    ? await supabase.from('profiles').select('sizes, username, hide_not_my_size').eq('id', user.id).single()
+    : { data: null }
+  const userSizes: UserSizes = normalizeSizes(profileData?.sizes)
+  const username: string = (profileData?.username as string) ?? ''
+  // MY SIZES: on when the URL says so, or by default when the profile switch
+  // "Hide listings that aren't my size" is on (my_sizes=0 turns it off for a visit).
+  const mySizesOn = !!user && (params.my_sizes === '1' || (params.my_sizes !== '0' && !!profileData?.hide_not_my_size))
+  if (mySizesOn && !f.size && f.sizes.length === 0) f.sizes = flattenSizes(userSizes)
 
   // ── Personalized ordering (feed→browse): fail-soft, flag-gated ─────────────
   // Only the UNFILTERED first page of pure discovery is reranked. Any search,
   // filter, explicit price/condition, or deeper page keeps the deterministic
   // default order. The feed fetch runs concurrently with the listing queries.
-  const isDiscoveryView =
-    !q && !dept && !cat && !size && !brand &&
-    minPrice === null && maxPrice === null && condMin === null &&
-    !verified && !authenticated && !dropped &&
-    (sort === 'newest' || sort === 'relevance')
-  const recsEligible = RECS_ENABLED && isDiscoveryView && offset === 0 && !!user
+  const recsEligible = RECS_ENABLED && isDiscoveryView(f) && f.offset === 0 && !!user
   const feedPromise = recsEligible && user ? getFeed({ userId: user.id }) : Promise.resolve(null)
 
-  // ── Build listing query ────────────────────────────────────────────────────
+  // ── Row + count queries share ONE WHERE builder with the load-more route ───
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
     .from('listings')
     .select(`
-      id, title, brand, category, department, size,
-      condition_score, price_cents, saves_count, is_price_dropped, authentication_status,
-      images, created_at, boosted_until,
+      id, title, brand, category, department, subcategory, size, color,
+      condition_score, price_cents, saves_count, is_price_dropped, authentication_status, status,
+      images, created_at, boosted_until, seller_id,
       profiles:seller_id (username, id_verification_status)
     `)
-    .eq('status', 'active')
+  query = applyBrowseWhere(query, f)
+  query = applyBrowseOrder(query, f)
+  query = query.range(f.offset, f.offset + PAGE_SIZE)
 
-  if (q) {
-    query = query.textSearch('search_vector', q, { type: 'websearch', config: 'english' })
-  }
-  if (dept)   query = query.eq('department', dept)
-  if (cat)    query = query.eq('category', cat)
-  if (size)   query = query.eq('size', size)
-  if (brand)  query = query.ilike('brand', `%${brand}%`)
-  if (minPrice !== null) query = query.gte('price_cents', minPrice)
-  if (maxPrice !== null) query = query.lte('price_cents', maxPrice)
-  if (condMin !== null)  query = query.gte('condition_score', condMin)
-  if (verified) query = query.eq('profiles.id_verification_status', 'verified')
-  if (dropped)  query = query.eq('is_price_dropped', true)
-  if (authenticated) query = query.eq('authentication_status', 'authenticated')
-
-  switch (sort) {
-    case 'price_asc':  query = query.order('price_cents', { ascending: true }).order('id'); break
-    case 'price_desc': query = query.order('price_cents', { ascending: false }).order('id'); break
-    case 'most_saved': query = query.order('saves_count', { ascending: false }).order('id'); break
-    case 'relevance':
-      if (q) { query = query.order('id'); break } // ts_rank applied automatically
-      // fallthrough to newest if no query
-      /* falls through */
-    default: {
-      // Default order: paid boost first, then bump freshness, then recency — the same
-      // total order as the load-more API route, so offset pagination never dups/skips.
-      // Creation counts as the first bump (migration 0042), so bumped_at ≈ created_at
-      // until a seller actually bumps; BUMP off ⇒ identical to the pre-bump ordering.
-      query = query.order('boosted_until', { ascending: false, nullsFirst: false })
-      if (BUMP_ENABLED) query = query.order('bumped_at', { ascending: false, nullsFirst: false })
-      query = query.order('created_at', { ascending: false }).order('id')
-    }
-  }
-
-  query = query.range(offset, offset + PAGE_SIZE)
-
-  // ── Build count query ─────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let countQuery: any = supabase
-    .from('listings')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'active')
-
-  if (q)     countQuery = countQuery.textSearch('search_vector', q, { type: 'websearch', config: 'english' })
-  if (dept)  countQuery = countQuery.eq('department', dept)
-  if (cat)   countQuery = countQuery.eq('category', cat)
-  if (size)  countQuery = countQuery.eq('size', size)
-  if (brand) countQuery = countQuery.ilike('brand', `%${brand}%`)
-  if (minPrice !== null) countQuery = countQuery.gte('price_cents', minPrice)
-  if (maxPrice !== null) countQuery = countQuery.lte('price_cents', maxPrice)
-  if (condMin !== null)  countQuery = countQuery.gte('condition_score', condMin)
-  if (dropped) countQuery = countQuery.eq('is_price_dropped', true)
-  if (authenticated) countQuery = countQuery.eq('authentication_status', 'authenticated')
+  let countQuery: any = supabase.from('listings').select('id', { count: 'exact', head: true })
+  countQuery = applyBrowseWhere(countQuery, f)
 
   // ── Run independent queries in parallel ───────────────────────────────────
   const [
     { data: rawListings },
     { count: totalCount },
-    { data: deptData },
-    { data: catData },
-    { data: profileData },
+    { data: facetData },
+    { count: soldCount },
   ] = await Promise.all([
     query,
     countQuery,
-    supabase.from('listings').select('department').eq('status', 'active'),
-    supabase.from('listings').select('category').eq('status', 'active'),
-    user
-      ? supabase.from('profiles').select('sizes, username').eq('id', user.id).single()
-      : Promise.resolve({ data: null }),
+    supabase
+      .from('listings')
+      .select('department, category, subcategory, brand, color, is_price_dropped, authentication_status, profiles:seller_id (id_verification_status)')
+      .eq('status', 'active'),
+    supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'sold'),
   ])
 
   const listings = (rawListings ?? []) as Array<{
-    id: string; title: string; brand: string; category: string; department: string
-    size: string; condition_score: number; price_cents: number; saves_count: number
-    is_price_dropped: boolean; authentication_status: string; images: string[]; created_at: string
-    boosted_until: string | null
+    id: string; title: string; brand: string; category: string; department: string; subcategory: string | null
+    size: string; color: string | null; condition_score: number; price_cents: number; saves_count: number
+    is_price_dropped: boolean; authentication_status: string; status: string; images: string[]; created_at: string
+    boosted_until: string | null; seller_id: string
     profiles: { username: string; id_verification_status: string } | null
   }>
 
-  const hasMore = listings.length > PAGE_SIZE
-  const pageListings = hasMore ? listings.slice(0, PAGE_SIZE) : listings
+  // Verified-seller filter in the app layer (PostgREST nested-table eq is unreliable).
+  const filtered = f.verified ? listings.filter((l) => l.profiles?.id_verification_status === 'verified') : listings
+  const hasMore = filtered.length > PAGE_SIZE
+  const pageListings = hasMore ? filtered.slice(0, PAGE_SIZE) : filtered
   const displayedIds = pageListings.map(l => l.id)
   const droppedIds = pageListings.filter(l => l.is_price_dropped).map(l => l.id)
 
@@ -207,12 +174,16 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     brand: l.brand,
     category: l.category,
     department: l.department,
+    subcategory: l.subcategory ?? null,
     size: l.size,
+    color: l.color ?? null,
     condition_score: l.condition_score,
     price_cents: l.price_cents,
     saves_count: l.saves_count,
     is_price_dropped: l.is_price_dropped,
     authentication_status: l.authentication_status,
+    sold: l.status === 'sold',
+    own: !!user && l.seller_id === user.id,
     images: Array.isArray(l.images) ? l.images : [],
     created_at: l.created_at,
     seller: l.profiles,
@@ -230,37 +201,58 @@ export default async function BrowsePage({ searchParams }: PageProps) {
   // Paid boosts win the top slots (capped) — applied after any recs re-ranking.
   const finalListings = BOOSTED_POSTS_ENABLED ? applyBoostOrder(orderedListings) : orderedListings
 
-  const filterCounts: FilterCounts = { departments: {}, categories: {} }
-  for (const row of deptData ?? []) {
+  // ── Facet counts for the rail (active catalogue; SOLD is its own count) ────
+  const filterCounts: FilterCounts = {
+    departments: {}, categories: {}, subcategories: {}, brands: [], brandsTotal: 0, colors: {},
+    showOnly: { authenticated: 0, verified: 0, dropped: 0, sold: soldCount ?? 0 },
+  }
+  const brandCounts = new Map<string, number>()
+  type FacetRow = {
+    department: string; category: string; subcategory: string | null; brand: string | null; color: string | null
+    is_price_dropped: boolean; authentication_status: string
+    profiles: { id_verification_status: string } | null
+  }
+  for (const row of (facetData ?? []) as unknown as FacetRow[]) {
     filterCounts.departments[row.department] = (filterCounts.departments[row.department] ?? 0) + 1
-  }
-  for (const row of catData ?? []) {
     filterCounts.categories[row.category] = (filterCounts.categories[row.category] ?? 0) + 1
+    if (row.subcategory) {
+      const subs = (filterCounts.subcategories[row.category] ??= {})
+      subs[row.subcategory] = (subs[row.subcategory] ?? 0) + 1
+    }
+    if (row.brand) brandCounts.set(row.brand, (brandCounts.get(row.brand) ?? 0) + 1)
+    if (row.color) filterCounts.colors[row.color] = (filterCounts.colors[row.color] ?? 0) + 1
+    if (row.authentication_status === 'authenticated') filterCounts.showOnly.authenticated++
+    if (row.profiles?.id_verification_status === 'verified') filterCounts.showOnly.verified++
+    if (row.is_price_dropped) filterCounts.showOnly.dropped++
   }
-
-  const userSizes: Record<string, string> = (profileData?.sizes as Record<string, string>) ?? {}
-  const username: string = (profileData?.username as string) ?? ''
+  filterCounts.brandsTotal = brandCounts.size
+  filterCounts.brands = Array.from(brandCounts, ([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, 12)
 
   return (
     <>
       {/* Effective homepage (/ redirects here): site-level structured data. */}
       <JsonLd data={webSiteJsonLd()} />
       <JsonLd data={organizationJsonLd()} />
-      <Suspense>
-      <BrowseClient
-        initialListings={finalListings}
-        totalCount={totalCount ?? 0}
-        filterCounts={filterCounts}
-        initialSavedIds={Array.from(savedSet)}
-        userSizes={userSizes}
-        hasMore={hasMore}
-        currentOffset={offset}
-        username={username}
-        authBadgeEnabled={AUTH_BADGE_ENABLED}
-        userId={user?.id ?? ''}
-        recsTelemetryEnabled={RECS_TELEMETRY_ENABLED}
-      />
-      </Suspense>
+      <AppShell username={username} searchValue={q}>
+        <Suspense>
+          <BrowseClient
+            initialListings={finalListings}
+            totalCount={totalCount ?? 0}
+            filterCounts={filterCounts}
+            initialSavedIds={Array.from(savedSet)}
+            userSizes={userSizes}
+            mySizesOn={mySizesOn}
+            hasMore={hasMore}
+            currentOffset={f.offset}
+            username={username}
+            authBadgeEnabled={AUTH_BADGE_ENABLED}
+            userId={user?.id ?? ''}
+            recsTelemetryEnabled={RECS_TELEMETRY_ENABLED}
+          />
+        </Suspense>
+      </AppShell>
     </>
   )
 }

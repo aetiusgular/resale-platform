@@ -1,26 +1,42 @@
 'use client'
 
+/**
+ * Browse / search — design option 16A: filter rail (left) + results header
+ * (count, MY SIZES toggle, EDIT SIZES, SAVE SEARCH +, cycling boxed SORT) +
+ * active filter chips + 4-col listing grid + LOAD MORE. ≤960px the rail hides
+ * behind a FILTERS sheet; ≤720px a fixed dock (FILTERS · SORT) sits above the
+ * tab bar.
+ *
+ * All filter state lives in the URL (searchParams) so pages are shareable and
+ * the server does the querying; this component only edits the URL, appends
+ * load-more pages, and handles saves / follow-search / sizes.
+ */
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import { useState, useTransition, useCallback, useRef, useEffect } from 'react'
-import PrefetchLink from '@/app/components/prefetch-link'
+import { useState, useTransition, useCallback, useRef, useEffect, type ReactNode } from 'react'
 import type { BrowseListing, FilterCounts } from './page'
+import { sizesChipLabel, type UserSizes } from '@/lib/sizes'
+import {
+  CATEGORY_TREE, COLORS, DEPARTMENTS, categoriesWithSubcategory, categoryScopeLabel, departmentScopeLabel,
+  parseSubcatKey, picksByCategory, resolveCategorySelection, subcatKey,
+} from '@/lib/taxonomy'
 import { trackEvent } from '@/lib/analytics'
 import {
   recsInit, recsShutdown, observeImpressions, mergeRecsIdentity,
-  trackClick, trackSave, trackUnsave, trackSearch,
+  trackClick, trackSave, trackUnsave,
 } from '@/lib/recs/telemetry'
-import AvatarMenu from '@/app/components/avatar-menu'
 import ListingCard from '@/app/components/listing-card'
-import MobileTabBar from '@/app/components/mobile-tabbar'
+import SizesModal from '@/app/components/sizes-modal'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
-import GuestAction from '@/app/components/guest-action'
+import { CheckIcon, XIcon } from '@/app/components/icons'
 
 type Props = {
   initialListings: BrowseListing[]
   totalCount: number
   filterCounts: FilterCounts
   initialSavedIds: string[]
-  userSizes: Record<string, string>
+  userSizes: UserSizes
+  /** Server-resolved: URL my_sizes=1, or the profile switch "Hide listings that aren't my size". */
+  mySizesOn: boolean
   hasMore: boolean
   currentOffset: number
   username: string
@@ -29,345 +45,299 @@ type Props = {
   recsTelemetryEnabled: boolean
 }
 
-const DEPARTMENTS = ['menswear', 'womenswear', 'unisex']
-const CATEGORIES  = ['Outerwear', 'Tops', 'Bottoms', 'Footwear', 'Accessories', 'Tailoring', 'Denim', 'Knitwear']
-const SORT_OPTIONS = [
-  { value: 'newest',    label: 'Newest' },
-  { value: 'relevance', label: 'Most relevant' },
-  { value: 'price_asc', label: 'Price ↑' },
-  { value: 'price_desc','label': 'Price ↓' },
-  { value: 'most_saved','label': 'Most saved' },
+/** Cycling sort — option 16A: NEWEST → PRICE ↑ → PRICE ↓. */
+const SORTS = [
+  { value: 'newest',     label: 'NEWEST' },
+  { value: 'price_asc',  label: 'PRICE ↑' },
+  { value: 'price_desc', label: 'PRICE ↓' },
 ]
+const SHOW_ONLY: Array<{ id: 'authenticated' | 'verified' | 'dropped' | 'sold'; label: string }> = [
+  { id: 'authenticated', label: 'Authenticated' },
+  { id: 'verified',      label: 'Verified sellers' },
+  { id: 'dropped',       label: 'Price dropped' },
+  { id: 'sold',          label: 'Sold items' },
+]
+const DESIGNERS_SHOWN = 5
 
+const fmt = (n: number) => n.toLocaleString('en-US')
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+/** "MAISON MARGIELA" → "Maison Margiela" for the rail (cards keep the upper-case brand). */
+const titleCase = (s: string) => s.toLowerCase().replace(/(^|[\s(-])([a-zà-ÿ])/g, (m) => m.toUpperCase())
+const csv = (v: string | null) => (v ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
+const without = (list: string[], v: string) => list.filter((x) => x !== v)
 
-// ─── Monochrome checkbox ────────────────────────────────────────────────────
-function Checkbox({ checked }: { checked: boolean }) {
-  return (
-    <span style={{
-      width: '16px', height: '16px', flex: 'none', boxSizing: 'border-box',
-      border: '1px solid var(--color-ink)', borderRadius: '2px',
-      background: checked ? 'var(--color-ink)' : 'var(--color-bg)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '11px', lineHeight: 1, color: 'var(--color-bg)',
-    }}>
-      {checked ? '✓' : ''}
-    </span>
-  )
+/** DEPARTMENT + CATEGORY rail state straight from the URL (multi-select, see lib/taxonomy). */
+function readRailSelection(params: URLSearchParams) {
+  const depts = csv(params.get('dept')).map((d) => d.toLowerCase())
+  const sel = resolveCategorySelection(csv(params.get('cat')), csv(params.get('subcat')))
+  const picksOf: Record<string, string[]> = {}
+  for (const g of picksByCategory(sel.picks)) picksOf[g.category] = g.subs
+  const activeCats = new Set([...sel.cats, ...Object.keys(picksOf)])
+  return { depts, cats: sel.cats, picks: sel.picks, picksOf, activeCats }
 }
+/** `cat` + `subcat` URL params for a selection (null clears the param). */
+const categoryParams = (cats: string[], picks: string[]) => ({ cat: cats.length ? cats.join(',') : null, subcat: picks.length ? picks.join(',') : null })
 
-// ─── Active-filter chip ─────────────────────────────────────────────────────
-function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+// ─── Collapsible rail section ───────────────────────────────────────────────
+function Section({ label, open, onToggle, children }: { label: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '8px',
-      height: '28px', padding: '0 10px',
-      background: 'var(--color-bg)', border: '1px solid var(--color-ink)',
-      borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '11px',
-      letterSpacing: '0.08em', color: 'var(--color-ink)', whiteSpace: 'nowrap',
-      flexShrink: 0,
-    }}>
-      {label.toUpperCase()}
-      <span
-        onClick={onRemove}
-        style={{ color: 'var(--color-ink-soft)', cursor: 'pointer', fontSize: '12px' }}
-        aria-label={`Remove ${label} filter`}
-      >×</span>
-    </span>
-  )
-}
-
-// ─── Collapsible filter section ─────────────────────────────────────────────
-function FilterSection({
-  title, children, defaultOpen = false
-}: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <div style={{ borderTop: '1px solid var(--color-line)' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', padding: '24px 0',
-          background: 'none', border: 'none', cursor: 'pointer',
-        }}
-      >
-        <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>
-          {title}
-        </span>
-        <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)' }}>{open ? '▴' : '▾'}</span>
+    <>
+      <button type="button" className="rail-sec" onClick={onToggle} aria-expanded={open}>
+        <span className="rail-sec__label">{label}</span>
+        <span className="rail-sec__caret">{open ? '−' : '+'}</span>
       </button>
-      {open && children}
-    </div>
+      {open && <div className="rail__body">{children}</div>}
+    </>
   )
 }
 
-// ─── Filter rail (shared by desktop sidebar + mobile drawer) ────────────────
-function FilterRail({
-  params, update, filterCounts, userSizes, authBadgeEnabled, isGuest, onAuthPrompt,
-}: {
-  params: URLSearchParams
-  update: (key: string, val: string | null) => void
-  filterCounts: FilterCounts
-  userSizes: Record<string, string>
-  authBadgeEnabled: boolean
-  isGuest: boolean
-  onAuthPrompt: () => void
+function CheckRow({ label, count, on, onClick, md, swatch }: {
+  label: string; count?: string; on: boolean; onClick: () => void; md?: boolean; swatch?: string
 }) {
-  const cat     = params.get('cat') ?? ''
-  const dept    = params.get('dept') ?? ''
-  const cond    = params.get('cond') ?? ''
-  const verified = params.get('verified') === '1'
-  const authenticated = params.get('authenticated') === '1'
-  const dropped  = params.get('dropped') === '1'
-  const hasSizes = Object.keys(userSizes).length > 0
+  return (
+    <button type="button" className={`check-row${md ? ' check-row--md' : ''}${swatch ? ' check-row--color' : ''}`} onClick={onClick} aria-pressed={on}>
+      <span className="check-row__left">
+        <span className={`checkbox${md ? ' checkbox--lg' : ''}${on ? ' is-on' : ''}`}>{on && <CheckIcon size={md ? 9 : 8} />}</span>
+        {swatch && <span className="swatch" style={{ background: swatch }} />}
+        <span className={`check-row__label${on ? ' is-on' : ''}`}>{label}</span>
+      </span>
+      {count !== undefined && <span className={`check-row__count${on ? ' is-on' : ''}`}>{count}</span>}
+    </button>
+  )
+}
 
-  const condMin = cond ? parseInt(cond, 10) : null
-  const sevenPlus = condMin === 7
+// ─── Filter rail (shared by desktop sidebar + mobile sheet) ─────────────────
+function FilterRail({ params, update, clearAll, filterCounts }: {
+  params: URLSearchParams
+  update: (updates: Record<string, string | null>) => void
+  clearAll: () => void
+  filterCounts: FilterCounts
+}) {
+  const { depts, cats, picks, picksOf, activeCats } = readRailSelection(params)
+  const brands  = csv(params.get('brand'))
+  const colors  = csv(params.get('color'))
+  const showOnly = {
+    authenticated: params.get('authenticated') === '1',
+    verified: params.get('verified') === '1',
+    dropped: params.get('dropped') === '1',
+    sold: params.get('sold') === '1',
+  }
+
+  const [open, setOpen] = useState({ dept: true, cat: true, designer: true, color: true, price: true, show: true })
+  // Which CATEGORY trees are unfolded — pure disclosure state, never a filter. Active
+  // categories start open; with nothing active the reference default (Tops) is open.
+  const [tree, setTree] = useState<Record<string, boolean>>(() =>
+    activeCats.size ? Object.fromEntries(Array.from(activeCats, (c) => [c, true])) : { Tops: true },
+  )
+  const setCategories = (nextCats: string[], nextPicks: string[]) => update(categoryParams(nextCats, nextPicks))
+  const [designerQuery, setDesignerQuery] = useState('')
+  const [allDesigners, setAllDesigners] = useState(false)
+  const sec = (k: keyof typeof open) => () => setOpen((o) => ({ ...o, [k]: !o[k] }))
+
+  const dq = designerQuery.trim().toLowerCase()
+  const designerPool = filterCounts.brands.filter((d) => d.label.toLowerCase().includes(dq))
+  const designers = allDesigners || dq ? designerPool : designerPool.slice(0, DESIGNERS_SHOWN)
+  const selectedOffList = brands.filter((b) => !designers.some((d) => d.label === b))
 
   return (
-    <div>
-      {/* My Sizes — signed-out visitors get a sign-in prompt instead of a working
-          toggle (personalized sizing needs an account). ADD MY SIZES opens the popup. */}
-      {isGuest ? (
-        <div style={{
-          border: '1px solid var(--color-line)', borderRadius: '2px',
-          padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px',
-        }}>
-          <span style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--color-ink-soft)' }}>
-            Sign up or log in to add your sizes and we&apos;ll customize your feed to better fit your needs.
-          </span>
-          <button
-            type="button"
-            onClick={onAuthPrompt}
-            data-testid="add-sizes-guest"
-            style={{
-              height: '44px', width: '100%', boxSizing: 'border-box',
-              background: 'var(--color-bg)', color: 'var(--color-ink)',
-              border: '1px solid var(--color-ink)', borderRadius: '2px',
-              fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700,
-              letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
-            }}
-          >
-            Add my sizes
-          </button>
-        </div>
-      ) : (
-        <div style={{
-          border: '1px solid var(--color-line)', borderRadius: '2px',
-          padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ font: '500 14px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>My sizes</span>
-            {/* Toggle */}
-            <span
-              onClick={() => update('my_sizes', params.get('my_sizes') === '1' ? null : '1')}
-              style={{ position: 'relative', width: '36px', height: '20px', border: '1px solid var(--color-ink)', borderRadius: '2px', background: 'var(--color-bg)', display: 'inline-block', cursor: 'pointer' }}
-            >
-              <span style={{
-                position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px',
-                borderRadius: '2px', background: params.get('my_sizes') === '1' ? 'var(--color-accent)' : 'var(--color-line)',
-              }} />
-            </span>
-          </div>
-          <span style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--color-ink-soft)' }}>
-            hide listings that aren&apos;t your size
-          </span>
-          {hasSizes
-            ? <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>edit</PrefetchLink>
-            : <PrefetchLink href="/settings" style={{ fontSize: '12px', color: 'var(--color-ink)', alignSelf: 'flex-start' }}>set your sizes →</PrefetchLink>
-          }
-        </div>
-      )}
+    <aside className="rail" data-testid="filter-rail">
+      <div className="rail__top">
+        <span className="rail__title">FILTER</span>
+        <button type="button" className="link-underline" onClick={clearAll}>CLEAR FILTERS</button>
+      </div>
 
-      {/* Department */}
-      <FilterSection title="Department">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingBottom: '16px' }}>
-          {DEPARTMENTS.map(d => (
-            <button
-              key={d}
-              onClick={() => update('dept', dept === d ? null : d)}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
-            >
-              <Checkbox checked={dept === d} />
-              <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>
-                {d}
+      <Section label="DEPARTMENT" open={open.dept} onToggle={sec('dept')}>
+        {DEPARTMENTS.map((d) => {
+          const on = depts.includes(d)
+          return (
+            <button key={d} type="button" className="opt-row" onClick={() => update({ dept: toggleIn(depts, d).join(',') || null })} aria-pressed={on}>
+              <span className="opt-row__left">
+                <span className={`dot${on ? ' is-on' : ''}`} />
+                <span className={`opt-row__label${on ? ' is-on' : ''}`}>{cap(d)}</span>
               </span>
-              <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>
-                {(filterCounts.departments[d] ?? 0).toLocaleString()}
-              </span>
+              <span className={`opt-row__count${on ? ' is-on' : ''}`}>{fmt(filterCounts.departments[d] ?? 0)}</span>
             </button>
+          )
+        })}
+      </Section>
+
+      <Section label="CATEGORY" open={open.cat} onToggle={sec('cat')}>
+        {CATEGORY_TREE.map((node) => {
+          const whole = cats.includes(node.label)
+          const subsOn = picksOf[node.label] ?? []
+          const on = activeCats.has(node.label)
+          const n = filterCounts.categories[node.label] ?? 0
+          const expanded = !!tree[node.label]
+          const subCounts = filterCounts.subcategories[node.label] ?? {}
+          return (
+            <div key={node.label}>
+              {/* The row only folds / unfolds its tree (+ / −). Its active state (dot, bold
+                  label, bold count) follows what is ticked inside: "All <cat>" or any of its
+                  subcategories. Several categories can be active at once. */}
+              <button
+                type="button"
+                className="opt-row"
+                data-testid={`cat-row-${node.label}`}
+                aria-expanded={expanded}
+                onClick={() => setTree((t) => ({ ...t, [node.label]: !expanded }))}
+              >
+                <span className="opt-row__left">
+                  <span className={`dot${on ? ' is-on' : ''}`} />
+                  <span className={`opt-row__label${on ? ' is-on' : ''}`}>{node.label}</span>
+                </span>
+                <span className={`opt-row__count${on ? ' is-on' : ''}`}>{fmt(n)}{expanded ? ' −' : ' +'}</span>
+              </button>
+              {expanded && (
+                <div className="subtree">
+                  {/* "All <cat>" = the whole category; ticking it drops that category's subcategory
+                      picks, ticking a subcategory drops "All" (the picks narrow the category). */}
+                  <CheckRow
+                    label={`All ${node.label.toLowerCase()}`}
+                    count={`(${fmt(n)})`}
+                    on={whole}
+                    onClick={() => (whole
+                      ? setCategories(without(cats, node.label), picks)
+                      : setCategories([...cats, node.label], picks.filter((k) => parseSubcatKey(k)?.category !== node.label)))}
+                  />
+                  {node.children.map((sub) => {
+                    const key = subcatKey(node.label, sub)
+                    const keyOf = (s: string) => subcatKey(node.label, s)
+                    return (
+                      <CheckRow
+                        key={sub}
+                        label={sub}
+                        count={`(${fmt(subCounts[sub] ?? 0)})`}
+                        // "All <cat>" shows every child ticked + active.
+                        on={whole || subsOn.includes(sub)}
+                        onClick={() => {
+                          if (whole) {
+                            // Unticking one child of "All" keeps every other child ticked.
+                            setCategories(without(cats, node.label), [...picks, ...node.children.filter((s) => s !== sub).map(keyOf)])
+                            return
+                          }
+                          const next = toggleIn(picks, key)
+                          const everyChild = node.children.every((s) => next.includes(keyOf(s)))
+                          // Ticking the last child = the whole category: "All" ticks itself.
+                          if (everyChild) setCategories([...cats, node.label], next.filter((k) => parseSubcatKey(k)?.category !== node.label))
+                          else setCategories(without(cats, node.label), next)
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </Section>
+
+      <Section label="DESIGNER" open={open.designer} onToggle={sec('designer')}>
+        <input
+          className={`text-input${brands.length ? ' is-set' : ''}`}
+          placeholder="Search designers"
+          value={designerQuery}
+          onChange={(e) => setDesignerQuery(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter on a name that isn't in the top list filters by it directly.
+            if (e.key === 'Enter' && designerQuery.trim() && designerPool.length === 0) {
+              update({ brand: toggleIn(brands, designerQuery.trim().toUpperCase()).join(',') || null })
+              setDesignerQuery('')
+            }
+          }}
+          aria-label="Search designers"
+        />
+        <div className="rail__list">
+          {selectedOffList.map((b) => (
+            <CheckRow key={b} label={titleCase(b)} on onClick={() => update({ brand: toggleIn(brands, b).join(',') || null })} />
           ))}
-        </div>
-      </FilterSection>
-
-      {/* Category */}
-      <FilterSection title="Category" defaultOpen={!!cat}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingBottom: '16px' }}>
-          {CATEGORIES.map(c => (
-            <button
-              key={c}
-              onClick={() => update('cat', cat === c ? null : c)}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
-            >
-              <Checkbox checked={cat === c} />
-              <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>
-                {c}
-              </span>
-              <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>
-                {(filterCounts.categories[c] ?? 0).toLocaleString()}
-              </span>
-            </button>
-          ))}
-        </div>
-      </FilterSection>
-
-      {/* Size — collapsed, text input for alpha */}
-      <FilterSection title="Size">
-        <div style={{ paddingBottom: '16px' }}>
-          <input
-            type="text"
-            placeholder="e.g. M, 32, EU 43"
-            defaultValue={params.get('size') ?? ''}
-            onBlur={e => update('size', e.target.value.trim() || null)}
-            style={{
-              width: '100%', height: '44px', boxSizing: 'border-box',
-              border: '1px solid var(--color-line)', borderRadius: '2px',
-              padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: '13px',
-              color: 'var(--color-ink)', background: 'var(--color-bg)',
-            }}
-          />
-        </div>
-      </FilterSection>
-
-      {/* Designer / Brand */}
-      <FilterSection title="Designer">
-        <div style={{ paddingBottom: '16px' }}>
-          <input
-            type="text"
-            placeholder="brand name"
-            defaultValue={params.get('brand') ?? ''}
-            onBlur={e => update('brand', e.target.value.trim() || null)}
-            style={{
-              width: '100%', height: '44px', boxSizing: 'border-box',
-              border: '1px solid var(--color-line)', borderRadius: '2px',
-              padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: '13px',
-              color: 'var(--color-ink)', background: 'var(--color-bg)',
-            }}
-          />
-        </div>
-      </FilterSection>
-
-      {/* Price */}
-      <FilterSection title="Price">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '16px' }}>
-          <span style={{ position: 'relative', flex: 1, height: '44px', border: '1px solid var(--color-line)', borderRadius: '2px', display: 'flex', alignItems: 'center', padding: '0 10px', boxSizing: 'border-box' }}>
-            <span style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>Min</span>
-            <input
-              type="number"
-              placeholder="$"
-              defaultValue={params.get('min_price') ?? ''}
-              onBlur={e => update('min_price', e.target.value || null)}
-              style={{ width: '100%', border: 'none', background: 'none', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--color-ink)', outline: 'none' }}
-            />
-          </span>
-          <span style={{ color: 'var(--color-ink-soft)', flex: 'none' }}>—</span>
-          <span style={{ position: 'relative', flex: 1, height: '44px', border: '1px solid var(--color-line)', borderRadius: '2px', display: 'flex', alignItems: 'center', padding: '0 10px', boxSizing: 'border-box' }}>
-            <span style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>Max</span>
-            <input
-              type="number"
-              placeholder="$"
-              defaultValue={params.get('max_price') ?? ''}
-              onBlur={e => update('max_price', e.target.value || null)}
-              style={{ width: '100%', border: 'none', background: 'none', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--color-ink)', outline: 'none' }}
-            />
-          </span>
-        </div>
-      </FilterSection>
-
-      {/* Condition — compact 1–10 range */}
-      <FilterSection title="Condition" defaultOpen>
-        <div style={{ paddingBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '2px', marginBottom: '12px' }}>
-            {[1,2,3,4,5,6,7,8,9,10].map(n => {
-              const active = condMin !== null && n >= condMin
-              return (
-                <button
-                  key={n}
-                  onClick={() => update('cond', condMin === n ? null : String(n))}
-                  style={{
-                    flex: 1, height: '24px', boxSizing: 'border-box',
-                    border: `1px solid ${active ? 'var(--color-ink)' : 'var(--color-line)'}`,
-                    background: active ? 'var(--color-ink)' : 'var(--color-bg)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: 'var(--font-mono)', fontSize: '10px',
-                    color: active ? 'var(--color-bg)' : 'var(--color-ink-soft)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {n}
-                </button>
-              )
-            })}
-          </div>
-          <button
-            onClick={() => update('cond', sevenPlus ? null : '7')}
-            style={{
-              display: 'inline-flex', alignItems: 'center', height: '24px', padding: '0 8px',
-              background: sevenPlus ? 'var(--color-ink)' : 'var(--color-bg)',
-              border: `1px solid ${sevenPlus ? 'var(--color-ink)' : 'var(--color-line)'}`,
-              borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '11px',
-              letterSpacing: '0.08em', color: sevenPlus ? 'var(--color-bg)' : 'var(--color-ink)',
-              cursor: 'pointer',
-            }}
-          >
-            7+ ONLY
-          </button>
-        </div>
-      </FilterSection>
-
-      {/* Seller location — placeholder for alpha */}
-      <FilterSection title="Seller location">
-        <div style={{ paddingBottom: '16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-          Location filter — coming soon
-        </div>
-      </FilterSection>
-
-      {/* Show only */}
-      <FilterSection title="Show only" defaultOpen>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingBottom: '16px' }}>
-          {authBadgeEnabled && (
-          <button
-            onClick={() => update('authenticated', authenticated ? null : '1')}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
-          >
-            <Checkbox checked={authenticated} />
-            <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Authenticated</span>
-          </button>
+          {designers.map((d) => {
+            const on = brands.includes(d.label)
+            return (
+              <CheckRow
+                key={d.label}
+                label={titleCase(d.label)}
+                count={`(${fmt(d.count)})`}
+                on={on}
+                onClick={() => update({ brand: toggleIn(brands, d.label).join(',') || null })}
+              />
+            )
+          })}
+          {designers.length === 0 && selectedOffList.length === 0 && (
+            <div className="rail__note">No designers match — press Enter to filter by “{designerQuery.trim()}”.</div>
           )}
-          <button
-            onClick={() => update('verified', verified ? null : '1')}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
-          >
-            <Checkbox checked={verified} />
-            <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Verified</span>
-          </button>
-          <button
-            onClick={() => update('dropped', dropped ? null : '1')}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer', width: '100%', minHeight: '44px', boxSizing: 'border-box' }}
-          >
-            <Checkbox checked={dropped} />
-            <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Price dropped</span>
-          </button>
+          {!dq && filterCounts.brands.length > DESIGNERS_SHOWN && (
+            <div className="rail__viewall">
+              <button type="button" className="link-underline" onClick={() => setAllDesigners((v) => !v)}>
+                {allDesigners ? 'SHOW FEWER ←' : `VIEW ALL ${fmt(filterCounts.brandsTotal)}${filterCounts.brandsTotal > filterCounts.brands.length ? '+' : ''} →`}
+              </button>
+            </div>
+          )}
         </div>
-      </FilterSection>
+      </Section>
 
-      {/* Followed searches — placeholder */}
-      <FilterSection title="Followed searches">
-        <div style={{ paddingBottom: '16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-          Your followed searches appear here.
+      <Section label="COLOR" open={open.color} onToggle={sec('color')}>
+        {COLORS.map((c) => (
+          <CheckRow
+            key={c.label}
+            label={c.label}
+            swatch={c.swatch}
+            count={`(${fmt(filterCounts.colors[c.label] ?? 0)})`}
+            on={colors.includes(c.label)}
+            onClick={() => update({ color: toggleIn(colors, c.label).join(',') || null })}
+          />
+        ))}
+      </Section>
+
+      <Section label="PRICE" open={open.price} onToggle={sec('price')}>
+        <div className="price-row">
+          <input
+            className={`text-input${params.get('min_price') ? ' is-set' : ''}`}
+            type="number"
+            inputMode="decimal"
+            placeholder="$ min"
+            defaultValue={params.get('min_price') ?? ''}
+            onBlur={(e) => { if ((e.target.value || null) !== params.get('min_price')) update({ min_price: e.target.value || null }) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            aria-label="Minimum price"
+          />
+          <input
+            className={`text-input${params.get('max_price') ? ' is-set' : ''}`}
+            type="number"
+            inputMode="decimal"
+            placeholder="$ max"
+            defaultValue={params.get('max_price') ?? ''}
+            onBlur={(e) => { if ((e.target.value || null) !== params.get('max_price')) update({ max_price: e.target.value || null }) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            aria-label="Maximum price"
+          />
         </div>
-      </FilterSection>
-    </div>
+      </Section>
+
+      <div className="rail-sec rail-sec--soon">
+        <span className="rail-sec__label rail-sec__label--dim">SELLER LOCATION</span>
+        <span className="soon-tag">SOON</span>
+      </div>
+
+      <Section label="SHOW ONLY" open={open.show} onToggle={sec('show')}>
+        {SHOW_ONLY.map((s) => (
+          <CheckRow
+            key={s.id}
+            md
+            label={s.label}
+            count={fmt(filterCounts.showOnly[s.id])}
+            on={showOnly[s.id]}
+            onClick={() => update({ [s.id]: showOnly[s.id] ? null : '1' })}
+          />
+        ))}
+      </Section>
+
+      <div className="rail-sec rail-sec--static">
+        <span className="rail-sec__label rail-sec__label--dim">FOLLOWED SEARCHES</span>
+        <span className="soon-tag">SOON</span>
+      </div>
+      <div className="rail__note">Searches you follow will alert you here.</div>
+    </aside>
   )
 }
 
@@ -378,6 +348,7 @@ export default function BrowseClient({
   filterCounts,
   initialSavedIds,
   userSizes,
+  mySizesOn,
   hasMore: initialHasMore,
   currentOffset,
   username,
@@ -391,8 +362,8 @@ export default function BrowseClient({
   const { openAuthModal } = useAuthModal()
   const [isPending, startTransition] = useTransition()
 
-  // Empty username/userId ⇒ signed-out visitor. Guests browse freely; any write
-  // (save, follow-search) opens the sign-in popup instead of hitting the API.
+  // Empty userId ⇒ signed-out visitor. Guests browse freely; any write
+  // (save, follow-search, sizes) opens the sign-in popup instead of the API.
   const isGuest = !userId
 
   const [extraListings, setExtraListings]   = useState<BrowseListing[]>([])
@@ -400,10 +371,26 @@ export default function BrowseClient({
   const [hasMore, setHasMore]               = useState(initialHasMore)
   const [loadingMore, setLoadingMore]       = useState(false)
   const [savedIds, setSavedIds]             = useState(() => new Set(initialSavedIds))
-  const [drawerOpen, setDrawerOpen]         = useState(false)
-  const [sortOpen, setSortOpen]             = useState(false)
+  const [sheetOpen, setSheetOpen]           = useState(false)
+  const [sizesOpen, setSizesOpen]           = useState(false)
   const [followPending, setFollowPending]   = useState(false)
   const [followedMsg, setFollowedMsg]       = useState('')
+  const [bumped, setBumped]                 = useState<Set<string>>(new Set())
+
+  const q       = searchParams.get('q') ?? ''
+  const { depts, cats, picks } = readRailSelection(searchParams)
+  const size    = searchParams.get('size') ?? ''
+  const brands  = csv(searchParams.get('brand'))
+  const colors  = csv(searchParams.get('color'))
+  const minPrice = searchParams.get('min_price') ?? ''
+  const maxPrice = searchParams.get('max_price') ?? ''
+  const cond    = searchParams.get('cond') ?? ''
+  const verified = searchParams.get('verified') === '1'
+  const authenticated = searchParams.get('authenticated') === '1'
+  const dropped  = searchParams.get('dropped') === '1'
+  const sold     = searchParams.get('sold') === '1'
+  const sort    = searchParams.get('sort') ?? 'newest'
+  const sizeChip = sizesChipLabel(userSizes)
 
   const allListings = [...initialListings, ...extraListings]
   const nextOffset  = currentOffset + initialListings.length
@@ -412,7 +399,6 @@ export default function BrowseClient({
   useEffect(() => {
     if (!recsTelemetryEnabled || !userId) return
     recsInit(userId)
-    // Identity merge: fold the anon device's taste into this account (once, fail-soft).
     mergeRecsIdentity(userId)
     return () => recsShutdown()
   }, [recsTelemetryEnabled, userId])
@@ -420,40 +406,9 @@ export default function BrowseClient({
   const shownCount = allListings.length
   useEffect(() => {
     if (!recsTelemetryEnabled || shownCount === 0) return
-    // Re-scan on growth so appended cards are observed (fires start for cards
-    // currently ≥50% visible; the engine dedupes downstream).
     const disconnect = observeImpressions(document)
     return disconnect
   }, [recsTelemetryEnabled, shownCount])
-
-  const q       = searchParams.get('q') ?? ''
-  const dept    = searchParams.get('dept') ?? ''
-  const cat     = searchParams.get('cat') ?? ''
-  const size    = searchParams.get('size') ?? ''
-  const brand   = searchParams.get('brand') ?? ''
-  const minPrice = searchParams.get('min_price') ?? ''
-  const maxPrice = searchParams.get('max_price') ?? ''
-  const cond    = searchParams.get('cond') ?? ''
-  const verified = searchParams.get('verified') === '1'
-  const authenticated = searchParams.get('authenticated') === '1'
-  const dropped  = searchParams.get('dropped') === '1'
-  const sort    = searchParams.get('sort') ?? 'newest'
-
-  // Build active filter chips
-  const activeFilters: { label: string; key: string }[] = []
-  if (q)       activeFilters.push({ label: q, key: 'q' })
-  if (dept)    activeFilters.push({ label: dept, key: 'dept' })
-  if (cat)     activeFilters.push({ label: cat, key: 'cat' })
-  if (size)    activeFilters.push({ label: `Size: ${size}`, key: 'size' })
-  if (brand)   activeFilters.push({ label: brand, key: 'brand' })
-  if (minPrice) activeFilters.push({ label: `Min $${minPrice}`, key: 'min_price' })
-  if (maxPrice) activeFilters.push({ label: `Max $${maxPrice}`, key: 'max_price' })
-  if (cond)    activeFilters.push({ label: `Condition ${cond}+`, key: 'cond' })
-  if (verified) activeFilters.push({ label: 'Verified', key: 'verified' })
-  if (authenticated) activeFilters.push({ label: 'Authenticated', key: 'authenticated' })
-  if (dropped)  activeFilters.push({ label: 'Price dropped', key: 'dropped' })
-
-  const activeCount = activeFilters.length
 
   function buildUrl(updates: Record<string, string | null>) {
     const p = new URLSearchParams(searchParams.toString())
@@ -462,56 +417,62 @@ export default function BrowseClient({
       if (v === null) p.delete(k)
       else p.set(k, v)
     }
-    return `${pathname}?${p.toString()}`
+    const qs = p.toString()
+    return qs ? `${pathname}?${qs}` : pathname
   }
 
-  const updateFilter = useCallback((key: string, val: string | null) => {
+  const updateFilters = useCallback((updates: Record<string, string | null>) => {
     setExtraListings([])
     setHasMore(false)
     startTransition(() => {
-      router.push(buildUrl({ [key]: val }))
+      router.push(buildUrl(updates))
     })
-    if (key !== 'q') {
-      trackEvent('filter_applied', { filter: key, value: val ?? '' })
+    for (const [key, val] of Object.entries(updates)) {
+      if (key !== 'q' && key !== 'sort') trackEvent('filter_applied', { filter: key, value: val ?? '' })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, pathname])
+  const updateFilter = (key: string, val: string | null) => updateFilters({ [key]: val })
 
   function clearAll() {
     setExtraListings([])
     setHasMore(false)
     startTransition(() => {
-      router.push(pathname)
+      // CLEAR turns MY SIZES off too (16A) — my_sizes=0 overrides the profile default for this visit.
+      router.push(mySizesOn ? `${pathname}?my_sizes=0` : pathname)
     })
+  }
+
+  // ── MY SIZES ───────────────────────────────────────────────────────────────
+  function toggleMySizes() {
+    if (isGuest) { openAuthModal(pathname); return }
+    if (!mySizesOn && sizeChip === 'NONE SET') { setSizesOpen(true); return }
+    updateFilter('my_sizes', mySizesOn ? '0' : '1')
+  }
+  function editSizes() {
+    if (isGuest) { openAuthModal(pathname); return }
+    setSizesOpen(true)
   }
 
   // ── Save / unsave ──────────────────────────────────────────────────────────
   async function handleSaveToggle(listingId: string, currentlySaved: boolean) {
-    // Guest → prompt sign-in instead of hitting the (401) API. This is the canonical
-    // "try to like something" gate: the popup opens; after auth they're back here and
-    // can save for real.
     if (isGuest) {
       openAuthModal(pathname)
       return
     }
-    // Optimistic update
-    setSavedIds(prev => {
+    setSavedIds((prev) => {
       const next = new Set(prev)
       if (currentlySaved) next.delete(listingId)
       else next.add(listingId)
       return next
     })
-
-    const method = currentlySaved ? 'DELETE' : 'POST'
     const res = await fetch('/api/saves', {
-      method,
+      method: currentlySaved ? 'DELETE' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ listing_id: listingId }),
     })
-
     if (!res.ok) {
-      // Rollback on failure
-      setSavedIds(prev => {
+      setSavedIds((prev) => {
         const next = new Set(prev)
         if (currentlySaved) next.add(listingId)
         else next.delete(listingId)
@@ -525,52 +486,53 @@ export default function BrowseClient({
     }
   }
 
-  // ── Load more ──────────────────────────────────────────────────────────────
-  // inFlightRef guards against the observer firing again mid-fetch (fast
-  // scrolling) — state alone is too slow to gate re-entry.
-  const inFlightRef = useRef(false)
+  // ── BUMP ↗ on the viewer's own cards ───────────────────────────────────────
+  async function handleBump(listingId: string) {
+    if (bumped.has(listingId)) return
+    const res = await fetch(`/api/listings/${listingId}/bump`, { method: 'POST' })
+    if (res.ok || res.status === 422) setBumped((prev) => new Set(prev).add(listingId))
+  }
 
+  // ── Load more ──────────────────────────────────────────────────────────────
+  const inFlightRef = useRef(false)
   const loadMore = useCallback(async () => {
     if (inFlightRef.current || !hasMore) return
+    if (isGuest) { openAuthModal(pathname); return } // deeper pages ask for an account
     inFlightRef.current = true
     setLoadingMore(true)
     const p = new URLSearchParams(searchParams.toString())
     p.set('offset', String(nextOffset + extraListings.length))
+    if (mySizesOn) p.set('my_sizes', '1')
     const res = await fetch(`/api/browse?${p.toString()}`)
     if (res.ok) {
       const json = await res.json() as { listings: BrowseListing[]; hasMore: boolean; savedIds: string[] }
-      setExtraListings(prev => [...prev, ...json.listings])
+      setExtraListings((prev) => [...prev, ...json.listings])
       setHasMore(json.hasMore)
-      setExtraSaved(prev => {
+      setExtraSaved((prev) => {
         const next = new Set(prev)
-        json.savedIds.forEach(id => next.add(id))
+        json.savedIds.forEach((id) => next.add(id))
         return next
       })
     }
     setLoadingMore(false)
     inFlightRef.current = false
-  }, [hasMore, searchParams, nextOffset, extraListings.length])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, searchParams, nextOffset, extraListings.length, mySizesOn, isGuest, pathname])
 
-  // ── Infinite scroll ────────────────────────────────────────────────────────
-  // Sentinel sits below the grid; rootMargin pre-fetches 600px before it is
-  // actually reached, so the next page is usually already there on arrival.
-  // The LOAD MORE button stays as a no-JS / observer-unsupported fallback.
+  // ── Infinite scroll — sentinel below the grid, pre-fetches 600px early ─────
   const sentinelRef = useRef<HTMLDivElement | null>(null)
-  const sentinelRefMobile = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-    if (!hasMore) return
+    if (!hasMore || isGuest) return
     if (typeof IntersectionObserver === 'undefined') return
-    // Both grids exist in the DOM (one is CSS-hidden per breakpoint); a hidden
-    // node never intersects, so observing both is safe and covers either layout.
-    const nodes = [sentinelRef.current, sentinelRefMobile.current].filter(Boolean) as HTMLDivElement[]
-    if (nodes.length === 0) return
+    const node = sentinelRef.current
+    if (!node) return
     const observer = new IntersectionObserver(
-      entries => { if (entries.some(e => e.isIntersecting)) void loadMore() },
+      (entries) => { if (entries.some((e) => e.isIntersecting)) void loadMore() },
       { rootMargin: '600px 0px' },
     )
-    nodes.forEach(n => observer.observe(n))
+    observer.observe(node)
     return () => observer.disconnect()
-  }, [hasMore, loadMore])
+  }, [hasMore, loadMore, isGuest])
 
   // ── Follow search ──────────────────────────────────────────────────────────
   async function followSearch() {
@@ -580,17 +542,10 @@ export default function BrowseClient({
     }
     setFollowPending(true)
     const query: Record<string, string> = {}
-    if (q)       query.q = q
-    if (dept)    query.dept = dept
-    if (cat)     query.cat = cat
-    if (size)    query.size = size
-    if (brand)   query.brand = brand
-    if (minPrice) query.min_price = minPrice
-    if (maxPrice) query.max_price = maxPrice
-    if (cond)    query.cond = cond
-    if (verified) query.verified = '1'
-    if (authenticated) query.authenticated = '1'
-    if (dropped)  query.dropped = '1'
+    for (const k of ['q', 'dept', 'cat', 'subcat', 'size', 'brand', 'color', 'min_price', 'max_price', 'cond', 'verified', 'authenticated', 'dropped', 'sold']) {
+      const v = searchParams.get(k)
+      if (v) query[k] = v
+    }
     if (sort !== 'newest') query.sort = sort
 
     const res = await fetch('/api/saved-searches', {
@@ -599,340 +554,182 @@ export default function BrowseClient({
       body: JSON.stringify({ query }),
     })
     setFollowPending(false)
-    setFollowedMsg(res.ok ? 'Search followed!' : 'Error — try again')
+    setFollowedMsg(res.ok ? 'SEARCH SAVED ✓' : 'ERROR — TRY AGAIN')
     setTimeout(() => setFollowedMsg(''), 3000)
   }
 
   const isSaved = (id: string) => savedIds.has(id) || extraSaved.has(id)
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-  const currentSortLabel = SORT_OPTIONS.find(o => o.value === sort)?.label ?? 'Newest'
+  // ── Chips ──────────────────────────────────────────────────────────────────
+  type Chip = { id: string; label: string; solid?: boolean; onClick?: () => void; onRemove?: () => void }
+  const chips: Chip[] = []
+  if (q)     chips.push({ id: 'q', label: `“${q}”`, onRemove: () => updateFilter('q', null) })
+  for (const d of depts) chips.push({ id: `dept:${d}`, label: d.toUpperCase(), onRemove: () => updateFilter('dept', toggleIn(depts, d).join(',') || null) })
+  for (const c of cats) chips.push({ id: `cat:${c}`, label: c.toUpperCase(), onRemove: () => updateFilters(categoryParams(without(cats, c), picks)) })
+  for (const k of picks) {
+    const p = parseSubcatKey(k)
+    if (!p) continue
+    // A label that lives under two categories (Denim) is prefixed so the chip is unambiguous.
+    const label = categoriesWithSubcategory(p.sub).length > 1 ? `${p.category} · ${p.sub}` : p.sub
+    chips.push({ id: `sub:${k}`, label: label.toUpperCase(), onRemove: () => updateFilters(categoryParams(cats, without(picks, k))) })
+  }
+  if (mySizesOn) chips.push({ id: 'sizes', label: `MY SIZES — ${sizeChip}`, solid: true, onClick: () => setSizesOpen(true) })
+  if (size)  chips.push({ id: 'size', label: `SIZE ${size.toUpperCase()}`, onRemove: () => updateFilter('size', null) })
+  for (const b of brands) chips.push({ id: `brand:${b}`, label: b.toUpperCase(), onRemove: () => updateFilter('brand', toggleIn(brands, b).join(',') || null) })
+  for (const c of colors) chips.push({ id: `color:${c}`, label: c.toUpperCase(), onRemove: () => updateFilter('color', toggleIn(colors, c).join(',') || null) })
+  if (verified) chips.push({ id: 'verified', label: 'VERIFIED', onRemove: () => updateFilter('verified', null) })
+  if (authenticated) chips.push({ id: 'auth', label: 'AUTHENTICATED', onRemove: () => updateFilter('authenticated', null) })
+  if (dropped) chips.push({ id: 'dropped', label: 'PRICE DROPPED', onRemove: () => updateFilter('dropped', null) })
+  if (sold) chips.push({ id: 'sold', label: 'SOLD ITEMS', onRemove: () => updateFilter('sold', null) })
+  if (minPrice) chips.push({ id: 'min', label: `MIN $${minPrice}`, onRemove: () => updateFilter('min_price', null) })
+  if (maxPrice) chips.push({ id: 'max', label: `MAX $${maxPrice}`, onRemove: () => updateFilter('max_price', null) })
+  if (cond)  chips.push({ id: 'cond', label: `CONDITION ${cond}+`, onRemove: () => updateFilter('cond', null) })
+
+  const sortIndex = Math.max(0, SORTS.findIndex((o) => o.value === sort))
+  const cycleSort = () => updateFilter('sort', SORTS[(sortIndex + 1) % SORTS.length].value)
+
+  const scopeDept = departmentScopeLabel(depts)
+  const scopeCat = categoryScopeLabel({ cats, picks })
+
+  const rail = (
+    <FilterRail
+      params={searchParams}
+      update={updateFilters}
+      clearAll={clearAll}
+      filterCounts={filterCounts}
+    />
+  )
+
+  const shownLabel = `SHOWING ${fmt(allListings.length)} OF ${fmt(totalCount)}`
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
-      {/* Header */}
-      <header style={{
-        height: '64px', borderBottom: '1px solid var(--color-line)',
-        display: 'flex', alignItems: 'center', gap: '32px', padding: '0 80px',
-      }}
-        className="browse-header-desktop"
-      >
-        <PrefetchLink href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', width: '160px' }}>
-          ———
-        </PrefetchLink>
-        {/* Search input */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <form
-            onSubmit={e => {
-              e.preventDefault()
-              const fd = new FormData(e.currentTarget)
-              const qv = (fd.get('q') as string).trim()
-              trackEvent('search_performed', { query: qv })
-              const recsFilters: Record<string, string> = {}
-              if (dept) recsFilters.dept = dept
-              if (cat) recsFilters.cat = cat
-              if (size) recsFilters.size = size
-              if (brand) recsFilters.brand = brand
-              trackSearch(qv, recsFilters)
-              updateFilter('q', qv || null)
-            }}
-            style={{ width: '100%', maxWidth: '480px' }}
-          >
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="search designers, items"
-              style={{
-                width: '100%', height: '44px', boxSizing: 'border-box',
-                border: '1px solid var(--color-line)', borderRadius: '2px',
-                padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)',
-                background: 'var(--color-bg)', outline: 'none',
-              }}
-            />
-          </form>
-        </div>
-        {isGuest ? (
-          <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <GuestAction next="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)' }}>
-              Sell
-            </GuestAction>
-            <GuestAction testId="browse-signin" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', whiteSpace: 'nowrap' }}>
-              Sign in
-            </GuestAction>
-          </nav>
-        ) : (
-          <nav style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <PrefetchLink href="/sell" style={{ display: 'inline-flex', alignItems: 'center', height: '44px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', textDecoration: 'none' }}>
-              Sell
-            </PrefetchLink>
-            <PrefetchLink href="/saved" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Saved</PrefetchLink>
-            <PrefetchLink href="/messages" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none' }}>Messages</PrefetchLink>
-            <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
-          </nav>
-        )}
-      </header>
-
-      {/* Mobile header */}
-      <header style={{ display: 'none' }} className="browse-header-mobile">
-        <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '12px', padding: '0 16px' }}>
-          <PrefetchLink href="/" style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', flex: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</PrefetchLink>
-          <div style={{ flex: 1 }} />
-          {isGuest ? (
-            <GuestAction testId="browse-signin-mobile" style={{ display: 'inline-flex', alignItems: 'center', height: '40px', padding: '0 18px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 13px var(--font-ui)', whiteSpace: 'nowrap' }}>
-              Sign in
-            </GuestAction>
-          ) : (
-            <AvatarMenu username={username} initials={username.slice(0, 2).toUpperCase()} />
-          )}
-        </div>
-        {/* Mobile search */}
-        <div style={{ padding: '12px 16px 0' }}>
-          <form onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); updateFilter('q', (fd.get('q') as string).trim() || null) }}>
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="search designers, items"
-              style={{ width: '100%', height: '44px', boxSizing: 'border-box', border: '1px solid var(--color-line)', borderRadius: '2px', padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }}
-            />
-          </form>
-        </div>
-        {/* Mobile chip rail */}
-        {activeFilters.length > 0 && (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '12px 16px', overflowX: 'auto', msOverflowStyle: 'none' }}>
-            {activeFilters.map(f => (
-              <Chip key={f.key} label={f.label} onRemove={() => updateFilter(f.key, null)} />
-            ))}
-          </div>
-        )}
-        {/* Mobile sticky controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 16px 12px', borderBottom: '1px solid var(--color-line)', background: 'var(--color-bg)', position: 'sticky', top: 0, zIndex: 10 }}>
-          <button
-            onClick={() => setDrawerOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', padding: '0 20px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'pointer' }}
-            data-testid="mobile-filter-btn"
-          >
-            Filters{activeCount > 0 ? ` (${activeCount})` : ''}
-          </button>
-          <button onClick={() => setSortOpen(o => !o)} style={{ background: 'none', border: 'none', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '44px', padding: '0 4px' }}>
-            Sort: {currentSortLabel} <span style={{ color: 'var(--color-ink-soft)', fontSize: '10px' }}>▾</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Desktop layout */}
-      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 80px' }} className="browse-desktop-inner">
-        {/* Results header row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', padding: '32px 0 28px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', minWidth: 0 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)', whiteSpace: 'nowrap' }}>
-              {totalCount.toLocaleString()} LISTING{totalCount !== 1 ? 'S' : ''}
-              {activeFilters.length > 0 ? ' FOR' : ''}
-            </span>
-            {activeFilters.map(f => (
-              <Chip key={f.key} label={f.label} onRemove={() => updateFilter(f.key, null)} />
-            ))}
-            {activeFilters.length > 0 && (
-              <button onClick={clearAll} style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', background: 'none', border: 'none', textDecoration: 'underline', textDecorationThickness: '1px', textUnderlineOffset: '3px', cursor: 'pointer' }}>
-                Clear all
+    <div>
+      <div className="layout">
+        {rail}
+        <main className="main" style={{ opacity: isPending ? 0.55 : 1, transition: 'opacity 200ms' }}>
+          {/* Results header (16A) */}
+          <div className="results">
+            <div className="results__lead">
+              <span className="results__count" data-testid="results-count">{fmt(totalCount)}</span>
+              <span className="results__meta">
+                {q ? <>results for <strong>“{q}”</strong></> : <>results in <strong>{scopeDept} / {scopeCat}</strong></>}
+              </span>
+            </div>
+            <div className="results__actions">
+              <button type="button" className="mysizes-toggle" onClick={toggleMySizes} aria-pressed={mySizesOn} data-testid={isGuest ? 'add-sizes-guest' : 'my-sizes-toggle'}>
+                <span className="mysizes-toggle__label">MY SIZES:</span>
+                {mySizesOn ? <span className="pill-on">ON</span> : <span className="pill-off">OFF</span>}
               </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: 'none' }}>
-            <button
-              onClick={followSearch}
-              disabled={followPending}
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', padding: '0 24px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: followPending ? 'not-allowed' : 'pointer', opacity: followPending ? 0.7 : 1, transition: 'opacity 120ms linear', position: 'relative' }}
-              data-testid="follow-search-btn"
-            >
-              {followedMsg || 'Follow search'}
-            </button>
-            {/* Sort dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setSortOpen(o => !o)}
-                style={{ background: 'none', border: 'none', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '44px', padding: '0 4px' }}
-                data-testid="sort-dropdown-btn"
-              >
-                Sort: {currentSortLabel} <span style={{ color: sortOpen ? 'var(--color-ink)' : 'var(--color-ink-soft)', fontSize: '10px' }}>{sortOpen ? '▴' : '▾'}</span>
+              <button type="button" className="link-btn" onClick={editSizes}>EDIT SIZES</button>
+              <button type="button" className="link-btn" onClick={followSearch} disabled={followPending} data-testid="follow-search-btn">
+                {followedMsg || 'SAVE SEARCH +'}
               </button>
-              {sortOpen && (
-                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: '240px', background: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', boxShadow: 'var(--shadow-1)', zIndex: 20 }}>
-                  {SORT_OPTIONS.map(o => (
-                    <button
-                      key={o.value}
-                      onClick={() => { updateFilter('sort', o.value); setSortOpen(false) }}
-                      style={{
-                        width: '100%', height: '44px', padding: '0 12px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        background: 'none', border: 'none',
-                        fontSize: '14px', fontWeight: sort === o.value ? 500 : 400,
-                        color: 'var(--color-ink)', cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                    >
-                      {o.label}
-                      {sort === o.value && <span style={{ fontSize: '12px' }}>✓</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <button type="button" className="btn-outline results__sort" onClick={cycleSort} data-testid="sort-dropdown-btn">
+                SORT: {SORTS[sortIndex].label}
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Columns */}
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', paddingBottom: '64px', opacity: isPending ? 0.5 : 1, transition: 'opacity 200ms' }}>
-          {/* Sidebar */}
-          <aside style={{ width: '240px', flex: 'none' }} className="browse-sidebar">
-            <FilterRail
-              params={searchParams}
-              update={updateFilter}
-              filterCounts={filterCounts}
-              userSizes={userSizes}
-              authBadgeEnabled={authBadgeEnabled}
-              isGuest={isGuest}
-              onAuthPrompt={() => openAuthModal(pathname)}
-            />
-          </aside>
+          {/* Active filter chips */}
+          {chips.length > 0 && (
+            <div className="chips" data-testid="active-chips">
+              {chips.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`chip${c.solid ? ' chip--solid' : ''}`}
+                  onClick={c.onClick ?? c.onRemove}
+                  aria-label={c.onRemove ? `Remove filter: ${c.label}` : c.label}
+                >
+                  {c.label}
+                  {!c.solid && c.onRemove && <XIcon />}
+                </button>
+              ))}
+              <button type="button" className="chip-clear" onClick={clearAll}>CLEAR ALL ({chips.length})</button>
+            </div>
+          )}
 
           {/* Grid */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {allListings.length === 0 ? (
-              /* Empty state */
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', minHeight: '360px' }}>
-                <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: '1.6rem', lineHeight: 1.35, color: 'var(--color-ink)', margin: 0 }}>
-                  Nothing in the archive matches.
-                </p>
-                <button
-                  onClick={followSearch}
-                  disabled={followPending}
-                  style={{ fontSize: '14px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                  follow this search and we&apos;ll notify you
+          {allListings.length === 0 ? (
+            <div className="empty" data-testid="browse-empty">
+              <div className="empty__title">Nothing in the archive matches.</div>
+              <div className="empty__sub">TRY FEWER FILTERS, OR SAVE THIS SEARCH AND WE&rsquo;LL ALERT YOU</div>
+              <div className="empty__cta">
+                <button type="button" className="link-underline link-underline--ink" onClick={followSearch} disabled={followPending}>
+                  {followedMsg || 'SAVE THIS SEARCH →'}
                 </button>
               </div>
-            ) : (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '40px 24px' }} data-testid="listings-grid">
-                  {allListings.map((l, i) => (
-                    <ListingCard
-                      key={l.id}
-                      listing={l}
-                      isSaved={isSaved(l.id)}
-                      onSaveToggle={handleSaveToggle}
-                      position={i}
-                      onProductClick={(id) => trackClick(id, 'feed')}
-                    />
-                  ))}
+            </div>
+          ) : (
+            <>
+              <div className="grid" data-testid="listings-grid">
+                {allListings.map((l, i) => (
+                  <ListingCard
+                    key={l.id}
+                    listing={l}
+                    isSaved={isSaved(l.id)}
+                    onSaveToggle={handleSaveToggle}
+                    position={i}
+                    own={l.own || (!!username && l.seller?.username === username)}
+                    unavailable={l.sold}
+                    onBump={handleBump}
+                    bumped={bumped.has(l.id)}
+                    showAuthBadge={authBadgeEnabled}
+                    onProductClick={(id) => trackClick(id, 'feed')}
+                  />
+                ))}
+              </div>
+
+              {/* Infinite scroll sentinel — observer pre-fetches 600px early */}
+              <div ref={sentinelRef} data-testid="scroll-sentinel" style={{ height: 1 }} />
+
+              {hasMore ? (
+                <button type="button" className="load-more" onClick={loadMore} disabled={loadingMore} data-testid="load-more-btn">
+                  <span data-testid="loading-more">{loadingMore ? 'LOADING…' : `LOAD MORE — ${shownLabel}`}</span>
+                </button>
+              ) : (
+                <div className="rows-note" style={{ textAlign: 'center', paddingTop: 44 }} data-testid="end-of-archive">
+                  END OF THE ARCHIVE · {shownLabel}
                 </div>
-
-                {/* Infinite scroll sentinel — observer pre-fetches 600px early */}
-                <div ref={sentinelRef} data-testid="scroll-sentinel" style={{ height: '1px' }} />
-
-                {hasMore ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', paddingTop: '48px' }}>
-                    <div style={{ minHeight: '16px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }} data-testid="loading-more">
-                      {loadingMore ? 'LOADING…' : ''}
-                    </div>
-                    {/* Fallback for no-JS / no IntersectionObserver */}
-                    <button
-                      onClick={loadMore}
-                      disabled={loadingMore}
-                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', padding: '0 32px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-line)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: loadingMore ? 'not-allowed' : 'pointer', opacity: loadingMore ? 0.4 : 1 }}
-                      data-testid="load-more-btn"
-                    >
-                      {loadingMore ? 'Loading…' : 'Load more'}
-                    </button>
-                  </div>
-                ) : (
-                  allListings.length > 0 && (
-                    <div style={{ paddingTop: '64px', textAlign: 'center', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--color-ink-soft)' }} data-testid="end-of-archive">
-                      End of the archive.
-                    </div>
-                  )
-                )}
-              </>
-            )}
-          </div>
-        </div>
+              )}
+            </>
+          )}
+        </main>
       </div>
 
-      {/* Mobile grid (hidden on desktop, shown on mobile via CSS) */}
-      <div style={{ padding: '16px' }} className="browse-mobile-grid">
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)', marginBottom: '16px' }}>
-          {totalCount.toLocaleString()} LISTINGS
-        </div>
-        {allListings.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '48px 0', textAlign: 'center' }}>
-            <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.4rem', color: 'var(--color-ink)', margin: 0 }}>Nothing in the archive matches.</p>
-            <button onClick={followSearch} style={{ fontSize: '14px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>follow this search</button>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '32px 16px' }}>
-            {allListings.map((l, i) => (
-              <ListingCard key={l.id} listing={l} isSaved={isSaved(l.id)} onSaveToggle={handleSaveToggle} position={i} onProductClick={(id) => trackClick(id, 'feed')} />
-            ))}
-          </div>
-        )}
-        <div ref={sentinelRefMobile} data-testid="scroll-sentinel-mobile" style={{ height: '1px' }} />
-        {hasMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0 24px' }}>
-            <button onClick={loadMore} disabled={loadingMore} style={{ height: '44px', padding: '0 32px', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid var(--color-line)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: loadingMore ? 'not-allowed' : 'pointer' }}>
-              {loadingMore ? 'Loading…' : 'Load more'}
-            </button>
-          </div>
-        )}
+      {/* Mobile dock (≤720px) */}
+      <div className="dock">
+        <button type="button" className="dock__btn" onClick={() => setSheetOpen(true)} data-testid="mobile-filter-btn">
+          FILTERS{chips.length > 0 ? ` · ${chips.length}` : ''}
+        </button>
+        <button type="button" className="dock__btn" onClick={cycleSort}>
+          SORT · {SORTS[sortIndex].label}
+        </button>
       </div>
 
-      {/* Mobile filter drawer */}
-      {drawerOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
-          <div onClick={() => setDrawerOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'var(--color-bg)', overflow: 'auto', paddingBottom: '96px' }} data-testid="mobile-filter-drawer">
-            <div style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 1 }}>
-              <span style={{ font: '600 20px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>Filters</span>
-              <button onClick={() => setDrawerOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', color: 'var(--color-ink-soft)', cursor: 'pointer' }}>×</button>
-            </div>
-            <div style={{ padding: '16px' }}>
-              <FilterRail
-                params={searchParams}
-                update={(k, v) => { updateFilter(k, v); setDrawerOpen(false) }}
-                filterCounts={filterCounts}
-                userSizes={userSizes}
-                authBadgeEnabled={authBadgeEnabled}
-                isGuest={isGuest}
-                onAuthPrompt={() => openAuthModal(pathname)}
-              />
-            </div>
+      {sheetOpen && (
+        <div className="filter-sheet" role="dialog" aria-label="Filters" data-testid="mobile-filter-drawer">
+          <div className="filter-sheet__head">
+            <span className="modal__title">FILTERS</span>
+            <button type="button" className="link-underline link-underline--ink" onClick={() => setSheetOpen(false)}>DONE</button>
           </div>
-          {/* Sticky Show N listings button */}
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '16px', borderTop: '1px solid var(--color-line)', background: 'var(--color-bg)', zIndex: 51 }}>
-            <button
-              onClick={() => setDrawerOpen(false)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: 'pointer' }}
-              data-testid="drawer-show-btn"
-            >
-              Show {totalCount.toLocaleString()} listings
+          <div className="filter-sheet__body">{rail}</div>
+          <div className="filter-sheet__foot">
+            <button type="button" className="btn-primary" onClick={() => setSheetOpen(false)} data-testid="drawer-show-btn">
+              SHOW {fmt(totalCount)} RESULTS
             </button>
           </div>
         </div>
       )}
 
-      {/* Responsive CSS */}
-      <MobileTabBar username={username} />
-      <style>{`
-        @media (max-width: 767px) {
-          .browse-header-desktop { display: none !important; }
-          .browse-header-mobile  { display: block !important; }
-          .browse-desktop-inner  { display: none !important; }
-          .browse-mobile-grid    { display: block !important; }
-          .browse-sidebar        { display: none; }
-        }
-        @media (min-width: 768px) {
-          .browse-header-mobile { display: none !important; }
-          .browse-mobile-grid   { display: none !important; }
-        }
-      `}</style>
+      {!isGuest && (
+        <SizesModal
+          open={sizesOpen}
+          onClose={() => setSizesOpen(false)}
+          initialSizes={userSizes}
+          onSaved={() => { if (!mySizesOn) updateFilter('my_sizes', '1') }}
+        />
+      )}
     </div>
   )
 }

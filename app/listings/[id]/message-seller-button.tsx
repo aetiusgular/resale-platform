@@ -35,11 +35,13 @@ export default function MessageSellerButton({ listingId }: Props) {
 
   return (
     <button
+      type="button"
+      className="btn-ghost"
       onClick={() => void handleClick()}
       disabled={loading}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-bg)', color: 'var(--color-ink)', border: '1px solid transparent', borderRadius: '2px', font: '500 14px var(--font-ui)', cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.6 : 1 }}
+      data-testid="message-seller-btn"
     >
-      {loading ? 'Opening…' : 'Message seller'}
+      {loading ? 'OPENING…' : 'MESSAGE SELLER'}
     </button>
   )
 }

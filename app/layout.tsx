@@ -1,30 +1,27 @@
-import type { Metadata } from 'next'
-import { Inter, EB_Garamond, Space_Mono } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
+import { Archivo, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import { SEO_INDEXING_ENABLED } from '@/lib/flags'
 import { baseUrl, SITE_NAME, SITE_TAGLINE } from '@/lib/seo'
 import SmoothScroll from '@/app/components/smooth-scroll'
 import AuthModalProvider from '@/app/components/auth-modal-provider'
+import { THEME_BOOTSTRAP_SCRIPT } from '@/app/components/theme-bootstrap'
 
-const inter = Inter({
+// Two families (design review): Archivo for chrome + copy, IBM Plex Mono for
+// every piece of data. Self-hosted through next/font, so the CSP font-src 'self'
+// covers them.
+const archivo = Archivo({
   subsets: ['latin'],
-  variable: '--font-inter',
-  weight: ['400', '500', '600', '700'],
+  variable: '--font-archivo',
+  weight: ['300', '400', '500'],
   display: 'swap',
 })
 
-const ebGaramond = EB_Garamond({
+const plexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  variable: '--font-eb-garamond',
-  weight: ['400'],
-  style: ['normal', 'italic'],
-  display: 'swap',
-})
-
-const spaceMono = Space_Mono({
-  subsets: ['latin'],
-  variable: '--font-space-mono',
-  weight: ['400', '700'],
+  variable: '--font-plex-mono',
+  weight: ['300', '400'],
   display: 'swap',
 })
 
@@ -54,6 +51,14 @@ export const metadata: Metadata = {
     : { index: false, follow: false },
 }
 
+// Browser chrome colour follows the resolved theme (tokens --bg light / dark).
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f5f5f3' },
+    { media: '(prefers-color-scheme: dark)', color: '#131312' },
+  ],
+}
+
 // Force dynamic rendering app-wide. REQUIRED by the per-request CSP nonce in
 // middleware.ts: Next can only inject the nonce into inline <script> tags during
 // server rendering, so statically-generated pages (/enter, /terms, /privacy,
@@ -74,16 +79,26 @@ const supabaseOrigin = (() => {
   }
 })()
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // Per-request CSP nonce (middleware.ts) so the theme bootstrap inline script
+  // is allowed to run before first paint.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
+    // suppressHydrationWarning on <html>: the theme bootstrap sets data-theme
+    // before React hydrates, which is an intentional server/client attribute diff.
     <html
       lang="en"
-      className={`${inter.variable} ${ebGaramond.variable} ${spaceMono.variable}`}
+      className={`${archivo.variable} ${plexMono.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+      </head>
       {/* suppressHydrationWarning: browser extensions (Grammarly et al.) inject
           attributes into <body> before React hydrates — not a real mismatch. */}
       <body suppressHydrationWarning>

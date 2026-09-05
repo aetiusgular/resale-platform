@@ -1,13 +1,14 @@
 'use client'
 
 /**
- * Community section (G10) — Legit Check only.
+ * Legit Check thread (design 4A "lc-section").
  *
- * General comments were removed. Posting is restricted to moderators/admins (the server
- * RPC is the source of truth; `canPostLc` only governs whether the input is enabled).
- * Comments are publicly readable. System verdicts from the future auto-authentication
- * service arrive as `source: 'auto'` rows (no human author) and render with an
- * "AUTOMATED AUTHENTICATION" label.
+ * Strip: "LEGIT CHECK — n LEGIT · n FLAGGED" / "AUTO-AUTH: TAG PASS · MOD VERDICT: X".
+ * Comments carry the author's vote as a tag (LC · LEGIT / LC · FLAG), moderators are
+ * tagged LC MOD, system rows AUTO-AUTH; the meta line is "AGREE n · FLAG · REPLY".
+ * Any verified member can post a comment and cast ONE vote per listing (the
+ * post_comment RPC enforces it); moderators sign the verdict (pinned card).
+ * General comments stay removed (G10).
  */
 import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
@@ -25,6 +26,7 @@ interface CommentRow {
   pinned: boolean
   source: CommentSource
   verdict: string | null
+  vote: 'legit' | 'flag' | null
   created_at: string
   profiles: {
     username: string
@@ -37,76 +39,88 @@ interface CommentRow {
   comment_actions: { id: string; action: string }[]
 }
 
+type Tally = { legit: number; flagged: number; autoAuth: string; verdict: string }
+
 interface CommunitySectionProps {
   listingId: string
-  /** true = current viewer may post in LC (moderator or admin). */
-  canPostLc: boolean
-  /** true = signed-out viewer: Agree/Flag open the sign-in popup instead of 401ing. */
+  /** true = signed-out viewer: actions open the sign-in popup instead of 401ing. */
   isGuest?: boolean
-}
-
-const TIER_BORDER: Record<TierBadge, string> = {
-  bronze: 'var(--color-line)',
-  silver: 'var(--color-line)',
-  gold:   'var(--color-ink)',
-}
-const TIER_COLOR: Record<TierBadge, string> = {
-  bronze: 'var(--color-ink-soft)',
-  silver: 'var(--color-ink)',
-  gold:   'var(--color-ink)',
+  /** true = current viewer may post (verified member, moderator or admin). */
+  canPost: boolean
+  /** Sold listing: the thread stays readable but takes no new posts. */
+  closed?: boolean
+  /** Server-rendered initial tally so the strip never flashes zeros. */
+  initialTally: Tally
 }
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}M AGO`
+  if (mins < 60) return `${Math.max(mins, 0)}M AGO`
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}H AGO`
   return `${Math.floor(hrs / 24)}D AGO`
 }
 
 function agreeCount(actions: { action: string }[]): number {
-  return actions.filter(a => a.action === 'agree').length
+  return actions.filter((a) => a.action === 'agree').length
 }
 
-export default function CommunitySection({ listingId, canPostLc, isGuest = false }: CommunitySectionProps) {
+export default function CommunitySection({ listingId, isGuest = false, canPost, closed = false, initialTally }: CommunitySectionProps) {
   const { openAuthModal } = useAuthModal()
   const pathname = usePathname()
   const [comments, setComments] = useState<CommentRow[] | null>(null)
+  const [tally, setTally]         = useState<Tally>(initialTally)
   const [inputBody, setInputBody] = useState('')
+  const [vote, setVote]           = useState<'legit' | 'flag' | null>(null)
+  const [replyTo, setReplyTo]     = useState<CommentRow | null>(null)
   const [posting, setPosting]     = useState(false)
   const [postError, setPostError] = useState('')
   const [agreedIds, setAgreedIds] = useState<Set<string>>(new Set())
+  const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set())
 
-  const fetchComments = useCallback(async () => {
-    const res = await fetch(`/api/listings/${listingId}/comments?tab=lc`)
-    if (!res.ok) return
-    const data = await res.json()
-    setComments(data.comments ?? [])
+  // Promise chain rather than async/await so the state update only ever runs
+  // inside the resolved callback (never synchronously in the effect body).
+  const fetchComments = useCallback(() => {
+    return fetch(`/api/listings/${listingId}/comments?tab=lc`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { comments?: CommentRow[]; tally?: Tally } | null) => {
+        if (!data) return
+        setComments(data.comments ?? [])
+        if (data.tally) setTally(data.tally)
+      })
+      .catch(() => { /* leave the current list in place */ })
   }, [listingId])
 
   useEffect(() => { fetchComments() }, [fetchComments])
 
-  const pinned  = comments?.filter(c => c.pinned) ?? []
-  const threads = comments?.filter(c => !c.pinned) ?? []
-  const lcCount = comments?.length ?? 0
+  const pinned  = comments?.filter((c) => c.pinned) ?? []
+  const threads = comments?.filter((c) => !c.pinned) ?? []
 
   async function handlePost() {
-    if (!inputBody.trim()) return
+    if (isGuest) { openAuthModal(pathname); return }
+    if (!inputBody.trim() && !vote) return
     setPosting(true)
     setPostError('')
     const res = await fetch(`/api/listings/${listingId}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: inputBody.trim(), thread_type: 'lc' }),
+      body: JSON.stringify({
+        body: inputBody.trim() || (vote === 'legit' ? 'Voted LEGIT.' : 'Voted FLAG.'),
+        thread_type: 'lc',
+        vote,
+        parent_id: replyTo?.id ?? null,
+      }),
     })
     setPosting(false)
     if (!res.ok) {
-      const d = await res.json()
+      const d = await res.json().catch(() => ({}))
       setPostError(d.error ?? 'Failed to post')
       return
     }
     setInputBody('')
+    setVote(null)
+    setReplyTo(null)
     await fetchComments()
   }
 
@@ -114,222 +128,200 @@ export default function CommunitySection({ listingId, canPostLc, isGuest = false
     if (isGuest) { openAuthModal(pathname); return }
     if (agreedIds.has(commentId)) return
     await fetch(`/api/listings/${listingId}/comments/${commentId}/agree`, { method: 'POST' })
-    setAgreedIds(prev => new Set([...prev, commentId]))
+    setAgreedIds((prev) => new Set([...prev, commentId]))
     await fetchComments()
   }
 
   async function handleFlag(commentId: string) {
     if (isGuest) { openAuthModal(pathname); return }
     await fetch(`/api/listings/${listingId}/comments/${commentId}/flag`, { method: 'POST' })
+    setFlaggedIds((prev) => new Set([...prev, commentId]))
   }
 
-  return (
-    <div style={{ marginTop: '96px', maxWidth: '840px' }}>
-      <h2 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: '24px', lineHeight: 1.35, color: 'var(--color-ink)', margin: 0 }}>
-        The community weighs in.
-      </h2>
+  function handleReply(c: CommentRow) {
+    if (isGuest) { openAuthModal(pathname); return }
+    setReplyTo(c)
+    document.getElementById('lc-input')?.focus()
+  }
 
-      {/* Section label (LC-only) */}
-      <div style={{ marginTop: '24px', display: 'flex', alignItems: 'baseline', borderBottom: '1px solid var(--color-line)' }}>
-        <span style={{ position: 'relative', padding: '12px 0', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)', minHeight: '44px', display: 'inline-flex', alignItems: 'center', boxSizing: 'border-box' }}>
-          Legit check ({lcCount})
-          <span style={{ position: 'absolute', left: 0, right: 0, bottom: '-1px', height: '1px', background: 'var(--color-ink)' }} />
+  const inputDisabled = closed || (!isGuest && !canPost)
+
+  return (
+    <section className="lc-section" id="lc-thread" aria-labelledby="lc-heading">
+      <h2 id="lc-heading" className="sr-only">The community weighs in.</h2>
+      <div className="lc-strip">
+        <span className="lc-strip__left">
+          <span className="lc-chip__dot" />
+          LEGIT CHECK — {tally.legit} LEGIT · {tally.flagged} FLAGGED
         </span>
+        <span className="lc-strip__right">AUTO-AUTH: {tally.autoAuth} · MOD VERDICT: {tally.verdict}</span>
       </div>
 
-      {/* Pinned verdict card(s) */}
-      {pinned.map(c => (
+      {pinned.map((c) => (
         <PinnedCard key={c.id} comment={c} />
       ))}
 
-      {/* Threads */}
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {comments === null ? (
-          <div style={{ padding: '20px 0', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)', letterSpacing: '0.08em' }}>LOADING…</div>
-        ) : threads.length === 0 ? (
-          <div style={{ padding: '20px 0', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)', letterSpacing: '0.08em' }}>
-            NO LEGIT CHECKS YET.
-          </div>
-        ) : (
-          threads.map(c => (
-            <CommentRow
-              key={c.id}
-              comment={c}
-              agreed={agreedIds.has(c.id)}
-              onAgree={() => handleAgree(c.id)}
-              onFlag={() => handleFlag(c.id)}
-            />
-          ))
-        )}
-      </div>
+      {comments === null ? (
+        <div className="mono-note" style={{ paddingBottom: 14 }}>LOADING…</div>
+      ) : threads.length === 0 && pinned.length === 0 ? (
+        <div className="mono-note" style={{ paddingBottom: 14 }}>NO LEGIT CHECKS YET — BE THE FIRST TO WEIGH IN.</div>
+      ) : (
+        threads.map((c) => (
+          <CommentRowView
+            key={c.id}
+            comment={c}
+            parent={c.parent_id ? comments?.find((p) => p.id === c.parent_id) ?? null : null}
+            agreed={agreedIds.has(c.id)}
+            flagged={flaggedIds.has(c.id)}
+            onAgree={() => handleAgree(c.id)}
+            onFlag={() => handleFlag(c.id)}
+            onReply={() => handleReply(c)}
+          />
+        ))
+      )}
 
-      {/* Input area */}
-      <div style={{ marginTop: '24px' }}>
-        {canPostLc ? (
-          <>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                value={inputBody}
-                onChange={e => setInputBody(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost() } }}
-                placeholder="add a legit check"
-                maxLength={2000}
-                disabled={posting}
-                style={{ flex: 1, height: '44px', border: '1px solid var(--color-line)', borderRadius: '2px', padding: '0 12px', boxSizing: 'border-box', fontSize: '14px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none', opacity: posting ? 0.6 : 1 }}
-              />
-              <button
-                onClick={handlePost}
-                disabled={posting || !inputBody.trim()}
-                style={{ height: '44px', padding: '0 20px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 13px var(--font-ui)', cursor: posting || !inputBody.trim() ? 'not-allowed' : 'pointer', opacity: posting || !inputBody.trim() ? 0.4 : 1 }}
-              >
-                Post
-              </button>
-            </div>
-            <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              Moderators only · legit checks are public.
-            </div>
-          </>
-        ) : (
-          <>
-            <div
-              style={{ height: '44px', border: '1px solid var(--color-line)', borderRadius: '2px', display: 'flex', alignItems: 'center', padding: '0 12px', boxSizing: 'border-box', fontSize: '14px', color: 'var(--color-ink-soft)', opacity: 0.5, cursor: 'not-allowed' }}
-            >
-              add a legit check
-            </div>
-            <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              Legit checks are posted by verified moderators.
-            </div>
-          </>
-        )}
-        {postError && (
-          <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--color-alert)' }}>
-            {postError}
-          </div>
-        )}
+      {replyTo && (
+        <div className="mono-note" style={{ paddingBottom: 6 }}>
+          REPLYING TO {(replyTo.profiles?.username ?? 'SYSTEM').toUpperCase()} ·{' '}
+          <button type="button" className="link-underline" onClick={() => setReplyTo(null)}>CANCEL</button>
+        </div>
+      )}
+      <div className="lc-form">
+        <input
+          id="lc-input"
+          className="lc-input"
+          type="text"
+          value={inputBody}
+          onChange={(e) => setInputBody(e.target.value)}
+          onFocus={() => { if (isGuest) openAuthModal(pathname) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePost() } }}
+          placeholder="Add a comment or cast a vote —"
+          aria-label="Add a legit check comment"
+          maxLength={2000}
+          disabled={posting || inputDisabled}
+          data-testid="lc-input"
+        />
+        <button
+          type="button"
+          className={`btn-mini${vote === 'legit' ? ' btn-mini--solid' : ''}`}
+          onClick={() => setVote((v) => (v === 'legit' ? null : 'legit'))}
+          disabled={inputDisabled}
+          aria-pressed={vote === 'legit'}
+          title="Cast a LEGIT vote with your comment"
+        >
+          LEGIT
+        </button>
+        <button
+          type="button"
+          className={`btn-mini${vote === 'flag' ? ' btn-mini--solid' : ''}`}
+          onClick={() => setVote((v) => (v === 'flag' ? null : 'flag'))}
+          disabled={inputDisabled}
+          aria-pressed={vote === 'flag'}
+          title="Cast a FLAG vote with your comment"
+        >
+          FLAG
+        </button>
+        <button type="button" className="btn-mini btn-mini--solid" onClick={handlePost} disabled={posting || inputDisabled || (!inputBody.trim() && !vote)} data-testid="lc-post">
+          POST
+        </button>
       </div>
-    </div>
+      <div className="mono-note" style={{ paddingTop: 8 }}>
+        {closed
+          ? 'THREAD CLOSED — THIS ITEM HAS SOLD'
+          : inputDisabled
+            ? 'VERIFIED MEMBERS CAN COMMENT AND CAST ONE VOTE PER LISTING · VERIFY YOUR ID IN SETTINGS'
+            : 'ONE VOTE PER MEMBER PER LISTING · MODERATORS SIGN THE VERDICT'}
+      </div>
+      {postError && <div className="alert-line" role="alert">{postError.toUpperCase()}</div>}
+    </section>
   )
 }
 
 function AuthorLine({ comment }: { comment: CommentRow }) {
   if (comment.source === 'auto') {
     return (
-      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-        AUTOMATED AUTHENTICATION
-      </span>
+      <>
+        SYSTEM <span className="tag tag--ink">AUTO-AUTH</span>
+      </>
     )
   }
   const author = comment.profiles
-  const tier = (author?.tier ?? 'bronze') as TierBadge
   return (
     <>
-      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink)' }}>
-        @{author?.username ?? '—'}
-      </span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', height: '20px', padding: '0 6px', border: `1px solid ${TIER_BORDER[tier]}`, borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: TIER_COLOR[tier] }}>
-        {tier.charAt(0).toUpperCase() + tier.slice(1)}
-      </span>
-      {author?.is_moderator && (
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>
-          MODERATOR
-        </span>
-      )}
+      {(author?.username ?? '—').toUpperCase()}
+      {author?.is_moderator || author?.role === 'admin'
+        ? <span className="tag tag--ink">LC MOD</span>
+        : comment.vote
+          ? <span className="tag">LC · {comment.vote === 'legit' ? 'LEGIT' : 'FLAG'}</span>
+          : null}
+      {author?.checker_category && <span className="tag">{author.checker_category.toUpperCase()}</span>}
     </>
   )
 }
 
+function Body({ comment }: { comment: CommentRow }) {
+  if (comment.redacted) {
+    return (
+      <>
+        <p className="lc-comment__text" style={{ textDecoration: 'line-through', color: 'var(--faint)' }}>{comment.body}</p>
+        <div className="alert-line" style={{ paddingTop: 4 }}>LINK REMOVED — OFF-PLATFORM PAYMENT OFFERS VIOLATE POLICY.</div>
+      </>
+    )
+  }
+  return <p className="lc-comment__text">{comment.body}</p>
+}
+
 function PinnedCard({ comment }: { comment: CommentRow }) {
   return (
-    <div
-      data-testid="pinned-verdict-card"
-      style={{ marginTop: '24px', border: '1px solid var(--color-accent)', borderRadius: '2px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}
-    >
-      <div style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--color-ink)' }}>
-        {comment.redacted ? (
-          <>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>CHECKED</span>
-            {' '}—{' '}
-            <span style={{ textDecoration: 'line-through', color: 'var(--color-ink-soft)' }}>
-              {comment.body}
-            </span>
-            <span style={{ color: 'var(--color-alert)', display: 'block', fontSize: '12px', marginTop: '2px' }}>link removed — off-platform payment offers violate policy.</span>
-          </>
-        ) : (
-          <>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-accent)' }}>CHECKED</span>
-            {' '}— {comment.body}
-          </>
-        )}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-        — <AuthorLine comment={comment} />
-        {comment.source === 'human' && comment.profiles?.checker_category && (
-          <span>· {comment.profiles.checker_category.toUpperCase()}</span>
-        )}
+    <div className="lc-comment lc-comment--pinned" data-testid="pinned-verdict-card">
+      <span className="lc-comment__avatar" style={{ background: 'var(--ink)' }} />
+      <div className="lc-comment__body">
+        <div className="lc-comment__who">
+          <span className="tag tag--ink">VERDICT</span>
+          <AuthorLine comment={comment} />
+        </div>
+        <Body comment={comment} />
+        <div className="lc-comment__meta">SIGNED {relativeTime(comment.created_at)}{comment.verdict ? ` · ${comment.verdict.toUpperCase()}` : ''}</div>
       </div>
     </div>
   )
 }
 
-function CommentRow({
-  comment,
-  agreed,
-  onAgree,
-  onFlag,
+function CommentRowView({
+  comment, parent, agreed, flagged, onAgree, onFlag, onReply,
 }: {
   comment: CommentRow
+  parent: CommentRow | null
   agreed: boolean
+  flagged: boolean
   onAgree: () => void
   onFlag: () => void
+  onReply: () => void
 }) {
   const agrees = agreeCount(comment.comment_actions)
-
   return (
-    <div
-      data-testid="comment-row"
-      style={{ padding: '20px 0', borderBottom: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column', gap: '6px' }}
-    >
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <AuthorLine comment={comment} />
-        <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-          {relativeTime(comment.created_at)}
-        </span>
-      </div>
-
-      {/* Body */}
-      {comment.redacted ? (
-        <div>
-          <span style={{ fontSize: '14px', lineHeight: 1.6, textDecoration: 'line-through', color: 'var(--color-ink-soft)' }}>
-            {comment.body}
-          </span>
-          <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'var(--color-alert)' }}>
-            link removed — off-platform payment offers violate policy.
-          </div>
+    <div className="lc-comment" data-testid="comment-row" style={parent ? { marginLeft: 32 } : undefined}>
+      <span className="lc-comment__avatar" />
+      <div className="lc-comment__body">
+        <div className="lc-comment__who"><AuthorLine comment={comment} /></div>
+        {parent && <div className="lc-comment__meta" style={{ marginTop: 4 }}>↳ {(parent.profiles?.username ?? 'SYSTEM').toUpperCase()}</div>}
+        <Body comment={comment} />
+        <div className="lc-comment__actions">
+          <button type="button" className={agreed ? 'is-on' : ''} onClick={onAgree} data-testid="agree-button" aria-pressed={agreed}>
+            AGREE {agrees}
+          </button>
+          <span className="lc-comment__meta" style={{ marginTop: 0 }}>·</span>
+          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged}>
+            {flagged ? 'FLAGGED' : 'FLAG'}
+          </button>
+          {comment.source !== 'auto' && (
+            <>
+              <span className="lc-comment__meta" style={{ marginTop: 0 }}>·</span>
+              <button type="button" onClick={onReply} data-testid="reply-button">REPLY</button>
+            </>
+          )}
+          <span className="lc-comment__meta" style={{ marginTop: 0, marginLeft: 'auto' }}>{relativeTime(comment.created_at)}</span>
         </div>
-      ) : (
-        <div style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--color-ink)' }}>
-          {comment.body}
-        </div>
-      )}
-
-      {/* Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <button
-          onClick={onAgree}
-          data-testid="agree-button"
-          style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: agreed ? 'var(--color-ink)' : 'var(--color-ink-soft)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: agreed ? 'underline' : 'none' }}
-        >
-          Agree ({agrees})
-        </button>
-        <button
-          onClick={onFlag}
-          data-testid="flag-button"
-          style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-        >
-          Flag
-        </button>
       </div>
     </div>
   )

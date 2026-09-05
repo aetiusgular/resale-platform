@@ -1,55 +1,76 @@
-import Link from 'next/link'
-
 /**
  * Shared shell for the public legal/document pages (/terms, /privacy, /fees).
- * Server component. Content arrives either as pre-generated HTML (app/terms/content.ts,
- * app/privacy/content.ts — regenerated from docs/legal/*.md by scripts/generate-legal.mjs)
- * or as JSX children (/fees renders live from lib constants).
+ * Server component (design "Legal" board): section TOC on the left, the
+ * document on the right under a ruled page-head. Content arrives either as
+ * pre-generated HTML (app/terms/content.ts, app/privacy/content.ts — regenerated
+ * from docs/legal/*.md by scripts/generate-legal.mjs) or as JSX children (/fees
+ * renders live from lib constants).
  *
- * Styling is scoped under .legal-doc and uses design tokens only. <mark> renders the
- * bracketed [PLACEHOLDER] values in alert color so unfilled fields are impossible to miss
- * while the documents are drafts.
+ * <h2> headings get ids so the TOC anchors work; bracketed [PLACEHOLDER] values
+ * render in alert colour (see .legal-body article mark) so unfilled fields are
+ * impossible to miss while the documents are drafts.
  */
+import AppShell from './app-shell'
+import { getViewerUsername } from './viewer'
 
-const CSS = `
-.legal-doc { max-width: 720px; margin: 0 auto; padding: 40px 24px 96px; }
-.legal-doc .legal-home { font: 600 16px var(--font-ui); letter-spacing: 0.08em; color: var(--color-ink); text-decoration: none; }
-.legal-doc h1 { font: 400 28px var(--font-serif); margin: 32px 0 8px; }
-.legal-doc h2 { font: 600 20px var(--font-ui); letter-spacing: -0.01em; margin: 40px 0 12px; }
-.legal-doc h3 { font: 600 16px var(--font-ui); letter-spacing: -0.01em; margin: 28px 0 8px; }
-.legal-doc p { margin: 0 0 12px; }
-.legal-doc p, .legal-doc li { font-size: 14px; line-height: 1.65; color: var(--color-ink); }
-.legal-doc p em { font-family: var(--font-serif); font-style: italic; font-size: 15px; color: var(--color-ink-soft); }
-.legal-doc ul, .legal-doc ol { margin: 0 0 12px; padding-left: 22px; }
-.legal-doc li { margin: 4px 0; }
-.legal-doc blockquote { margin: 0 0 24px; padding: 12px 16px; border-left: 2px solid var(--color-alert); border-radius: var(--radius); }
-.legal-doc blockquote p { font-size: 13px; color: var(--color-ink-soft); }
-.legal-doc blockquote strong { color: var(--color-alert); }
-.legal-doc table { width: 100%; border-collapse: collapse; margin: 8px 0 24px; }
-.legal-doc th { font: 700 11px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; text-align: left; color: var(--color-ink-soft); padding: 8px; border-bottom: 1px solid var(--color-line); }
-.legal-doc td { font: 400 12px/1.6 var(--font-mono); padding: 8px; border-bottom: 1px solid var(--color-line); vertical-align: top; }
-.legal-doc mark { background: transparent; color: var(--color-alert); font-family: var(--font-mono); font-size: 0.95em; }
-.legal-doc hr { margin: 32px 0; }
-`
+const slug = (s: string) => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, '’').trim()
 
-export default function LegalDoc({
+function prepare(html: string): { html: string; toc: Array<{ id: string; label: string }> } {
+  const toc: Array<{ id: string; label: string }> = []
+  const out = html.replace(/<h2>([\s\S]*?)<\/h2>/g, (_m, inner: string) => {
+    const label = strip(inner)
+    const id = slug(label) || `s-${toc.length + 1}`
+    toc.push({ id, label })
+    return `<h2 id="${id}">${inner}</h2>`
+  })
+  return { html: out, toc }
+}
+
+export default async function LegalDoc({
+  kicker,
+  title,
+  note,
   html,
+  toc: tocOverride,
   children,
 }: {
+  kicker: string
+  title: string
+  note?: string
   html?: string
+  toc?: Array<{ id: string; label: string }>
   children?: React.ReactNode
 }) {
+  const username = await getViewerUsername()
+  const prepared = html ? prepare(html) : null
+  const toc = tocOverride ?? prepared?.toc ?? []
+
   return (
-    <div className="legal-doc">
-      <style>{CSS}</style>
-      <Link href="/" aria-label="Home" className="legal-home">
-        ———
-      </Link>
-      {html ? (
-        <article dangerouslySetInnerHTML={{ __html: html }} />
-      ) : (
-        <article>{children}</article>
-      )}
-    </div>
+    <AppShell username={username}>
+      <div className="legal-split">
+        <aside className="legal-toc">
+          <div className="legal-toc__label">{kicker}</div>
+          <nav aria-label="Sections">
+            {toc.map((s, i) => (
+              <a key={s.id} className="legal-toc__item" href={`#${s.id}`}>
+                {String(i + 1).padStart(2, '0')} {s.label.toUpperCase().replace(/^\d+\.\s*/, '')}
+              </a>
+            ))}
+          </nav>
+        </aside>
+        <main className="legal-body">
+          <div className="page-head page-head--ruled">
+            <h1 className="page-title">{title}</h1>
+            {note && <span className="page-note">{note}</span>}
+          </div>
+          {prepared ? (
+            <article dangerouslySetInnerHTML={{ __html: prepared.html }} />
+          ) : (
+            <article>{children}</article>
+          )}
+        </main>
+      </div>
+    </AppShell>
   )
 }

@@ -8,5 +8,5 @@ import { TERMS_HTML } from './content'
 export const metadata = { title: 'Terms of Service', alternates: { canonical: '/terms' } }
 
 export default function TermsPage() {
-  return <LegalDoc html={TERMS_HTML} />
+  return <LegalDoc kicker="LEGAL / TERMS" title="Terms of service" note="DRAFT — ATTORNEY REVIEW PENDING" html={TERMS_HTML} />
 }

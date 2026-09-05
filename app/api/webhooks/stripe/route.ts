@@ -288,9 +288,14 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
 
   if (NOTIFICATIONS_ENABLED) {
     after(async () => {
-      const { data: l } = await service.from('listings').select('title').eq('id', session.listing_id).single()
+      const [{ data: l }, { data: buyer }] = await Promise.all([
+        service.from('listings').select('title, brand').eq('id', session.listing_id).single(),
+        service.from('profiles').select('username').eq('id', session.buyer_id).single(),
+      ])
       await notify(service, session.seller_id, 'sale', {
         itemTitle: (l as { title?: string } | null)?.title,
+        brand: (l as { brand?: string } | null)?.brand,
+        actorName: (buyer as { username?: string } | null)?.username,
         amountCents: item_cents,
         orderId: orderId,
       })
