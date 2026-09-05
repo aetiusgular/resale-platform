@@ -2,13 +2,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClientRaw } from '@/lib/supabase/service'
 import { getListing } from './get-listing'
 import { formatCents } from '@/lib/fees'
-import { floorShippingCents } from '@/lib/shipping'
-import { BOOSTED_POSTS_ENABLED, BUMP_ENABLED, AUTH_BADGE_ENABLED, FOLLOWS_ENABLED } from '@/lib/flags'
-import { measurementLabelsFor, normalizeMeasurements } from '@/lib/taxonomy'
-import { getSellerStats, sellerTrustLine } from '@/lib/sellers/stats'
+import { BOOSTED_POSTS_ENABLED, BUMP_ENABLED, FOLLOWS_ENABLED } from '@/lib/flags'
+import { loadListingDetail, type ListingRow } from '@/lib/loaders/listing'
 import SaveButton from './save-button'
 import MessageSellerButton from './message-seller-button'
 import BumpButton from './bump-button'
@@ -21,7 +18,6 @@ import AppShell from '@/app/components/app-shell'
 import GuestAction from '@/app/components/guest-action'
 import PrefetchLink from '@/app/components/prefetch-link'
 import JsonLd from '@/app/components/json-ld'
-import { formatTimeAgo } from '@/app/components/format'
 import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
 
 interface PageProps {
@@ -75,86 +71,32 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
   if (!listing) notFound()
 
-  let isAdmin = false
-  const isSeller = user?.id === listing.seller_id
-  let userProfile: { role?: string; is_moderator?: boolean; id_verification_status?: string } | null = null
-  let currentUsername = ''
-  let isSaved = false
-  let isFollowing = false
-  let originalPriceCents: number | null = null
-
-  if (user) {
-    const [profileResult, saveResult, priceResult, followResult] = await Promise.all([
-      supabase.from('profiles').select('role, is_moderator, username, id_verification_status').eq('id', user.id).single(),
-      supabase.from('saves').select('id').eq('user_id', user.id).eq('listing_id', id).maybeSingle(),
-      listing.is_price_dropped
-        ? supabase.from('price_history').select('old_price_cents').eq('listing_id', id).order('changed_at', { ascending: true }).limit(1).maybeSingle()
-        : Promise.resolve({ data: null }),
-      FOLLOWS_ENABLED && !isSeller
-        ? supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', listing.seller_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-    ])
-    isAdmin = profileResult.data?.role === 'admin'
-    userProfile = profileResult.data
-    currentUsername = (profileResult.data?.username as string) ?? ''
-    isSaved = !!saveResult.data
-    isFollowing = !!followResult.data
-    originalPriceCents = priceResult.data?.old_price_cents ?? null
-  } else if (listing.is_price_dropped) {
-    const { data: firstHistory } = await supabase
-      .from('price_history').select('old_price_cents').eq('listing_id', id)
-      .order('changed_at', { ascending: true }).limit(1).maybeSingle()
-    originalPriceCents = firstHistory?.old_price_cents ?? null
-  }
+  // ONE data assembly shared with GET /api/listings/[id] (native clients).
+  // null = not visible to this viewer (non-active and not seller/admin) → 404, as before.
+  const d = await loadListingDetail({ supabase, user, id, row: listing as unknown as ListingRow })
+  if (!d) notFound()
 
   const isActive = listing.status === 'active'
   const isSold = listing.status === 'sold'
-  // Active + sold listings are public; anything else is seller/admin only.
-  if (!isActive && !isSold && !isAdmin && !isSeller) {
-    notFound()
-  }
-
-  // Seller trust line + LC tally (counts only; service client for orders).
-  const service = createServiceClientRaw()
-  const [statsMap, { data: voteRows }] = await Promise.all([
-    getSellerStats(service, [listing.seller_id]),
-    supabase.from('comments').select('vote, source, verdict').eq('listing_id', id).eq('thread_type', 'lc').eq('status', 'visible'),
-  ])
-  const votes = (voteRows ?? []) as Array<{ vote: string | null; source: string; verdict: string | null }>
-  const auto = votes.find((c) => c.source === 'auto')
-  const initialTally = {
-    legit: votes.filter((c) => c.vote === 'legit').length,
-    flagged: votes.filter((c) => c.vote === 'flag').length,
-    autoAuth: auto?.verdict === 'authentic' ? 'TAG PASS' : auto?.verdict === 'counterfeit' ? 'TAG FAIL' : auto ? 'UNCERTAIN' : 'PENDING',
-    verdict: listing.authentication_status === 'authenticated' ? 'LEGIT' : listing.authentication_status === 'rejected' ? 'NOT LEGIT' : 'PENDING',
-  }
-
+  const { is_seller: isSeller, is_admin: isAdmin, saved: isSaved, following: isFollowing, can_buy: canBuy, can_post: canPost } = d.viewer
+  const currentUsername = d.viewer.username
+  const originalPriceCents = d.listing.original_price_cents
+  const initialTally = d.lc
+  // Gallery gets every slot; it hides the POSSESSION slot unless showPossession.
   const images: string[] = Array.isArray(listing.images) ? listing.images : []
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
-  const sellerHandle = seller?.username ?? '—'
-  const sellerInitials = sellerHandle.slice(0, 2).toUpperCase()
-  const authenticated = AUTH_BADGE_ENABLED && listing.authentication_status === 'authenticated'
-  const verifiedSeller = seller?.id_verification_status === 'verified'
-  const shippingCents = listing.shipping_cents ?? floorShippingCents(listing.category)
-  const canBuy = isActive && !isSeller
-  const crumbParts = [listing.department, listing.category, listing.subcategory].filter(Boolean) as string[]
-  const crumbSp = new URLSearchParams({ dept: listing.department, cat: listing.category })
-  if (listing.subcategory) crumbSp.set('subcat', listing.subcategory)
-  const crumbHref = `/browse?${crumbSp.toString()}`
-  const statusWord = isSold ? 'SOLD' : listing.status === 'pending_escrow' ? 'PENDING' : listing.status === 'pending_review' ? 'IN REVIEW' : listing.status === 'removed' ? 'REMOVED' : listing.status === 'draft' ? 'DRAFT' : 'UNAVAILABLE'
-  const listedLine = isSold
-    ? `SOLD ${formatTimeAgo(listing.updated_at ?? listing.created_at)} · ${listing.saves_count ?? 0} SAVED`
-    : `LISTED ${formatTimeAgo(listing.created_at)} · ${listing.saves_count ?? 0} SAVED`
-  const measurements = normalizeMeasurements(listing.measurements, listing.category)
-  const measLabels = measurementLabelsFor(listing.category)
-  const spec = [listing.size?.toUpperCase(), listing.color?.toUpperCase()].filter(Boolean).join(' · ')
-  const trustLine = sellerTrustLine(statsMap.get(listing.seller_id), verifiedSeller)
-  // Any verified member can weigh in; moderators/admins always can. The
-  // post_comment RPC is the source of truth — this only enables the input.
-  const canPost = !!user && (
-    userProfile?.is_moderator === true || userProfile?.role === 'admin' ||
-    userProfile?.id_verification_status === 'verified'
-  )
+  const sellerHandle = d.seller.username
+  const sellerInitials = d.seller.initials
+  const authenticated = d.listing.authenticated
+  const shippingCents = d.listing.shipping_cents
+  const crumbParts = d.listing.crumb.parts
+  const crumbHref = d.listing.crumb.href
+  const statusWord = d.listing.status_word
+  const listedLine = d.listing.listed_line
+  const measurements = d.listing.measurements
+  const measLabels = d.listing.measurement_labels
+  const spec = d.listing.spec
+  const trustLine = d.seller.trust_line
 
   return (
     <AppShell username={currentUsername}>
@@ -352,7 +294,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
           <CommunitySection
             listingId={id}
             isGuest={!user}
-            canPost={canPost && isActive}
+            canPost={canPost}
             closed={isSold}
             initialTally={initialTally}
           />

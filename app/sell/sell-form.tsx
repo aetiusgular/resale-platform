@@ -28,23 +28,8 @@ const SLOT_LABELS: Record<string, string> = {
 const WIZARD_STEPS = ['01 PHOTOS', '02 DETAILS', '03 MEASUREMENTS', '04 PRICING', '05 REVIEW']
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-export interface ListingInitial {
-  id: string
-  status: string
-  title: string | null
-  brand: string | null
-  category: string | null
-  department: string | null
-  subcategory: string | null
-  size: string | null
-  color: string | null
-  description: string | null
-  condition_score: number | null
-  price_cents: number | null
-  images: string[]
-  possession_photo_url: string | null
-  measurements: Record<string, number>
-}
+export type { ListingInitial } from '@/lib/loaders/sell'
+import type { ListingInitial } from '@/lib/loaders/sell'
 
 interface SellFormProps {
   userId: string

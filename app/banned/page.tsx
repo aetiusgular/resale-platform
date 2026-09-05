@@ -4,7 +4,7 @@
  */
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClientRaw } from '@/lib/supabase/service'
+import { loadBanReason } from '@/lib/loaders/verification'
 import { AuthPage } from '@/app/components/auth-frame'
 
 export const metadata = { title: 'Account suspended', robots: { index: false, follow: false } }
@@ -12,15 +12,8 @@ export const metadata = { title: 'Account suspended', robots: { index: false, fo
 export default async function BannedPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  let reason: string | null = null
-  if (user) {
-    const { data } = await createServiceClientRaw()
-      .from('profiles')
-      .select('banned_reason')
-      .eq('id', user.id)
-      .single()
-    reason = (data as { banned_reason?: string | null } | null)?.banned_reason ?? null
-  }
+  // Shared with GET /api/me (native clients): service client, own row only.
+  const reason: string | null = user ? await loadBanReason(user.id) : null
 
   return (
     <AuthPage>

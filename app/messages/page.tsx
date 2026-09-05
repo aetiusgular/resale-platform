@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import AppShell from '@/app/components/app-shell'
 import InboxList from './inbox-list'
-import { loadInbox } from './inbox'
+import { loadInbox } from '@/lib/loaders/inbox'
 import { ChatIcon } from '@/app/components/icons'
 
 export const metadata: Metadata = { title: 'Messages' }

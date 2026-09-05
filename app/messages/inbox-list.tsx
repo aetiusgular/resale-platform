@@ -7,7 +7,7 @@
  */
 import { useState } from 'react'
 import PrefetchLink from '@/app/components/prefetch-link'
-import type { InboxRow } from './inbox'
+import type { InboxRow } from '@/lib/loaders/inbox'
 
 type RoleFilter = 'ALL' | 'BUYING' | 'SELLING'
 

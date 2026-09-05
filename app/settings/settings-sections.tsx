@@ -21,7 +21,6 @@ import { SETTINGS_SIZE_GROUPS, SIZE_DEPTS, countSizes, sizeKey, sizesChipLabel, 
 import { PREF_ROWS } from '@/lib/notify/prefs'
 import type { NotificationPrefs } from '@/lib/notify/types'
 import { FEE_TIERS, formatCents } from '@/lib/fees'
-import type { SideDashboard } from '@/lib/tier-dashboard'
 import { RATE_WORDS, REVIEW_MAX_BODY, REVIEW_MAX_PHOTOS, REVIEW_TAGS } from '@/lib/reviews/tags'
 import { STATE_LABELS, type OrderState } from '@/lib/orders'
 import PhoneVerify from './phone-verify'
@@ -31,80 +30,8 @@ import SignOutLink from './sign-out-link'
 /** `profile` = the hub's profile form on its own route (mobile web reaches it from the 09 menu). */
 export type SettingsSection = 'hub' | 'profile' | 'orders' | 'review' | 'address' | 'sizes' | 'notifications' | 'payouts' | 'phone' | 'tiers'
 
-export type SettingsAddress = {
-  id: string
-  name: string
-  street1: string
-  street2: string | null
-  city: string
-  state: string
-  zip: string
-  country: string
-  is_default: boolean
-  created_at: string
-}
-
-export type SettingsOrderRow = {
-  id: string
-  role: 'buyer' | 'seller'
-  state: string
-  brand: string
-  title: string
-  size: string
-  image: string | null
-  amount: string
-  counterparty: string
-  created_at: string
-  hasTracking: boolean
-  canReview: boolean
-}
-
-export type ReviewTarget = {
-  orderId: string
-  brand: string
-  title: string
-  image: string | null
-  amount: string
-  deliveredAt: string
-  sellerUsername: string
-  eligible: boolean
-  reason: string | null
-}
-
-export interface SettingsData {
-  userId: string
-  username: string
-  displayName: string | null
-  avatarUrl: string | null
-  usernameNextChangeAt: number | null
-  /** Server-resolved: the 30-day username window is open right now. */
-  usernameWindowOpen: boolean
-  /** Next quarterly tier review date (ms) — server-resolved. */
-  tierReviewDateMs: number
-  email: string
-  emailVerified: boolean
-  memberSince: string
-  idVerified: boolean
-  sizes: UserSizes
-  hideNotMySize: boolean
-  addresses: SettingsAddress[]
-  payoutsEnabled: boolean
-  payoutOnboardingDone: boolean
-  prefs: NotificationPrefs
-  notificationsEnabled: boolean
-  phoneVerificationEnabled: boolean
-  phoneVerified: boolean
-  phone: string | null
-  tierDashboardEnabled: boolean
-  buyerTier: SideDashboard | null
-  sellerTier: SideDashboard
-  welcomeLeft: number
-  salesCount: number
-  reviewsEnabled: boolean
-  shippingLabelsEnabled: boolean
-  orders: SettingsOrderRow[]
-  review: ReviewTarget | null
-}
+export type { SettingsAddress, SettingsOrderRow, ReviewTarget, SettingsData } from '@/lib/loaders/settings'
+import type { SettingsAddress, SettingsOrderRow, SettingsData } from '@/lib/loaders/settings'
 
 function SectionHead({ label, right }: { label: string; right?: ReactNode }) {
   return (

@@ -6,6 +6,7 @@
  */
 import type { Metadata } from 'next'
 import { VERIFICATION_ENABLED } from '@/lib/flags'
+import { loadVerificationStatus } from '@/lib/loaders/verification'
 import { createClient } from '@/lib/supabase/server'
 import { AuthPage } from '@/app/components/auth-frame'
 import StepRail from '../step-rail'
@@ -18,22 +19,10 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let status: string | null = null
-  let handle = ''
-  if (user) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id_verification_status, username')
-      .eq('id', user.id)
-      .single()
-    const row = data as { id_verification_status?: string; username?: string } | null
-    status = row?.id_verification_status ?? null
-    handle = row?.username ? `@${row.username.toUpperCase()}` : ''
-  }
-  const verified = status === 'verified'
-  const pending = status === 'pending'
-  const statusLabel = verified ? 'VERIFIED' : pending ? 'IN REVIEW' : 'NOT STARTED'
-  const after = required === 'sell' ? '/sell/new' : required === 'payout' ? '/settings/payouts' : '/browse'
+  // ONE data assembly shared with GET /api/idv/status (native clients).
+  const v = await loadVerificationStatus({ supabase, user, required })
+  const { verified, pending, handle, after } = v
+  const statusLabel = v.status_label
 
   return (
     <AuthPage onboarding cta={{ href: '/browse', label: handle || 'BROWSE FIRST →' }}>

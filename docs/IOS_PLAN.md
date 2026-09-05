@@ -1,3 +1,8 @@
+> **Superseded 2026-09-05.** The founder chose native (SwiftUI on iOS, Compose on Android), one repo
+> per platform, API-first against this backend. The current plan is `docs/MOBILE_PLAN.md`; the
+> audit behind it is `docs/MOBILE_ARCHITECTURE_AUDIT.md`. This file is kept for the Apple-commission
+> analysis (§ below), which still applies.
+
 # IOS_PLAN.md — mobile app strategy (July 2026)
 
 ## Recommendation: Expo (React Native), not Swift

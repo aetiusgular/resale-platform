@@ -1,15 +1,15 @@
 /**
  * GET /api/stripe/connect
- * Initiates Stripe Connect Express onboarding for the authenticated seller.
+ * Initiates Stripe Connect Express onboarding for the authenticated seller (web flow).
  * Creates a Stripe account (if not already created) and redirects to the
- * Stripe-hosted onboarding flow.
+ * Stripe-hosted onboarding flow. Native clients use POST /api/stripe/connect/link instead
+ * and receive the URL as JSON. Both share lib/stripe-connect.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import stripe, { appBaseUrl } from '@/lib/stripe'
-import { VERIFICATION_ENABLED } from '@/lib/flags'
-import { sellerMustVerify } from '@/lib/idv/risk-resolver'
+import { appBaseUrl } from '@/lib/stripe'
+import { createConnectOnboardingLink } from '@/lib/stripe-connect'
 
 export async function GET(_request: NextRequest) {
   const supabase = await createClient()
@@ -19,49 +19,12 @@ export async function GET(_request: NextRequest) {
   }
 
   const service = createServiceClientRaw()
-
-  // Fetch or create the Stripe Connect account ID for this seller
-  const { data: profile } = await service
-    .from('profiles')
-    .select('stripe_connect_account_id, username, id_verification_status')
-    .eq('id', user.id)
-    .single()
-
-  // Payout gate (behind VERIFICATION_ENABLED): hold Connect onboarding for a risk-
-  // flagged or high-volume seller until ID verification is complete.
-  if (VERIFICATION_ENABLED) {
-    const verified =
-      (profile as { id_verification_status?: string } | null)?.id_verification_status === 'verified'
-    if (!verified && (await sellerMustVerify(service, user.id))) {
-      return NextResponse.redirect(new URL('/onboarding/verify?required=payout', appBaseUrl()))
-    }
-  }
-
-  let connectAccountId = profile?.stripe_connect_account_id
-
-  if (!connectAccountId) {
-    // Create a new Stripe Express account
-    const account = await stripe.accounts.create({
-      type:    'express',
-      email:   user.email,
-      metadata: { user_id: user.id, username: profile?.username ?? '' },
-    })
-    connectAccountId = account.id
-
-    // Persist the account ID immediately (don't wait for account.updated webhook)
-    await service
-      .from('profiles')
-      .update({ stripe_connect_account_id: connectAccountId })
-      .eq('id', user.id)
-  }
-
-  // Create an account link for the onboarding flow
-  const accountLink = await stripe.accountLinks.create({
-    account:     connectAccountId,
-    refresh_url: `${appBaseUrl()}/api/stripe/connect`,
-    return_url:  `${appBaseUrl()}/api/stripe/connect/return`,
-    type:        'account_onboarding',
+  const link = await createConnectOnboardingLink({
+    service,
+    user,
+    refreshUrl: `${appBaseUrl()}/api/stripe/connect`,
+    returnUrl: `${appBaseUrl()}/api/stripe/connect/return`,
   })
-
-  return NextResponse.redirect(accountLink.url)
+  if (!link.ok) return NextResponse.redirect(new URL('/onboarding/verify?required=payout', appBaseUrl()))
+  return NextResponse.redirect(link.url)
 }

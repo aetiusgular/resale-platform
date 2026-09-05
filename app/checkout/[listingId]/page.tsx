@@ -9,13 +9,10 @@
 import { redirect, notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { orderAmountsAt } from '@/lib/fees'
-import { floorShippingCents } from '@/lib/shipping'
-import { resolveEffectiveBps } from '@/lib/tier-progress'
-import { createServiceClientRaw } from '@/lib/supabase/service'
 import AppShell from '@/app/components/app-shell'
 import PrefetchLink from '@/app/components/prefetch-link'
 import CheckoutClient from './checkout-client'
+import { loadCheckoutPreview } from '@/lib/loaders/checkout'
 
 export const metadata: Metadata = { title: 'Checkout' }
 
@@ -31,20 +28,12 @@ export default async function CheckoutPage({ params, searchParams }: PageProps) 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
 
-  // Fetch the listing (visible if active OR pending_escrow for the current buyer)
-  const [{ data: listing }, { data: profile }] = await Promise.all([
-    supabase
-      .from('listings')
-      .select('id, title, brand, category, size, price_cents, shipping_cents, images, seller_id, status')
-      .eq('id', listingId)
-      .single(),
-    supabase.from('profiles').select('username, shipping_address').eq('id', user.id).single(),
-  ])
+  // ONE data assembly shared with GET /api/checkout/preview (native clients).
+  const c = await loadCheckoutPreview({ supabase, user, listingId, offerId })
+  if (!c) notFound()
+  const username = c.viewer.username
 
-  if (!listing) notFound()
-  const username = (profile?.username as string) ?? ''
-
-  if (listing.status !== 'active') {
+  if (c.state === 'unavailable') {
     return (
       <AppShell username={username}>
         <main className="page-main page-main--narrow">
@@ -58,7 +47,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps) 
     )
   }
 
-  if (listing.seller_id === user.id) {
+  if (c.state === 'own') {
     return (
       <AppShell username={username}>
         <main className="page-main page-main--narrow">
@@ -72,21 +61,15 @@ export default async function CheckoutPage({ params, searchParams }: PageProps) 
     )
   }
 
-  const service = createServiceClientRaw()
-  // Fee Model v3: buyers pay no platform fee; only the seller rate is tiered.
-  const sellerBps = await resolveEffectiveBps(service, listing.seller_id, 'seller')
-  // Preview only — the API's orderSummary (server-computed, offer-aware) replaces this on mount.
-  const preview = orderAmountsAt(listing.price_cents, sellerBps, listing.shipping_cents ?? floorShippingCents(listing.category))
-  const image = (listing.images as string[])?.find(Boolean) ?? null
-
+  const preview = c.preview!
   return (
     <AppShell username={username}>
       <CheckoutClient
         listingId={listingId}
-        offerId={typeof offerId === 'string' && /^[0-9a-f-]{36}$/i.test(offerId) ? offerId : null}
-        listing={{ title: listing.title, brand: listing.brand, size: listing.size, image }}
+        offerId={c.offer_id}
+        listing={{ title: c.listing.title, brand: c.listing.brand, size: c.listing.size, image: c.listing.image }}
         preview={{ item_cents: preview.item_cents, shipping_cents: preview.shipping_cents, total_cents: preview.total_cents }}
-        savedAddress={profile?.shipping_address as Record<string, string> | null}
+        savedAddress={c.saved_address}
       />
     </AppShell>
   )

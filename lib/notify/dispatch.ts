@@ -6,6 +6,7 @@ import { channelsFor } from './prefs'
 import { renderNotification } from './templates'
 import { sendEmail } from './email'
 import { sendPush, type PushSubscriptionRow } from './push'
+import { sendApns } from './apns'
 
 type ServiceClient = ReturnType<typeof createServiceClientRaw>
 
@@ -34,10 +35,26 @@ export async function notify(
       if (to) await sendEmail({ to, subject: r.email.subject, text: r.email.text, html: r.email.html })
     }
     if (channels.includes('push')) {
-      const { data: subs } = await service
-        .from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', recipientId)
+      // Two transports, one channel: Web Push subscriptions (browser) and native device tokens.
+      const [{ data: subs }, { data: devices }] = await Promise.all([
+        service.from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', recipientId),
+        service.from('push_devices').select('id, platform, token').eq('user_id', recipientId),
+      ])
       for (const s of (subs ?? []) as PushSubscriptionRow[]) {
         await sendPush(s, { title: r.title, body: r.body, url: r.url })
+      }
+      for (const d of (devices ?? []) as Array<{ id: string; platform: string; token: string }>) {
+        if (d.platform !== 'ios') continue // FCM branch lands with archive-android
+        const res = await sendApns(d.token, {
+          title: r.title, body: r.body, url: r.url,
+          collapseId: ctx.conversationId ? `conv:${ctx.conversationId}` : undefined,
+        })
+        // A dead token (410 Unregistered / BadDeviceToken) is removed so it is not retried forever.
+        if (res && !res.ok && res.unregistered) {
+          await service.from('push_devices').delete().eq('id', d.id)
+        } else if (res && !res.ok) {
+          console.warn('[notify/apns] send failed:', res.status, res.reason)
+        }
       }
     }
   } catch (e) {

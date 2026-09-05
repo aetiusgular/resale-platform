@@ -11,30 +11,8 @@ import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { formatTimeAgo } from '@/app/components/listing-card'
 
-export type SellerListing = {
-  id: string
-  title: string
-  brand: string
-  size: string
-  price_cents: number | null
-  price_display: string
-  status: string
-  image: string | null
-  photo_count: number
-  created_at: string
-  updated_at: string
-  saves_count: number
-  view_count: number
-  boosted: boolean
-  boosted_until: string | null
-  bumped_at: string | null
-  rejection_reason: string | null
-  open_offers: number
-  top_offer_display: string | null
-  sold_at: string
-  payout_display: string | null
-  order_id: string | null
-}
+export type { SellerListing } from '@/lib/loaders/sell'
+import type { SellerListing } from '@/lib/loaders/sell'
 
 type Tab = 'active' | 'draft' | 'sold'
 

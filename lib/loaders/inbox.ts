@@ -2,7 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatCents } from '@/lib/fees'
 
 /**
- * Inbox rows for the messages sidebar (shared by /messages and /messages/[id]).
+ * Inbox rows for the messages sidebar (shared by /messages, /messages/[id] and
+ * GET /api/conversations for the native apps).
  * One conversations query + one latest-message sweep (≤ 50 conversations) + the
  * caller's unread counts (unread_conversation_counts RPC → conv__badge, "n UNREAD").
  */

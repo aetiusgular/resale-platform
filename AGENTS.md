@@ -58,7 +58,7 @@ money/auth logic is the exact failure this file exists to prevent).
 
 **Secrets**
 - Never commit, print, or hardcode key values. `.env.local` stays untouched and unread.
-- `NEXT_PUBLIC_` is only for: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_PUBLISHABLE_KEY`, `POSTHOG_KEY`, `POSTHOG_HOST`. Everything else is server-only; never move a server var into client code.
+- `NEXT_PUBLIC_` is only for: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_PUBLISHABLE_KEY`, `POSTHOG_KEY`, `POSTHOG_HOST`, and the public-by-nature `APP_URL`, `VAPID_PUBLIC_KEY`, `RECS_ENABLED`, `BOOSTED_POSTS_ENABLED`, `*_AUTH_ENABLED`. Everything else is server-only; never move a server var into client code.
 
 **Integrity of the harness**
 - Never delete, skip, `.only`, weaken, or grep-exclude a test to get green. Fix the code or report the failure.

@@ -7,6 +7,8 @@
  *                    notifies everyone who saved the item (price_drop) — the
  *                    price_history trigger records it either way.
  * DELETE /api/listings/[id] — delete your own draft (RLS: drafts only).
+ * GET    /api/listings/[id] — the listing detail bundle /listings/[id] renders from
+ *        (lib/loaders/listing): public for active + sold, seller/admin for other statuses.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
@@ -17,10 +19,26 @@ import { allImageUrlsAllowed, storageHost } from '@/lib/security/image-url'
 import { cleanDraftFields } from '@/lib/listings/draft-fields'
 import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
+import { loadListingDetail } from '@/lib/loaders/listing'
+import { ApiError, respond } from '@/lib/api/respond'
 
 export const runtime = 'nodejs'
 
 interface Ctx { params: Promise<{ id: string }> }
+
+const UUID_RE_GET = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export async function GET(_request: NextRequest, { params }: Ctx) {
+  return respond(async () => {
+    const { id } = await params
+    if (!UUID_RE_GET.test(id)) throw new ApiError(400, 'Invalid listing id')
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const detail = await loadListingDetail({ supabase, user, id })
+    if (!detail) throw new ApiError(404, 'Not found')
+    return detail
+  })
+}
 
 const PUBLISHED_EDITABLE = new Set(['title', 'description', 'price_cents', 'size', 'color', 'category', 'subcategory', 'department', 'measurements', 'condition_score', 'condition_notes'])
 

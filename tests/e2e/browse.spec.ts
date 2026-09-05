@@ -45,9 +45,21 @@ test.describe('API /api/saved-searches — unauthenticated', () => {
 })
 
 test.describe('API /api/browse — unauthenticated', () => {
-  test('GET without session returns 401', async ({ request }) => {
-    const res = await request.get('/api/browse')
+  // Mirrors the page: page 1 is public (native clients boot from it), deeper pages ask for an
+  // account. Changed with the mobile API contract (docs/api/openapi.yaml, feat/mobile-api).
+  test('GET page 1 without session returns 200 with facets', async ({ request }) => {
+    const res = await request.get('/api/browse?include=facets')
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.listings)).toBe(true)
+    expect(body.savedIds).toEqual([])
+    expect(body).toHaveProperty('filterCounts')
+    expect(body).toHaveProperty('totalCount')
+  })
+  test('GET past page 1 without session returns 401 (auth_required)', async ({ request }) => {
+    const res = await request.get('/api/browse?offset=24')
     expect(res.status()).toBe(401)
+    expect((await res.json()).code).toBe('auth_required')
   })
 })
 

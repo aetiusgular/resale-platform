@@ -45,6 +45,7 @@
     "supabase": "^2.26.9",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.3"
+    "vitest": "^3.2.3",
+    "yaml": "2.9.0"
   }
 }

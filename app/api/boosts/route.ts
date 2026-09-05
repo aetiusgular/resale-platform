@@ -3,6 +3,9 @@
  * A boost is 100% platform revenue: a standalone Stripe charge with NO Connect
  * transfer. Creates a pending boost + PaymentIntent; the webhook activates it on
  * payment success (metadata.kind === 'boost'). Flag-gated by BOOSTED_POSTS_ENABLED.
+ *
+ * GET /api/boosts?listingId=<uuid> — the boost page state (packages, current boost, free bump)
+ * for the viewer's own listing (lib/loaders/boost).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
@@ -11,6 +14,23 @@ import { createServiceClientRaw } from '@/lib/supabase/service'
 import stripe from '@/lib/stripe'
 import { BOOSTED_POSTS_ENABLED } from '@/lib/flags'
 import { boostPackage } from '@/lib/boosts'
+import { requireUser } from '@/lib/supabase/server'
+import { loadBoostState } from '@/lib/loaders/boost'
+import { ApiError, respond } from '@/lib/api/respond'
+
+const UUID_RE_GET = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export async function GET(request: NextRequest) {
+  return respond(async () => {
+    if (!BOOSTED_POSTS_ENABLED) throw new ApiError(404, 'Not available')
+    const listingId = request.nextUrl.searchParams.get('listingId') ?? ''
+    if (!UUID_RE_GET.test(listingId)) throw new ApiError(400, 'listingId (uuid) required')
+    const { supabase, user } = await requireUser()
+    const state = await loadBoostState({ supabase, user, listingId })
+    if (!state) throw new ApiError(404, 'Listing not found')
+    return state
+  })
+}
 
 export async function POST(request: NextRequest) {
   if (!BOOSTED_POSTS_ENABLED) return NextResponse.json({ error: 'Not available' }, { status: 404 })

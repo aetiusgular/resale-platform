@@ -18,3 +18,10 @@
 - [x] **HF3** — Infinite scroll, card uniformity, suppress hydration warning
 - [x] **HF4** — Saved Items page + navigation performance: /saved route, ListingCard extraction, query parallelization, middleware gate caching
 - [x] **HF5** — Mobile overhaul + Messages layout: bottom tab bar, responsive SiteHeader, single-pane messages, /sell wrapping, tap targets >=44px, all mobile routes clean
+
+## Native apps (docs/MOBILE_PLAN.md · one repo per platform · API-first)
+
+- [x] **M1a** — Mobile API contract: bearer auth in `createClient()`, `lib/loaders/*` shared by pages + new GET routes (/api/me, browse facets, listing, seller, saved, inbox, thread, order, settings, sell, checkout preview, boost, idv status, content, mobile config), `POST /api/profile`, JSON Connect/Identity links with `archive://` returns, `push_devices` + APNs sender, `docs/api/openapi.yaml` + contract test. Branch `feat/mobile-api`.
+- [ ] **M1b** — archive-ios foundation: repo, XcodeGen project, ArchiveCore package (DTOs, API client, formatters, `swift test`), auth (email · Apple · Google), tabs, Browse/Listing/Seller/Saved/Inbox/Thread/Notifications/Account/Sell-catalog screens wired to the API.
+- [ ] **M2** — Money and selling on iOS: sell wizard + uploads, checkout via PaymentSheet, order actions, disputes, reviews, boosts, Connect/Identity web sessions, LC comments, follows, account deletion.
+- [ ] **M3** — Native value and release: APNs end to end, universal links, privacy manifest, TestFlight, `docs/RELEASE.md`; Android kickoff from the same contract.

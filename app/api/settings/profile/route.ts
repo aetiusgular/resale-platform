@@ -1,4 +1,6 @@
 /**
+ * GET   /api/settings/profile — the settings bundle /settings renders from (lib/loaders/settings):
+ *       own profile incl. service-only columns, prefs, addresses, tiers, derived windows.
  * PATCH /api/settings/profile { username?, display_name?, avatar_url? }
  * Settings → 01 PROFILE. Username: 3–30 chars [a-z0-9_], unique, and changeable once
  * per 30 days — the DB trigger (migration 0045) is the authority; this route maps
@@ -7,8 +9,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { allImageUrlsAllowed, storageHost } from '@/lib/security/image-url'
+import { requireUser } from '@/lib/supabase/server'
+import { loadSettings } from '@/lib/loaders/settings'
+import { respond } from '@/lib/api/respond'
 
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/
+
+export async function GET(request: NextRequest) {
+  return respond(async () => {
+    const { supabase, user } = await requireUser()
+    const payoutOnboardingDone = request.nextUrl.searchParams.get('onboarding') === 'complete'
+    return loadSettings({ supabase, user, payoutOnboardingDone })
+  })
+}
 
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient()

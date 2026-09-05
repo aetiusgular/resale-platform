@@ -4,11 +4,13 @@
  * Buyer opens the conversation; seller cannot initiate.
  *
  * GET /api/conversations
- * List conversations for the current user (inbox).
+ * The inbox rows for the current user — the same assembly /messages renders
+ * (lib/loaders/inbox): handle, role, listing snapshot, preview, unread count.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import { loadInbox } from '@/lib/loaders/inbox'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -74,24 +76,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // RLS ensures participants only see their own conversations
-  const { data: conversations, error } = await supabase
-    .from('conversations')
-    .select(`
-      id, listing_id, buyer_id, seller_id,
-      comments_consent_buyer, comments_consent_seller,
-      updated_at, created_at,
-      listings:listing_id (title, brand, price_cents, images, status),
-      buyer:buyer_id (username),
-      seller:seller_id (username)
-    `)
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-    .order('updated_at', { ascending: false })
-    .limit(50)
-
-  if (error) {
-    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 })
-  }
-
+  // Same rows the /messages inbox renders (unread badge, preview, listing snapshot).
+  const conversations = await loadInbox(supabase, user.id)
   return NextResponse.json({ conversations })
 }

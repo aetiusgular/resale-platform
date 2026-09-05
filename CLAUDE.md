@@ -92,7 +92,8 @@ Every build prompt Bn ends with:
 ## Env / secrets policy
 - `.env.local` is gitignored. Never print, commit, or hardcode key values.
 - See `.env.example` for the full variable list.
-- `NEXT_PUBLIC_` prefix: only `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_PUBLISHABLE_KEY`, `POSTHOG_KEY`, `POSTHOG_HOST`.
+- `NEXT_PUBLIC_` prefix: only `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_PUBLISHABLE_KEY`, `POSTHOG_KEY`, `POSTHOG_HOST`,
+  plus the public-by-nature `APP_URL`, `VAPID_PUBLIC_KEY`, `RECS_ENABLED`, `BOOSTED_POSTS_ENABLED`, `*_AUTH_ENABLED`.
 - All others are server-side only.
 
 ## File layout

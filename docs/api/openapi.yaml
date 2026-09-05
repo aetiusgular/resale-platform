@@ -1,0 +1,1379 @@
+openapi: 3.1.0
+info:
+  title: ARCHIVE API (native clients)
+  version: 1.0.0
+  description: |
+    The contract archive-ios and archive-android are built against. Every path is a Next.js route
+    under `app/api`; the loaders behind the GET bundles are the same functions the web pages
+    render from (`lib/loaders/*`), so a screen on the app and its page on the web see identical
+    data.
+
+    **Auth.** Send `Authorization: Bearer <supabase access token>` on every authenticated call.
+    The token is validated server-side per request. Refresh it client-side (supabase-swift) before
+    it expires; an expired token yields `401`. Also send `X-Client: ios/<build>` so the server can
+    log the caller and apply the force-upgrade floor from `GET /api/mobile/config`.
+
+    **Errors.** `{ "error": string, "code"?: string }`. 400 malformed input · 401 no/invalid session ·
+    403 forbidden (`code: banned`, `verification_required`) · 404 not found **or feature flag off** ·
+    409 conflict / lock / window closed · 422 semantic rejection · 429 rate limited (`Retry-After`
+    seconds) · 502 payment/SMS provider error · 503 not configured.
+
+    **Compatibility policy.** Additive changes only on existing paths. A breaking change ships on
+    a new path and bumps `min_build` in `GET /api/mobile/config`.
+
+    **Money.** Integer cents everywhere. Clients display only what the server returns; they never
+    compute fees or totals.
+
+    **Banned accounts.** The web middleware redirects banned members to /banned; API GETs answer
+    normally (as on web) while write routes refuse with 403 `banned`. The app must gate on
+    `GET /api/me` → `profile.banned` and show the suspended screen.
+
+    **Photos.** Every `images` array in this contract carries the public slots only (0–4). The
+    possession proof (slot 5) is returned solely as `ListingDetail.listing.possession_photo_url`
+    to the seller/admin.
+  x-repo: aetiusgular/resale-platform
+servers:
+  - url: https://{host}
+    variables:
+      host:
+        default: localhost:3000
+tags:
+  - name: boot
+  - name: browse
+  - name: listings
+  - name: sellers
+  - name: saved
+  - name: messages
+  - name: notifications
+  - name: orders
+  - name: selling
+  - name: settings
+  - name: payments
+  - name: identity
+  - name: content
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    XClient:
+      name: X-Client
+      in: header
+      required: false
+      schema: { type: string, pattern: '^(ios|android)/[0-9]{1,9}$' }
+      example: ios/1
+  responses:
+    Unauthorized:
+      description: No or invalid session.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' }, example: { error: Unauthorized } } }
+    NotFound:
+      description: Not found, or the feature flag is off.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' }, example: { error: Not found } } }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        code: { type: string, description: 'Stable machine code when present: banned, verification_required, auth_required, invalid_username, phone_in_use, prohibited_block, unconfigured, username_collision.' }
+    SellerRef:
+      type: [object, 'null']
+      properties:
+        username: { type: string }
+        id_verification_status: { type: string, enum: [unverified, pending, verified] }
+    UserSizes:
+      type: object
+      description: '`{ "<dept>:<section>": [sizes] }`, e.g. `{"menswear:tops":["M","L"]}`.'
+      additionalProperties: { type: array, items: { type: string } }
+    PublicFlags:
+      type: object
+      properties:
+        verification: { type: boolean }
+        boosts: { type: boolean }
+        bump: { type: boolean }
+        saved_search_alerts: { type: boolean }
+        notifications: { type: boolean }
+        auth_badge: { type: boolean }
+        shipping_labels: { type: boolean }
+        follows: { type: boolean }
+        reviews: { type: boolean }
+        phone_verification: { type: boolean }
+        tier_dashboard: { type: boolean }
+        recs_telemetry: { type: boolean }
+    Config:
+      type: object
+      required: [min_build, upgrade_required, flags, links, scheme]
+      properties:
+        min_build: { type: object, properties: { ios: { type: integer }, android: { type: integer } } }
+        upgrade_required: { type: boolean }
+        flags: { $ref: '#/components/schemas/PublicFlags' }
+        links: { type: object, additionalProperties: { type: string } }
+        scheme: { type: string, const: archive }
+      example:
+        min_build: { ios: 1, android: 1 }
+        upgrade_required: false
+        flags: { verification: false, boosts: false, bump: false, saved_search_alerts: false, notifications: false, auth_badge: false, shipping_labels: false, follows: false, reviews: false, phone_verification: false, tier_dashboard: false, recs_telemetry: false }
+        links: { terms: /terms, privacy: /privacy, fees: /fees, help: /help, trust: /trust, about: /about }
+        scheme: archive
+    ViewerProfile:
+      type: object
+      required: [id, username, role, id_verification_status, banned]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: [string, 'null'] }
+        avatar_url: { type: [string, 'null'] }
+        role: { type: string, enum: [member, admin] }
+        is_moderator: { type: boolean }
+        id_verification_status: { type: string, enum: [unverified, pending, verified] }
+        payouts_enabled: { type: boolean }
+        phone_verified: { type: boolean }
+        lifetime_sales_count: { type: integer }
+        sizes: { $ref: '#/components/schemas/UserSizes' }
+        hide_not_my_size: { type: boolean }
+        created_at: { type: string, format: date-time }
+        username_changed_at: { type: [string, 'null'], format: date-time }
+        banned: { type: boolean }
+        banned_reason: { type: [string, 'null'] }
+    Me:
+      type: object
+      required: [user, profile, counts, flags]
+      properties:
+        user:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            email: { type: [string, 'null'] }
+            email_confirmed: { type: boolean }
+        profile: { oneOf: [{ $ref: '#/components/schemas/ViewerProfile' }, { type: 'null' }], description: 'null until POST /api/profile created the row.' }
+        counts:
+          type: object
+          properties:
+            unread_notifications: { type: integer }
+            unread_conversations: { type: integer }
+            active_orders: { type: integer }
+        flags: { $ref: '#/components/schemas/PublicFlags' }
+      example:
+        user: { id: 6f1c2a4e-0d2b-4c1e-9b6a-3e2f1a9c7d10, email: jordan@example.com, email_confirmed: true }
+        profile: { id: 6f1c2a4e-0d2b-4c1e-9b6a-3e2f1a9c7d10, username: jordandemo, display_name: Jordan, avatar_url: null, role: member, is_moderator: false, id_verification_status: unverified, payouts_enabled: false, phone_verified: false, lifetime_sales_count: 0, sizes: { 'menswear:tops': [M, L] }, hide_not_my_size: false, created_at: '2026-08-01T12:00:00.000Z', username_changed_at: null, banned: false, banned_reason: null }
+        counts: { unread_notifications: 2, unread_conversations: 1, active_orders: 0 }
+        flags: { verification: false, boosts: false, bump: false, saved_search_alerts: false, notifications: true, auth_badge: false, shipping_labels: false, follows: false, reviews: false, phone_verification: false, tier_dashboard: false, recs_telemetry: false }
+    BrowseListing:
+      type: object
+      required: [id, title, brand, category, department, size, condition_score, price_cents, saves_count, is_price_dropped, images, created_at, authentication_status, sold, own, original_price_cents, price_display, promoted]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        brand: { type: string }
+        category: { type: string }
+        department: { type: string, enum: [menswear, womenswear, unisex] }
+        subcategory: { type: [string, 'null'] }
+        size: { type: string }
+        color: { type: [string, 'null'] }
+        condition_score: { type: integer, minimum: 1, maximum: 10 }
+        price_cents: { type: integer }
+        saves_count: { type: integer }
+        is_price_dropped: { type: boolean }
+        images: { type: array, items: { type: string, format: uri } }
+        created_at: { type: string, format: date-time }
+        seller: { $ref: '#/components/schemas/SellerRef' }
+        authentication_status: { type: string, enum: [none, pending, authenticated, rejected] }
+        sold: { type: boolean }
+        own: { type: boolean }
+        original_price_cents: { type: [integer, 'null'] }
+        price_display: { type: string, example: '$240' }
+        promoted: { type: boolean }
+    FilterCounts:
+      type: object
+      properties:
+        departments: { type: object, additionalProperties: { type: integer } }
+        categories: { type: object, additionalProperties: { type: integer } }
+        subcategories: { type: object, additionalProperties: { type: object, additionalProperties: { type: integer } } }
+        brands: { type: array, items: { type: object, properties: { label: { type: string }, count: { type: integer } } } }
+        brandsTotal: { type: integer }
+        colors: { type: object, additionalProperties: { type: integer } }
+        showOnly: { type: object, properties: { authenticated: { type: integer }, verified: { type: integer }, dropped: { type: integer }, sold: { type: integer } } }
+    BrowsePage:
+      type: object
+      required: [listings, hasMore, savedIds, offset]
+      properties:
+        listings: { type: array, items: { $ref: '#/components/schemas/BrowseListing' } }
+        hasMore: { type: boolean }
+        savedIds: { type: array, items: { type: string, format: uuid } }
+        offset: { type: integer }
+        totalCount: { type: integer, description: 'include=facets only' }
+        filterCounts: { $ref: '#/components/schemas/FilterCounts' }
+        userSizes: { $ref: '#/components/schemas/UserSizes' }
+        mySizesOn: { type: boolean }
+        query: { type: string }
+      example:
+        listings:
+          - { id: 2a6b9d1e-5c3f-4e7a-8b2d-1f0e9c8b7a65, title: 1998 painter-dyed tee, brand: HELMUT LANG, category: Tops, department: menswear, subcategory: Short-sleeve tees, size: M, color: Black, condition_score: 8, price_cents: 24000, saves_count: 18, is_price_dropped: false, images: ['https://ref.supabase.co/storage/v1/object/public/product-images/listings/u/l/0.jpg'], created_at: '2026-09-04T18:02:00.000Z', seller: { username: archive.supply, id_verification_status: verified }, authentication_status: none, sold: false, own: false, original_price_cents: null, price_display: '$240', promoted: false }
+        hasMore: true
+        savedIds: []
+        offset: 0
+        totalCount: 2847
+        filterCounts: { departments: { menswear: 2100 }, categories: { Tops: 800 }, subcategories: { Tops: { 'Short-sleeve tees': 300 } }, brands: [{ label: HELMUT LANG, count: 41 }], brandsTotal: 312, colors: { Black: 900 }, showOnly: { authenticated: 12, verified: 960, dropped: 315, sold: 2043 } }
+        userSizes: {}
+        mySizesOn: false
+        query: ''
+    LcTally:
+      type: object
+      properties:
+        legit: { type: integer }
+        flagged: { type: integer }
+        autoAuth: { type: string, enum: [TAG PASS, TAG FAIL, UNCERTAIN, PENDING] }
+        verdict: { type: string, enum: [LEGIT, NOT LEGIT, PENDING] }
+    ListingDetail:
+      type: object
+      required: [listing, seller, viewer, lc, flags]
+      properties:
+        listing:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            title: { type: string }
+            brand: { type: string }
+            category: { type: string }
+            department: { type: string }
+            subcategory: { type: [string, 'null'] }
+            size: { type: [string, 'null'] }
+            color: { type: [string, 'null'] }
+            description: { type: [string, 'null'] }
+            condition_score: { type: [integer, 'null'] }
+            condition_notes: { type: [string, 'null'] }
+            measurements: { type: object, additionalProperties: { type: number }, description: 'Inches, keyed by the labels in measurement_labels.' }
+            measurement_labels: { type: array, items: { type: string } }
+            price_cents: { type: integer }
+            price_display: { type: string }
+            original_price_cents: { type: [integer, 'null'] }
+            shipping_cents: { type: integer }
+            saves_count: { type: integer }
+            view_count: { type: integer }
+            is_price_dropped: { type: boolean }
+            images: { type: array, items: { type: string, format: uri }, description: 'Public slots 0–4.' }
+            possession_photo_url: { type: [string, 'null'], description: 'Seller/admin only.' }
+            status: { type: string, enum: [draft, pending_review, active, pending_escrow, sold, removed] }
+            status_word: { type: string }
+            rejection_reason: { type: [string, 'null'] }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: [string, 'null'], format: date-time }
+            authentication_status: { type: string }
+            authenticated: { type: boolean }
+            listed_line: { type: string, example: 'LISTED 3D AGO · 18 SAVED' }
+            spec: { type: string, example: 'M · BLACK' }
+            crumb: { type: object, properties: { parts: { type: array, items: { type: string } }, href: { type: string } } }
+        seller:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            username: { type: string }
+            initials: { type: string }
+            role: { type: [string, 'null'] }
+            id_verification_status: { type: [string, 'null'] }
+            verified: { type: boolean }
+            trust_line: { type: string, example: '4.9 · 132 SALES · VERIFIED ID' }
+        viewer:
+          type: object
+          properties:
+            id: { type: [string, 'null'], format: uuid }
+            username: { type: string }
+            is_seller: { type: boolean }
+            is_admin: { type: boolean }
+            saved: { type: boolean }
+            following: { type: boolean }
+            can_buy: { type: boolean }
+            can_post: { type: boolean }
+            can_edit: { type: boolean }
+        lc: { $ref: '#/components/schemas/LcTally' }
+        flags: { type: object, properties: { bump: { type: boolean }, boost: { type: boolean }, follows: { type: boolean }, auth_badge: { type: boolean } } }
+    SellerProfile:
+      type: object
+      required: [seller, listings, reviews, viewer, flags]
+      properties:
+        seller:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            username: { type: string }
+            initials: { type: string }
+            tier_label: { type: string, example: BRONZE }
+            verified: { type: boolean }
+            is_moderator: { type: boolean }
+            is_checker: { type: boolean }
+            checker_category: { type: [string, 'null'] }
+            member_year: { type: integer }
+            created_at: { type: string, format: date-time }
+            total_sales: { type: integer }
+            dispute_rate: { type: string, example: '0%' }
+            purchase_count: { type: integer }
+            pays_fast: { type: boolean }
+            rating: { type: object, properties: { average: { type: [number, 'null'] }, count: { type: integer } } }
+            meta: { type: array, items: { type: string } }
+        listings: { type: array, items: { $ref: '#/components/schemas/BrowseListing' } }
+        reviews:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              stars: { type: integer, minimum: 1, maximum: 5 }
+              body: { type: string }
+              created_at: { type: string, format: date-time }
+              reviewer_id: { type: string, format: uuid }
+              reviewer_username: { type: string }
+        viewer:
+          type: object
+          properties:
+            id: { type: [string, 'null'] }
+            username: { type: string }
+            is_own: { type: boolean }
+            following: { type: boolean }
+            is_moderator: { type: boolean }
+            can_recommend_moderator: { type: boolean }
+            moderator_rec_count: { type: integer }
+            viewer_recommended: { type: boolean }
+        flags: { type: object, properties: { follows: { type: boolean }, reviews: { type: boolean } } }
+    SavedHub:
+      type: object
+      required: [viewer, listings, searches, sellers, since_visit, flags]
+      properties:
+        viewer: { type: object, properties: { username: { type: string }, display_name: { type: [string, 'null'] } } }
+        listings:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/BrowseListing'
+              - type: object
+                properties:
+                  status: { type: string }
+                  saved_at: { type: string, format: date-time }
+                  price_at_save: { type: [integer, 'null'] }
+        searches:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              query: { type: object, additionalProperties: { type: string }, description: 'Browse URL params (q, dept, cat, subcat, size, brand, color, min_price, max_price, cond, verified, authenticated, dropped, sold, sort).' }
+              created_at: { type: string, format: date-time }
+              alerts_enabled: { type: boolean }
+              new_count: { type: integer }
+        sellers:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              username: { type: string }
+              verified: { type: boolean }
+              followed_at: { type: string, format: date-time }
+              active_listings: { type: integer }
+              rating: { type: [number, 'null'] }
+              new_this_week: { type: integer }
+        since_visit: { type: object, properties: { drops: { type: integer }, sold: { type: integer }, had_visit: { type: boolean } } }
+        flags: { type: object, properties: { follows: { type: boolean }, alerts: { type: boolean } } }
+    InboxRow:
+      type: object
+      required: [id, handle, role, brand, title, price, status, preview, previewMine, unread, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        handle: { type: string }
+        role: { type: string, enum: [BUYING, SELLING] }
+        brand: { type: string }
+        title: { type: string }
+        price: { type: string, example: '$1,240' }
+        status: { type: string }
+        image: { type: [string, 'null'], format: uri }
+        preview: { type: string }
+        previewMine: { type: boolean }
+        unread: { type: integer }
+        updated_at: { type: string, format: date-time }
+    Message:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        conversation_id: { type: string, format: uuid }
+        sender_id: { type: string, format: uuid }
+        body: { type: string }
+        redacted: { type: boolean, description: 'Body was replaced because it contained off-platform payment or contact details.' }
+        created_at: { type: string, format: date-time }
+    Offer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        conversation_id: { type: string, format: uuid }
+        listing_id: { type: string, format: uuid }
+        from_user: { type: string, format: uuid }
+        amount_cents: { type: integer }
+        state: { type: string, enum: [open, countered, accepted, declined, expired, voided] }
+        expires_at: { type: string, format: date-time }
+        accepted_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+    ThreadBundle:
+      type: object
+      required: [conversation, listing, messages, offers, order, is_buyer, viewer, other]
+      properties:
+        conversation:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            listing_id: { type: string, format: uuid }
+            buyer_id: { type: string, format: uuid }
+            seller_id: { type: string, format: uuid }
+            comments_consent_buyer: { type: boolean }
+            comments_consent_seller: { type: boolean }
+        listing:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            title: { type: string }
+            brand: { type: string }
+            size: { type: string }
+            price_cents: { type: integer }
+            status: { type: string }
+            images: { type: array, items: { type: string, format: uri } }
+        messages: { type: array, items: { $ref: '#/components/schemas/Message' } }
+        offers: { type: array, items: { $ref: '#/components/schemas/Offer' } }
+        order:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            state: { type: string }
+            carrier: { type: [string, 'null'] }
+            tracking_number: { type: [string, 'null'] }
+            transfer_cents: { type: integer }
+            paid_at: { type: [string, 'null'], format: date-time }
+            shipped_at: { type: [string, 'null'], format: date-time }
+            delivered_at: { type: [string, 'null'], format: date-time }
+            released_at: { type: [string, 'null'], format: date-time }
+            cancelled_at: { type: [string, 'null'], format: date-time }
+            refunded_at: { type: [string, 'null'], format: date-time }
+            disputed_at: { type: [string, 'null'], format: date-time }
+        is_buyer: { type: boolean }
+        viewer: { type: object, properties: { id: { type: string }, username: { type: string }, display_name: { type: [string, 'null'] } } }
+        other: { type: object, properties: { id: { type: string }, username: { type: string }, verified: { type: boolean }, meta: { type: string, example: '4.8 RATING · 61 SALES' } } }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [offer_received, offer_accepted, offer_declined, offer_countered, sale, price_drop, listing_approved, shipped, delivered, dispute, message, tier_expiry, saved_search, buyer_reward, elite_program, admin_elite_lead, moderator_granted] }
+        title: { type: string }
+        body: { type: string }
+        url: { type: [string, 'null'], description: 'Web path the app maps to a screen: /messages/{id}, /listings/{id}, /orders/{id}, /checkout/{id}, /settings?section=…, /browse, /sellers/{username}.' }
+        data: { type: object, description: 'The NotifyContext used to render: actorName, itemTitle, amountCents, orderId, listingId, conversationId, offerId, …' }
+        read_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+    NotificationsPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        unread: { type: integer }
+    OrderRow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        listing_id: { type: string, format: uuid }
+        buyer_id: { type: string, format: uuid }
+        seller_id: { type: string, format: uuid }
+        state: { type: string, enum: [paid_held, seller_confirmed, shipped, delivered, released, disputed, refunded, cancelled] }
+        item_cents: { type: integer }
+        buyer_fee_cents: { type: integer }
+        seller_fee_cents: { type: integer }
+        shipping_cents: { type: integer }
+        total_cents: { type: integer }
+        transfer_cents: { type: integer }
+        carrier: { type: [string, 'null'] }
+        tracking_number: { type: [string, 'null'] }
+        shipping_label_url: { type: [string, 'null'] }
+        shipping_address: { type: [object, 'null'] }
+        stripe_transfer_id: { type: [string, 'null'] }
+        paid_at: { type: [string, 'null'], format: date-time }
+        seller_confirmed_at: { type: [string, 'null'], format: date-time }
+        shipped_at: { type: [string, 'null'], format: date-time }
+        delivered_at: { type: [string, 'null'], format: date-time }
+        released_at: { type: [string, 'null'], format: date-time }
+        disputed_at: { type: [string, 'null'], format: date-time }
+        refunded_at: { type: [string, 'null'], format: date-time }
+        cancelled_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+    OrderDetail:
+      type: object
+      required: [order, listing, role, viewer, actions, timers, flags]
+      properties:
+        order: { $ref: '#/components/schemas/OrderRow' }
+        listing: { type: object, properties: { title: { type: string }, brand: { type: string }, size: { type: string }, images: { type: array, items: { type: string } } } }
+        role: { type: string, enum: [buyer, seller, admin] }
+        viewer: { type: object, properties: { username: { type: string } } }
+        seller_username: { type: [string, 'null'] }
+        buyer_stats: { type: [object, 'null'], properties: { username: { type: [string, 'null'] }, purchase_count: { type: integer }, dispute_count: { type: integer }, member_since: { type: [string, 'null'] } } }
+        review_eligible: { type: boolean }
+        state_label: { type: string, example: 'PAID & HELD' }
+        actions: { type: object, properties: { confirm: { type: boolean }, ship: { type: boolean }, deliver: { type: boolean }, dispute: { type: boolean }, review: { type: boolean } } }
+        timers: { type: object, properties: { auto_release_at: { type: [string, 'null'], format: date-time }, dispute_deadline_at: { type: [string, 'null'], format: date-time }, dispute_window_open: { type: boolean } } }
+        flags: { type: object, properties: { reviews: { type: boolean }, shipping_labels: { type: boolean } } }
+    Address:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        street1: { type: string }
+        street2: { type: [string, 'null'] }
+        city: { type: string }
+        state: { type: string, pattern: '^[A-Z]{2}$' }
+        zip: { type: string, pattern: '^\d{5}(-\d{4})?$' }
+        country: { type: string, const: US }
+        is_default: { type: boolean }
+        created_at: { type: string, format: date-time }
+    NotificationPrefs:
+      type: object
+      description: 16 booleans, one email + one push per bucket (offers, offer_result, messages, sold, price_drops, search_alerts, orders, alerts). Defaults true.
+      additionalProperties: { type: boolean }
+    SideDashboard:
+      type: object
+      properties:
+        side: { type: string, enum: [buyer, seller] }
+        volumeCents: { type: integer }
+        orderCount: { type: integer }
+        activityBps: { type: integer }
+        effectiveBps: { type: integer }
+        locked: { type: boolean }
+        lockedUntilMs: { type: [integer, 'null'] }
+        current: { type: object }
+        next: { type: [object, 'null'] }
+        volumeToNextCents: { type: integer }
+        ordersToNext: { type: integer }
+        expiringVolumeCents: { type: integer }
+        expiringOrderCount: { type: integer }
+    SettingsOrderRow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: string, enum: [buyer, seller] }
+        state: { type: string }
+        brand: { type: string }
+        title: { type: string }
+        size: { type: string }
+        image: { type: [string, 'null'] }
+        amount: { type: string, example: '$210' }
+        counterparty: { type: string }
+        created_at: { type: string, format: date-time }
+        hasTracking: { type: boolean }
+        canReview: { type: boolean }
+    ReviewTarget:
+      type: object
+      properties:
+        orderId: { type: string, format: uuid }
+        brand: { type: string }
+        title: { type: string }
+        image: { type: [string, 'null'] }
+        amount: { type: string }
+        deliveredAt: { type: string, format: date-time }
+        sellerUsername: { type: string }
+        eligible: { type: boolean }
+        reason: { type: [string, 'null'] }
+    SettingsData:
+      type: object
+      description: The exact object /settings renders from. camelCase is historical (web-first); the app decodes it as-is.
+      properties:
+        userId: { type: string, format: uuid }
+        username: { type: string }
+        displayName: { type: [string, 'null'] }
+        avatarUrl: { type: [string, 'null'] }
+        usernameNextChangeAt: { type: [integer, 'null'], description: 'ms epoch' }
+        usernameWindowOpen: { type: boolean }
+        tierReviewDateMs: { type: integer }
+        email: { type: string }
+        emailVerified: { type: boolean }
+        memberSince: { type: string, example: '08/2026' }
+        idVerified: { type: boolean }
+        sizes: { $ref: '#/components/schemas/UserSizes' }
+        hideNotMySize: { type: boolean }
+        addresses: { type: array, items: { $ref: '#/components/schemas/Address' } }
+        payoutsEnabled: { type: boolean }
+        payoutOnboardingDone: { type: boolean }
+        prefs: { $ref: '#/components/schemas/NotificationPrefs' }
+        notificationsEnabled: { type: boolean }
+        phoneVerificationEnabled: { type: boolean }
+        phoneVerified: { type: boolean }
+        phone: { type: [string, 'null'] }
+        tierDashboardEnabled: { type: boolean }
+        buyerTier: { oneOf: [{ $ref: '#/components/schemas/SideDashboard' }, { type: 'null' }] }
+        sellerTier: { $ref: '#/components/schemas/SideDashboard' }
+        welcomeLeft: { type: integer }
+        salesCount: { type: integer }
+        reviewsEnabled: { type: boolean }
+        shippingLabelsEnabled: { type: boolean }
+        orders: { type: array, items: { $ref: '#/components/schemas/SettingsOrderRow' }, description: 'Empty here; use GET /api/settings/orders.' }
+        review: { oneOf: [{ $ref: '#/components/schemas/ReviewTarget' }, { type: 'null' }] }
+    SettingsBundle:
+      type: object
+      required: [data, activeOrders]
+      properties:
+        data: { $ref: '#/components/schemas/SettingsData' }
+        activeOrders: { type: integer }
+    SellerListing:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        brand: { type: string }
+        size: { type: string }
+        price_cents: { type: [integer, 'null'] }
+        price_display: { type: string }
+        status: { type: string }
+        image: { type: [string, 'null'] }
+        photo_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        saves_count: { type: integer }
+        view_count: { type: integer }
+        boosted: { type: boolean }
+        boosted_until: { type: [string, 'null'], format: date-time }
+        bumped_at: { type: [string, 'null'], format: date-time }
+        rejection_reason: { type: [string, 'null'] }
+        open_offers: { type: integer }
+        top_offer_display: { type: [string, 'null'] }
+        sold_at: { type: string, format: date-time }
+        payout_display: { type: [string, 'null'] }
+        order_id: { type: [string, 'null'], format: uuid }
+    SellCatalog:
+      type: object
+      required: [viewer, listings, fee_line, seller_bps, welcome_left, sales_count, flags]
+      properties:
+        viewer: { type: object, properties: { username: { type: string }, display_name: { type: [string, 'null'] } } }
+        listings: { type: array, items: { $ref: '#/components/schemas/SellerListing' } }
+        fee_line: { type: string, example: 'WELCOME RAMP — 0% FEE · 10 OF 10 FREE SALES LEFT' }
+        seller_bps: { type: integer }
+        welcome_left: { type: integer }
+        sales_count: { type: integer }
+        flags: { type: object, properties: { bump: { type: boolean }, boost: { type: boolean } } }
+    ListingInitial:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+        title: { type: [string, 'null'] }
+        brand: { type: [string, 'null'] }
+        category: { type: [string, 'null'] }
+        department: { type: [string, 'null'] }
+        subcategory: { type: [string, 'null'] }
+        size: { type: [string, 'null'] }
+        color: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        condition_score: { type: [integer, 'null'] }
+        price_cents: { type: [integer, 'null'] }
+        images: { type: array, items: { type: string } }
+        possession_photo_url: { type: [string, 'null'] }
+        measurements: { type: object, additionalProperties: { type: number } }
+    SellNewGate:
+      type: object
+      required: [must_verify, viewer, seller_bps, welcome_sales_remaining, mode, initial, row_missing]
+      properties:
+        must_verify: { type: boolean }
+        viewer: { type: object, properties: { username: { type: string }, display_name: { type: [string, 'null'] } } }
+        seller_bps: { type: integer }
+        welcome_sales_remaining: { type: integer }
+        mode: { type: string, enum: [new, edit] }
+        initial: { oneOf: [{ $ref: '#/components/schemas/ListingInitial' }, { type: 'null' }] }
+        row_missing: { type: boolean }
+    CheckoutPreview:
+      type: object
+      required: [state, viewer, listing, preview, saved_address, offer_id]
+      properties:
+        state: { type: string, enum: [ok, unavailable, own] }
+        viewer: { type: object, properties: { username: { type: string } } }
+        listing: { type: object, properties: { id: { type: string }, title: { type: string }, brand: { type: string }, size: { type: string }, image: { type: [string, 'null'] }, status: { type: string } } }
+        preview: { type: [object, 'null'], properties: { item_cents: { type: integer }, shipping_cents: { type: integer }, total_cents: { type: integer }, total_display: { type: string } } }
+        saved_address: { type: [object, 'null'], additionalProperties: { type: string } }
+        offer_id: { type: [string, 'null'], format: uuid }
+    CheckoutResponse:
+      type: object
+      required: [clientSecret, orderSummary]
+      properties:
+        clientSecret: { type: string, description: 'Feed to PaymentSheet(paymentIntentClientSecret:).' }
+        orderSummary:
+          type: object
+          properties:
+            listing_id: { type: string, format: uuid }
+            title: { type: string }
+            brand: { type: string }
+            image: { type: [string, 'null'] }
+            item_cents: { type: integer }
+            buyer_fee_cents: { type: integer, const: 0 }
+            buyer_fee_bps: { type: integer, const: 0 }
+            shipping_cents: { type: integer }
+            discount_cents: { type: integer }
+            total_cents: { type: integer }
+    BoostState:
+      type: object
+      properties:
+        viewer: { type: object, properties: { username: { type: string } } }
+        listing: { type: object, properties: { id: { type: string }, title: { type: string }, brand: { type: string }, active: { type: boolean }, boosted_until: { type: [string, 'null'] }, bumped_at: { type: [string, 'null'] } } }
+        free_bump: { type: [object, 'null'], properties: { availableNow: { type: boolean }, nextAtIso: { type: [string, 'null'] } } }
+        packages: { type: array, items: { type: object, properties: { key: { type: string }, label: { type: string }, amountCents: { type: integer }, durationDays: { type: integer } } } }
+        flags: { type: object, properties: { boost: { type: boolean }, bump: { type: boolean } } }
+    VerificationStatus:
+      type: object
+      properties:
+        status: { type: [string, 'null'], enum: [unverified, pending, verified, null] }
+        verified: { type: boolean }
+        pending: { type: boolean }
+        status_label: { type: string, enum: [VERIFIED, IN REVIEW, NOT STARTED] }
+        handle: { type: string }
+        enabled: { type: boolean }
+        after: { type: string }
+    ContentDoc:
+      oneOf:
+        - type: object
+          properties: { slug: { type: string, enum: [terms, privacy] }, kind: { const: html }, title: { type: string }, html: { type: string } }
+        - type: object
+          properties: { slug: { const: help }, kind: { const: faq }, title: { type: string }, faqs: { type: array, items: { type: object, properties: { topic: { type: string }, q: { type: string }, a: { type: string } } } } }
+        - type: object
+          properties:
+            slug: { const: fees }
+            kind: { const: fees }
+            title: { type: string }
+            buyer_fee_bps: { type: integer, const: 0 }
+            tiers: { type: array, items: { type: object, properties: { min_volume_cents: { type: integer }, min_orders: { type: integer }, bps: { type: integer } } } }
+            small_order: { type: object, properties: { threshold_cents: { type: integer }, cap_bps: { type: integer } } }
+            min_fee_cents: { type: integer }
+            welcome: { type: object, properties: { sales: { type: integer }, processing_bps: { type: integer }, processing_fixed_cents: { type: integer } } }
+            shipping: { type: object, properties: { margin_cents: { type: integer }, categories: { type: array, items: { type: object, properties: { category: { type: string }, from_cents: { type: integer } } } } } }
+            boosts: { type: object, properties: { max_promoted_per_page: { type: integer }, packages: { type: array, items: { type: object, properties: { key: { type: string }, label: { type: string }, duration_days: { type: integer }, amount_cents: { type: integer } } } } } }
+
+security: []
+
+paths:
+  # ── boot ─────────────────────────────────────────────────────────────────────
+  /api/mobile/config:
+    get:
+      tags: [boot]
+      summary: Public boot config (force-upgrade floor, flags, links).
+      parameters: [{ $ref: '#/components/parameters/XClient' }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Config' } } } }
+  /api/me:
+    get:
+      tags: [boot]
+      summary: The signed-in viewer (profile, counts, flags).
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/profile:
+    post:
+      tags: [boot]
+      summary: Create the viewer's profile row if missing (idempotent). Call once after the first sign-in.
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: Already existed., content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '201': { description: Created., content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: Could not pick a username., content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ── browse ───────────────────────────────────────────────────────────────────
+  /api/browse:
+    get:
+      tags: [browse]
+      summary: Browse grid. Page 1 public; deeper pages members-only (401 code auth_required).
+      security: [{}, { bearer: [] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 120 } }
+        - { name: dept, in: query, schema: { type: string }, description: csv of menswear|womenswear|unisex }
+        - { name: cat, in: query, schema: { type: string }, description: csv of whole category labels }
+        - { name: subcat, in: query, schema: { type: string }, description: 'csv of Category:Subcategory keys' }
+        - { name: size, in: query, schema: { type: string } }
+        - { name: sizes, in: query, schema: { type: string }, description: csv (MY SIZES list) }
+        - { name: my_sizes, in: query, schema: { type: string, enum: ['0', '1'] }, description: 'Members: expand the profile''s saved sizes server-side.' }
+        - { name: brand, in: query, schema: { type: string }, description: csv }
+        - { name: color, in: query, schema: { type: string }, description: csv }
+        - { name: min_price, in: query, schema: { type: number }, description: dollars }
+        - { name: max_price, in: query, schema: { type: number }, description: dollars }
+        - { name: cond, in: query, schema: { type: integer, minimum: 1, maximum: 10 } }
+        - { name: verified, in: query, schema: { type: string, enum: ['1'] } }
+        - { name: authenticated, in: query, schema: { type: string, enum: ['1'] } }
+        - { name: dropped, in: query, schema: { type: string, enum: ['1'] } }
+        - { name: sold, in: query, schema: { type: string, enum: ['1'] } }
+        - { name: sort, in: query, schema: { type: string, enum: [newest, price_asc, price_desc, relevance, most_saved] } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 }, description: 'Page size is 24.' }
+        - { name: include, in: query, schema: { type: string, enum: [facets] }, description: Adds totalCount, filterCounts, userSizes, mySizesOn, query. }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/BrowsePage' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/saved-searches:
+    post:
+      tags: [browse]
+      summary: Save the current search (query = browse params, ≤20 keys ≤200 chars each).
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [query], properties: { query: { type: object, additionalProperties: { type: string } } } } } } }
+      responses:
+        '201': { description: Created. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/saved-searches/{id}:
+    patch:
+      tags: [browse]
+      summary: Toggle alerts or mark seen.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { alerts_enabled: { type: boolean }, seen: { type: boolean } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    delete:
+      tags: [browse]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  # ── listings ─────────────────────────────────────────────────────────────────
+  /api/listings/{id}:
+    get:
+      tags: [listings]
+      summary: Listing detail bundle (public for active + sold; seller/admin otherwise).
+      security: [{}, { bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListingDetail' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [selling]
+      summary: 'Edit own listing (drafts: any field; live: title, description, price, size, colour, category tree, measurements, condition).'
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ListingInitial' } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { description: banned } }
+    delete:
+      tags: [selling]
+      summary: Delete own draft.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/listings/{id}/view:
+    post:
+      tags: [listings]
+      summary: Count a view (public, 3/hour per IP + listing).
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK } }
+  /api/listings/{id}/bump:
+    post:
+      tags: [selling]
+      summary: Free bump (7-day cooldown or ≥10% price cut). 422 when not eligible. Flag BUMP_ENABLED.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '404': { $ref: '#/components/responses/NotFound' }, '422': { description: Not eligible. } }
+  /api/listings/{id}/relist:
+    post:
+      tags: [selling]
+      summary: Copy a sold/removed listing into a new draft.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '201': { description: Created draft., content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid } } } } } }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/listings/{id}/comments:
+    get:
+      tags: [listings]
+      summary: Legit-check thread + tallies (public).
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: tab, in: query, schema: { type: string, enum: [lc] } }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [listings]
+      summary: Post an LC comment and optional vote (verified members; 20/hour).
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [body, thread_type], properties: { body: { type: string, maxLength: 2000 }, thread_type: { const: lc }, vote: { type: string, enum: [legit, flag] }, parent_id: { type: string, format: uuid } } } } } }
+      responses: { '201': { description: Created. }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { description: Not verified / banned. }, '429': { description: Rate limited. } }
+  /api/listings/{id}/comments/{commentId}/agree:
+    post:
+      tags: [listings]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: commentId, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/listings/{id}/comments/{commentId}/flag:
+    post:
+      tags: [listings]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: commentId, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/saves:
+    post:
+      tags: [listings]
+      summary: Save a listing.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [listing_id], properties: { listing_id: { type: string, format: uuid } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    delete:
+      tags: [listings]
+      summary: Unsave a listing.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [listing_id], properties: { listing_id: { type: string, format: uuid } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/follows:
+    post:
+      tags: [sellers]
+      summary: Follow a seller (flag FOLLOWS_ENABLED).
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [following_id], properties: { following_id: { type: string, format: uuid } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '404': { $ref: '#/components/responses/NotFound' } }
+    delete:
+      tags: [sellers]
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [following_id], properties: { following_id: { type: string, format: uuid } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  # ── sellers ──────────────────────────────────────────────────────────────────
+  /api/sellers/{username}:
+    get:
+      tags: [sellers]
+      summary: Public seller profile.
+      security: [{}, { bearer: [] }]
+      parameters: [{ name: username, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SellerProfile' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/moderators/recommend:
+    post:
+      tags: [sellers]
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [nomineeId], properties: { nomineeId: { type: string, format: uuid } } } } } }
+      responses: { '200': { description: {distinctCount, promoted, alreadyModerator} }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  # ── saved ────────────────────────────────────────────────────────────────────
+  /api/saved:
+    get:
+      tags: [saved]
+      summary: Saved hub (items · searches · sellers).
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SavedHub' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/saves/visit:
+    post:
+      tags: [saved]
+      summary: Stamp "since last visit".
+      security: [{ bearer: [] }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  # ── messages ─────────────────────────────────────────────────────────────────
+  /api/conversations:
+    get:
+      tags: [messages]
+      summary: Inbox rows.
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { conversations: { type: array, items: { $ref: '#/components/schemas/InboxRow' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [messages]
+      summary: Open (or return) the conversation for a listing. Buyer only.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [listingId], properties: { listingId: { type: string, format: uuid } } } } } }
+      responses:
+        '201': { description: OK, content: { application/json: { schema: { type: object, properties: { conversation: { type: object, properties: { id: { type: string, format: uuid } } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: Listing sold/removed. }
+        '422': { description: Own listing. }
+  /api/conversations/unread:
+    get:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { total: { type: integer }, byConversation: { type: object, additionalProperties: { type: integer } } } } } } } }
+  /api/conversations/{id}:
+    get:
+      tags: [messages]
+      summary: Thread bundle (does not mark read).
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ThreadBundle' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/conversations/{id}/messages:
+    get:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: 'messages + offers' }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    post:
+      tags: [messages]
+      summary: Send a message (contact/payment details are redacted server-side).
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [body], properties: { body: { type: string, maxLength: 2000 } } } } } }
+      responses: { '201': { description: Created., content: { application/json: { schema: { type: object, properties: { message: { $ref: '#/components/schemas/Message' } } } } } }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { description: banned } }
+  /api/conversations/{id}/read:
+    post:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/conversations/{id}/report:
+    post:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string } } } } } }
+      responses: { '201': { description: Created. }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/conversations/{id}/consent:
+    patch:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [consent], properties: { consent: { type: boolean } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/conversations/{id}/offers:
+    post:
+      tags: [messages]
+      summary: Make an offer (24h expiry; voids your open offer in this thread).
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [amountCents], properties: { amountCents: { type: integer, minimum: 1 } } } } } }
+      responses: { '201': { description: Created., content: { application/json: { schema: { type: object, properties: { offer: { $ref: '#/components/schemas/Offer' } } } } } }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { description: banned } }
+  /api/conversations/{id}/offers/{offerId}/accept:
+    post:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: offerId, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '409': { description: Another accepted offer exists. } }
+  /api/conversations/{id}/offers/{offerId}/decline:
+    post:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: offerId, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/conversations/{id}/offers/{offerId}/counter:
+    post:
+      tags: [messages]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: offerId, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [amountCents], properties: { amountCents: { type: integer, minimum: 1 } } } } } }
+      responses: { '201': { description: Counter created. }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  # ── notifications ────────────────────────────────────────────────────────────
+  /api/notifications:
+    get:
+      tags: [notifications]
+      summary: 30 recent notifications + unread count (flag NOTIFICATIONS_ENABLED).
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationsPage' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/notifications/read:
+    post:
+      tags: [notifications]
+      summary: Mark one (id) or all read.
+      security: [{ bearer: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/notifications/prefs:
+    put:
+      tags: [notifications]
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/NotificationPrefs' } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/notifications/devices:
+    post:
+      tags: [notifications]
+      summary: Register (or re-point) a native push token. Call on every launch and on token change.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [platform, token], properties: { platform: { type: string, enum: [ios, android] }, token: { type: string }, app_build: { type: string }, locale: { type: string } } } } } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { ok: { const: true } } } } } }, '401': { $ref: '#/components/responses/Unauthorized' }, '404': { $ref: '#/components/responses/NotFound' } }
+    delete:
+      tags: [notifications]
+      summary: Remove one token, or all of the caller's devices (no body). Call on sign-out.
+      security: [{ bearer: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { token: { type: string } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  # ── orders ───────────────────────────────────────────────────────────────────
+  /api/orders/{id}:
+    get:
+      tags: [orders]
+      summary: Order detail for a party (or admin) with allowed actions and timers.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/OrderDetail' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/orders/by-intent:
+    get:
+      tags: [orders]
+      summary: Poll after PaymentSheet succeeds until `orderId` is non-null (the webhook creates the order).
+      security: [{ bearer: [] }]
+      parameters: [{ name: pi, in: query, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { orderId: { type: [string, 'null'], format: uuid } } } } } } }
+  /api/orders/{id}/confirm:
+    post:
+      tags: [orders]
+      summary: Seller confirms (paid_held → seller_confirmed); a prepaid label is bought when enabled.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { description: Not the seller. }, '422': { description: Wrong state. } }
+  /api/orders/{id}/ship:
+    post:
+      tags: [orders]
+      summary: Seller marks shipped. Send `{}` when a prepaid label already set carrier + tracking.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { carrier: { type: string }, trackingNumber: { type: string } } } } } }
+      responses: { '200': { description: OK }, '400': { description: carrier + trackingNumber required. }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/orders/{id}/deliver:
+    post:
+      tags: [orders]
+      summary: Buyer confirms receipt → released → Stripe transfer.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '422': { description: Wrong state. } }
+  /api/orders/{id}/dispute:
+    post:
+      tags: [orders]
+      summary: Buyer opens a dispute within 72h of delivery. Photos must be platform storage URLs.
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [description, photos], properties: { description: { type: string, minLength: 10 }, photos: { type: array, minItems: 1, items: { type: string, format: uri } } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '409': { description: Window closed. } }
+  /api/reviews:
+    post:
+      tags: [orders]
+      summary: Post a review on a released order (flag REVIEWS_ENABLED).
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [orderId, stars], properties: { orderId: { type: string, format: uuid }, stars: { type: integer, minimum: 1, maximum: 5 }, body: { type: string, maxLength: 600 }, tags: { type: array, items: { type: string } }, photos: { type: array, maxItems: 3, items: { type: string, format: uri } } } } } } }
+      responses: { '201': { description: Created. }, '401': { $ref: '#/components/responses/Unauthorized' }, '404': { $ref: '#/components/responses/NotFound' } }
+    patch:
+      tags: [orders]
+      summary: Edit own review within 48h.
+      security: [{ bearer: [] }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '409': { description: Edit window closed. } }
+
+  # ── selling ──────────────────────────────────────────────────────────────────
+  /api/sell/catalog:
+    get:
+      tags: [selling]
+      summary: Seller catalog (active · drafts · sold) with offers, payouts, fee line.
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SellCatalog' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/sell/new:
+    get:
+      tags: [selling]
+      summary: Wizard prerequisites — verification gate, fee inputs, prefill for ?edit= or ?draft=.
+      security: [{ bearer: [] }]
+      parameters: [{ name: edit, in: query, schema: { type: string, format: uuid } }, { name: draft, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SellNewGate' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: The id is not a usable listing of yours for this mode. }
+  /api/listings/drafts:
+    get:
+      tags: [selling]
+      security: [{ bearer: [] }]
+      responses: { '200': { description: Draft list. }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    post:
+      tags: [selling]
+      summary: Create a wizard auto-save draft (cap 20).
+      security: [{ bearer: [] }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/ListingInitial' } } } }
+      responses: { '201': { description: Created., content: { application/json: { schema: { type: object, properties: { id: { type: string, format: uuid } } } } } }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/listings:
+    post:
+      tags: [selling]
+      summary: Publish a listing (pending_review). Images must be platform storage URLs. 30/hour.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ListingInitial' } } } }
+      responses: { '201': { description: Created. }, '401': { $ref: '#/components/responses/Unauthorized' }, '403': { description: banned / verification_required }, '422': { description: 'prohibited_block, anti-slop, velocity' }, '429': { description: Rate limited. } }
+  /api/boosts:
+    get:
+      tags: [selling]
+      summary: Boost page state for your own listing (flag BOOSTED_POSTS_ENABLED).
+      security: [{ bearer: [] }]
+      parameters: [{ name: listingId, in: query, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/BoostState' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [payments]
+      summary: Buy a boost → PaymentIntent client secret for PaymentSheet.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [listingId, package], properties: { listingId: { type: string, format: uuid }, package: { type: string, enum: [spotlight_3, feature_7, premier_14] } } } } } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { clientSecret: { type: string }, amountCents: { type: integer } } } } } }, '401': { $ref: '#/components/responses/Unauthorized' }, '404': { $ref: '#/components/responses/NotFound' } }
+
+  # ── settings ─────────────────────────────────────────────────────────────────
+  /api/settings/profile:
+    get:
+      tags: [settings]
+      summary: Settings bundle (profile, prefs, addresses, tiers, derived windows).
+      security: [{ bearer: [] }]
+      parameters: [{ name: onboarding, in: query, schema: { type: string, enum: [complete] } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SettingsBundle' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [settings]
+      summary: Update username (1×/30d), display name, avatar URL (avatars/{uid}/… on our storage).
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { username: { type: string }, display_name: { type: string }, avatar_url: { type: string, format: uri } } } } } }
+      responses: { '200': { description: OK }, '400': { description: invalid_username }, '401': { $ref: '#/components/responses/Unauthorized' }, '409': { description: Username taken / window closed. } }
+  /api/settings/orders:
+    get:
+      tags: [settings]
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { orders: { type: array, items: { $ref: '#/components/schemas/SettingsOrderRow' } } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/settings/review:
+    get:
+      tags: [settings]
+      security: [{ bearer: [] }]
+      parameters: [{ name: order, in: query, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { review: { $ref: '#/components/schemas/ReviewTarget' } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/settings/sizes:
+    put:
+      tags: [settings]
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [sizes], properties: { sizes: { $ref: '#/components/schemas/UserSizes' }, hide_not_my_size: { type: boolean } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/settings/addresses:
+    get:
+      tags: [settings]
+      security: [{ bearer: [] }]
+      responses: { '200': { description: OK, content: { application/json: { schema: { type: object, properties: { addresses: { type: array, items: { $ref: '#/components/schemas/Address' } } } } } } }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    post:
+      tags: [settings]
+      summary: Add an address (cap 10; the first becomes default). US only.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Address' } } } }
+      responses: { '201': { description: Created. }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/settings/addresses/{id}:
+    patch:
+      tags: [settings]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Address' } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+    delete:
+      tags: [settings]
+      security: [{ bearer: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/phone/start:
+    post:
+      tags: [settings]
+      summary: Send an SMS OTP (flag PHONE_VERIFICATION_ENABLED; VOIP numbers rejected; 5/min).
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [phone], properties: { phone: { type: string } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '404': { $ref: '#/components/responses/NotFound' }, '429': { description: Rate limited. } }
+  /api/phone/verify:
+    post:
+      tags: [settings]
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [phone, code], properties: { phone: { type: string }, code: { type: string } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' }, '409': { description: phone_in_use } }
+  /api/account/delete:
+    post:
+      tags: [settings]
+      summary: Delete or anonymise the account (Apple requires this in-app).
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [confirm], properties: { confirm: { const: DELETE } } } } } }
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  # ── payments ─────────────────────────────────────────────────────────────────
+  /api/checkout/preview:
+    get:
+      tags: [payments]
+      summary: Checkout summary without creating a PaymentIntent or locking the listing.
+      security: [{ bearer: [] }]
+      parameters: [{ name: listingId, in: query, required: true, schema: { type: string, format: uuid } }, { name: offerId, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CheckoutPreview' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/checkout:
+    post:
+      tags: [payments]
+      summary: Lock the listing and create the PaymentIntent. Call when the buyer taps PAY, not on screen load.
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [listingId], properties: { listingId: { type: string, format: uuid }, offerId: { type: string, format: uuid }, shippingAddress: { type: object, properties: { city: { type: string }, state: { type: string }, zip: { type: string }, country: { type: string } } } } } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CheckoutResponse' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: banned }
+        '409': { description: Listing not available / being purchased. }
+        '422': { description: Own listing / seller cannot accept payments / offer state. }
+        '429': { description: Rate limited (10/hour). }
+        '502': { description: Payment provider error. }
+  /api/stripe/balance:
+    get:
+      tags: [payments]
+      summary: Payouts dashboard (escrow + Stripe balance/bank/payouts; `stripe` null when not connected).
+      security: [{ bearer: [] }]
+      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+  /api/stripe/connect/link:
+    post:
+      tags: [payments]
+      summary: Stripe Connect Express onboarding URL. Open in ASWebAuthenticationSession (callback scheme `archive`).
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string, format: uri } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: verification_required }
+  /api/stripe/connect/return:
+    get:
+      tags: [payments]
+      summary: Stripe return URL. `?client=ios` → 302 `archive://stripe/connect/return?onboarding=complete`.
+      parameters: [{ name: client, in: query, schema: { type: string, enum: [ios] } }]
+      responses: { '302': { description: Redirect. } }
+  /api/stripe/connect/refresh:
+    get:
+      tags: [payments]
+      summary: Stripe refresh URL. `?client=ios` → 302 `archive://stripe/connect/refresh` (request a new link).
+      parameters: [{ name: client, in: query, schema: { type: string, enum: [ios] } }]
+      responses: { '302': { description: Redirect. } }
+
+  # ── identity ─────────────────────────────────────────────────────────────────
+  /api/idv/status:
+    get:
+      tags: [identity]
+      security: [{ bearer: [] }]
+      parameters: [{ name: required, in: query, schema: { type: string, enum: [sell, payout] } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VerificationStatus' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/idv/start:
+    post:
+      tags: [identity]
+      summary: Stripe Identity hosted-flow URL (flag VERIFICATION_ENABLED). Open in ASWebAuthenticationSession.
+      security: [{ bearer: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string, format: uri }, session_id: { type: string } } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { description: unconfigured }
+  /api/idv/return:
+    get:
+      tags: [identity]
+      summary: Stripe Identity return URL. `?client=ios` → 302 `archive://idv/return?submitted=1`.
+      parameters: [{ name: client, in: query, schema: { type: string, enum: [ios] } }, { name: submitted, in: query, schema: { type: string } }]
+      responses: { '302': { description: Redirect. } }
+
+  # ── content ──────────────────────────────────────────────────────────────────
+  /api/content/{slug}:
+    get:
+      tags: [content]
+      summary: terms · privacy (HTML), help (FAQ), fees (structured). Public, cacheable.
+      parameters: [{ name: slug, in: path, required: true, schema: { type: string, enum: [terms, privacy, help, fees] } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ContentDoc' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/recs/events:
+    post:
+      tags: [browse]
+      summary: Telemetry batch (impression/click/save/search; ≤100 events; always 202). Flag recs_telemetry.
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { deviceId: { type: string }, events: { type: array, items: { type: object } } } } } } }
+      responses: { '202': { description: Accepted. } }
