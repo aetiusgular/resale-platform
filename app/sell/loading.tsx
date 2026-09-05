@@ -1,11 +1,11 @@
 /**
  * /sell loading skeleton — catalog head + stats + listing grid.
  */
-import { SiteHeaderGhost, CardGhosts, Ghost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, CardGhosts, Ghost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell has-tabbar">
+    <div className="app-shell">
       <SiteHeaderGhost />
       <main className="saved-main">
         <div className="sell-head" aria-hidden="true">
@@ -25,7 +25,6 @@ export default function Loading() {
           <CardGhosts count={8} />
         </div>
       </main>
-      <TabBarGhost />
     </div>
   )
 }

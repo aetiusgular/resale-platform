@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/browser'
 import { AuthSplit } from '@/app/components/auth-frame'
 import { createProfileForUser } from '@/app/enter/signup-form'
+import StepRail from '../step-rail'
 
 export default function AccountPage() {
   return (
@@ -53,6 +54,7 @@ function FinishSetup() {
 
   return (
     <div>
+      <StepRail current={1} />
       <div className="auth-form__head">
         <span className="modal__title">FINISHING SETUP</span>
         <span className="tag">FREE</span>

@@ -14,8 +14,9 @@ live Next.js app. Every route now renders in the ARCHIVE system: Archivo + IBM P
   `app/components/theme.tsx` (`useTheme`, `ThemeSegment`). Toggle lives in the account popout
   (LIGHT / DARK) and Settings → Appearance (LIGHT / DARK / SYSTEM).
 - **Shared chrome** — `AppShell` = sticky header (wordmark, search, SELL / SAVED / MESSAGES,
-  avatar → account popout → notifications popout) + footer + mobile tab bar. Guests get SELL + SIGN
-  IN; gated actions open the auth modal (design 1R) instead of bouncing to `/enter`.
+  avatar → account popout → notifications popout) + footer. Guests get SELL + SIGN IN; gated
+  actions open the auth modal (design 1R) instead of bouncing to `/enter`. The mobile tab bar from
+  the first pass is gone — see "Mobile web" below.
 - **Pages** — browse 16A (filter rail, results head, MY SIZES, sort menu, mobile filter sheet),
   sizes modal 11A/B, listing 4A (gallery + placard + condition scale + legit-check thread), saved,
   messages inbox + thread (offer cards, composer), sell catalog + listing wizard, settings hub and
@@ -155,6 +156,66 @@ one migration, `supabase/migrations/20240101000045_archive_reference_features.sq
   blocked). Next step is a dependency bump (15.5.25 backport or 16.x) and re-running the
   60-navigation loop; `package.json` is protected so this was not attempted here.
 
+## Mobile web (third pass — "Mobile WEB handoff", `Downloads/handoff 5/mobile-web`, Sept 5)
+
+The first pass had put native-app chrome (a bottom tab bar) on the mobile breakpoint. The handoff
+is explicit: mobile WEB and the native app share the visual language but not the chrome. What
+ships now, all behind the one breakpoint `(max-width: 720px)` (`useCompact` / the CSS block in
+`app/globals.css`):
+
+- **Nav is always at the top.** The 6A header (wordmark; SELL / SAVED / MESSAGES icons + account
+  chip; the search row only on `/browse` and `/saved`, `HeaderSearch` gates it by pathname). No
+  tab bar (`app/components/mobile-tabbar.tsx` deleted, `TabBarGhost` gone from the skeletons), no
+  native back-title bars, no status bar.
+- **Footer on every page**, in the flow after the content (`.app-shell` is a `min-height: 100vh`
+  column, `.footer { margin-top: auto }`). Pages that have no footer on desktop — messages, the
+  auth frames, onboarding — render it with `<SiteFooter mobileOnly />` (`.footer--m`).
+- **Docked bars are page controls, never navigation, and never fixed over the footer.** They are
+  `position: sticky; bottom: 0` at the end of their page's flex column, so they sit at the
+  viewport bottom while the page is in view and scroll away with the footer below them: browse
+  `FILTERS · n | SORT · label` (`.dock`, 01), listing `BUY NOW · $ | MAKE OFFER` (`.pdp-dock`, 05),
+  settings SAVE MY SIZES / SAVE PREFERENCES (`.save-row--dock`, 11–12), the thread composer (26).
+  Sell's `+ NEW LISTING` (14), the wizard's SAVE DRAFT | PUBLISH → (15) and SUBMIT REVIEW → (16)
+  are plain in-flow bars.
+- **Overlays are sheets / takeovers**: the filter takeover (02: `FILTER (n)` / CLEAR FILTERS / ×,
+  the rail with a MY SIZES row on top, SHOW n RESULTS), the sort sheet (03), the sizes editor and
+  every `.modal` as a bottom sheet (04), the auth modal as a bottom sheet with CONTINUE BROWSING
+  AS GUEST (25). The guest save gate names the item: `openAuthModal(next, { title: 'SIGN IN TO
+  SAVE', cta: 'SIGN IN & SAVE →', listing })` (`AuthGate` in `auth-modal-provider.tsx`).
+- **Browse (01)**: results head = count / scope / SAVE SEARCH +; MY SIZES lives in the takeover.
+  **Listing (05)**: `.pdp__left` / `.pdp__right` become `display: contents` and the placard
+  re-orders into the mock's stack (← BACK TO RESULTS, swipe gallery with counter pill + save
+  bookmark + dots, brand / title / price + LISTED, SIZE · COLOR · CONDITION · SHIPPING rows, seller
+  row with MESSAGE, then the LC chip, description, escrow, measurements, thread). The gallery is
+  one scroll-snap track at every width (desktop shows the current slide). **Saved (06)**: `n ITEMS`,
+  `SEARCHES · n` tabs, the "since your last visit" strip, the caption bookmark unsaves. **Inbox
+  (07)**: initials, handle + time, preview, thumb, unread ■. **Thread (26)**: `← @HANDLE · VIEW
+  LISTING` row, listing strip, composer docked. **Account popout (08)** hangs under the header
+  over the dimmed page (same as desktop).
+- **Settings (09–13)**: `/settings` is the menu (profile card, ACCOUNT / PREFERENCES / SELLING
+  rows, THEME, Sign out · ALPHA 01 — `SettingsMenu`, mobile only; the desktop hub is unchanged and
+  hidden there). The profile form gets its own route `/settings/profile` (`HubSection asProfile`)
+  so the menu's Profile row has somewhere to go. Each section opens with the back row
+  `← TITLE … meta` (`Crumb` — its desktop trail is the same component; `mobile="link"` gives the
+  review page's `← BACK TO ORDERS`). Language from the mock is not a setting the app has, so that
+  row is omitted; Orders / Phone / Fees & tiers are included because they exist.
+- **Notifications page (27)**: new `/notifications` (`app/notifications/`) — the popout's data
+  and `presentNotification`, as a page with `← NOTIFICATIONS · MARK ALL READ`. The account
+  popout links there at ≤720px and opens the panel on desktop.
+- **Sell (14–15)**: title + stats, 2-col owner cards, `+ NEW LISTING` bar; the wizard gets a
+  step bar under the header (‹ · NEW LISTING · DRAFT ✓), progress segments and `STEP n OF 5 —
+  …` from the existing `currentStep` / `stepDone` (the form stays one scroll — the mock's step
+  count is presentation, not a rewrite of the wizard).
+- **Onboarding (22–24)**: the order is now ACCOUNT → PREFERENCES → VERIFY (`StepRail`,
+  `app/onboarding/step-rail.tsx`; bar = ARCHIVE + LOG OUT / @HANDLE). `/onboarding/setup`
+  (preferences: sizes with MENSWEAR / WOMENSWEAR tabs, taste picks, shipping) continues to
+  `/onboarding/verify`; verify's CONTINUE → goes back to the gate that sent the member
+  (`?required=sell` → `/sell/new`, `payout` → `/settings/payouts`, else browse). The mock's
+  "designers you follow" block is not built — the app follows sellers, not brands.
+- **Auth pages (18–21)** keep the second-pass layout (they match 19/20; 18/21 differ from each
+  other) and gain the footer.
+- Dark = token swap only. Verified at 390×844 light + dark against the mock renders.
+
 ## Tests
 
 - `tests/e2e/styleguide.spec.ts` updated for the two-font, eleven-token system (first pass).
@@ -167,3 +228,6 @@ one migration, `supabase/migrations/20240101000045_archive_reference_features.sq
 - `pnpm verify` (tsc, eslint, vitest — 424 tests) and `pnpm build` were green in the cloud
   container with a mocked Supabase; run them natively before merging. Non-`@live` Playwright:
   63 passed, 4 skipped.
+- Third pass (mobile web): `tests/e2e/mobile.spec.ts` gained the browse dock / takeover / sort
+  sheet checks, the footer-on-every-page checks and the `/notifications` gate; the old tab-bar
+  assertions stay (they now prove it is gone). Container run: 70 passed, 4 skipped; vitest 426.

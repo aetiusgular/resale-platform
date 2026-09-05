@@ -384,7 +384,18 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
 
       <main className="main main--settings">
         <div className="settings-body">
-          <div className="crumb"><PrefetchLink href="/sell">SELL</PrefetchLink> / {isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</div>
+          {/* Mobile web (15): step bar under the web header, progress segments, STEP n OF 5 —
+              the crumb + page head are the desktop head. */}
+          <div className="wizard-mbar">
+            <PrefetchLink href="/sell" className="wizard-mbar__back" aria-label="Back to sell">‹</PrefetchLink>
+            <span className="wizard-mbar__title">{isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</span>
+            <span className="wizard-mbar__state" data-testid="draft-state-m">{draftLabel}</span>
+          </div>
+          <div className="wizard-progress" aria-hidden="true">
+            {WIZARD_STEPS.map((s, i) => <span key={s} className={`wizard-progress__seg${i <= currentStep || stepDone[i] ? ' is-on' : ''}`} />)}
+          </div>
+          <div className="wizard-step">STEP {currentStep + 1} OF 5 — {WIZARD_STEPS[currentStep].slice(3)}</div>
+          <div className="crumb crumb--wizard"><PrefetchLink href="/sell">SELL</PrefetchLink> / {isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</div>
           <div className="page-head page-head--ruled">
             <h1 className="page-title">{isEdit ? 'Edit listing' : 'New listing'}</h1>
             <span className="page-note">{headNote}</span>
@@ -590,7 +601,8 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
             )}
           </div>
         </div>
-        <div className="pdp-dock">
+        {/* Mobile web (15): SAVE DRAFT | PUBLISH → bar in the flow after the form (footer below). */}
+        <div className="wizard-bar">
           {isEdit ? (
             <>
               <PrefetchLink href="/sell" className="btn-ink">CANCEL</PrefetchLink>

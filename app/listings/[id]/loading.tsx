@@ -2,11 +2,11 @@
  * /listings/[id] loading skeleton — the hottest navigation on the site
  * (browse card → detail). Paints header + gallery / placard layout instantly.
  */
-import { SiteHeaderGhost, Ghost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, Ghost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell has-tabbar">
+    <div className="app-shell">
       <SiteHeaderGhost />
       <div className="pdp-page">
         <div className="pdp" aria-hidden="true">
@@ -43,7 +43,6 @@ export default function Loading() {
           </div>
         </div>
       </div>
-      <TabBarGhost />
     </div>
   )
 }

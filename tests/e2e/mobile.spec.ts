@@ -41,6 +41,74 @@ test.describe('Mobile — tab bar should NOT render on unauthenticated routes', 
   })
 })
 
+test.describe('Mobile web — browse chrome (mobile-web handoff 01–03)', () => {
+  test.use({ viewport: MOBILE })
+
+  test('/browse has the docked FILTERS | SORT bar and no tab bar', async ({ page }) => {
+    await page.goto('/browse')
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('[data-testid="mobile-tabbar"]')).toHaveCount(0)
+    const dock = page.getByTestId('browse-dock')
+    await expect(dock).toBeVisible()
+    // Fixed at the viewport bottom, part of the page (not a nav bar).
+    const box = await dock.boundingBox()
+    expect(box).not.toBeNull()
+    expect(Math.round(box!.y + box!.height)).toBe(MOBILE.height)
+    await expect(page.getByTestId('mobile-filter-btn')).toContainText('FILTERS')
+    await expect(page.getByTestId('mobile-sort-btn')).toContainText('SORT · NEWEST')
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)
+    expect(overflow).toBe(false)
+  })
+
+  test('FILTERS opens the full-screen takeover; SORT opens the bottom sheet', async ({ page }) => {
+    await page.goto('/browse')
+    await page.waitForLoadState('networkidle')
+    await page.getByTestId('mobile-filter-btn').click()
+    const takeover = page.getByTestId('mobile-filter-drawer')
+    await expect(takeover).toBeVisible()
+    await expect(takeover).toContainText('FILTER')
+    await expect(takeover).toContainText('CLEAR FILTERS')
+    await expect(takeover.getByTestId('filter-rail')).toBeVisible()
+    await expect(page.getByTestId('drawer-show-btn')).toContainText(/SHOW [\d,]+ RESULTS/)
+    await page.getByTestId('drawer-show-btn').click()
+    await expect(takeover).toHaveCount(0)
+
+    await page.getByTestId('mobile-sort-btn').click()
+    const sheet = page.getByTestId('sort-sheet')
+    await expect(sheet).toBeVisible()
+    await expect(sheet).toContainText('NEWEST')
+    await expect(sheet).toContainText('LOW TO HIGH')
+    // Sits on the bottom edge of the viewport (03).
+    const box = await sheet.boundingBox()
+    expect(Math.round(box!.y + box!.height)).toBe(MOBILE.height)
+    await page.keyboard.press('Escape')
+    await expect(sheet).toHaveCount(0)
+  })
+})
+
+test.describe('Mobile web — footer ends every page (mobile-web handoff 17)', () => {
+  test.use({ viewport: MOBILE })
+
+  for (const route of ['/browse', '/enter', '/enter/login', '/about']) {
+    test(`${route} renders the site footer in the page flow`, async ({ page }) => {
+      await page.goto(route)
+      await page.waitForLoadState('networkidle')
+      const footer = page.locator('footer.footer')
+      await expect(footer).toHaveCount(1)
+      await footer.scrollIntoViewIfNeeded()
+      await expect(footer).toBeVisible()
+      // In normal flow after the content — never fixed over it.
+      expect(await footer.evaluate((el) => getComputedStyle(el).position)).not.toBe('fixed')
+      await expect(footer).toContainText('ABOUT')
+    })
+  }
+
+  test('/notifications is a gated page (redirects to /enter signed out)', async ({ page }) => {
+    await page.goto('/notifications')
+    await expect(page).toHaveURL(/\/enter/)
+  })
+})
+
 test.describe('Mobile — styleguide (public page, no auth)', () => {
   test.use({ viewport: MOBILE })
 

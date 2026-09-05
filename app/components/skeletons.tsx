@@ -68,20 +68,6 @@ export function CardGhosts({ count }: { count: number }) {
   )
 }
 
-/** Mobile tab bar stand-in — same fixed bar, ghost tabs (not interactive). */
-export function TabBarGhost() {
-  return (
-    <nav className="tabbar mobile-only" aria-hidden="true">
-      {Array.from({ length: 5 }, (_, i) => (
-        <div key={i} className="tabbar__btn">
-          <Ghost style={{ width: 15, height: 15 }} />
-          <Ghost style={{ width: 34, height: 7 }} />
-        </div>
-      ))}
-    </nav>
-  )
-}
-
 /** Page-title stand-in (page-head with ghost title + note). */
 export function PageHeadGhost({ ruled }: { ruled?: boolean }) {
   return (

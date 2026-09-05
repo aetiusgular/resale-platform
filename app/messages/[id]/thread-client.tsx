@@ -269,7 +269,9 @@ export default function ThreadClient({
         {other.verified && <span className="tag">VERIFIED</span>}
         <span className="thread__meta">{other.meta}</span>
         <span className="spacer" />
-        <PrefetchLink href={`/sellers/${other.username}`} className="link-underline link-underline--ink">VIEW PROFILE</PrefetchLink>
+        <PrefetchLink href={`/sellers/${other.username}`} className="link-underline link-underline--ink thread__profile">VIEW PROFILE</PrefetchLink>
+        {/* Mobile web (26): the back row carries VIEW LISTING; the strip's VIEW → hides there. */}
+        <PrefetchLink href={`/listings/${listing.id}`} className="link-underline thread__viewlisting">VIEW LISTING</PrefetchLink>
         {reportState === 'idle' && (
           <button type="button" className="link-underline" onClick={() => setReportState('confirm')} data-testid="report-btn">REPORT</button>
         )}
@@ -296,6 +298,7 @@ export default function ThreadClient({
             <span className="listing-strip__title">{listing.title}</span>
           </div>
           <div className="listing-strip__role">{isBuyer ? 'YOU ARE BUYING' : 'YOU ARE SELLING'}</div>
+          <div className="listing-strip__m">{formatCents(listing.price_cents)} · SIZE {listing.size.toUpperCase()}</div>
         </div>
         <span className="listing-strip__size">SIZE {listing.size.toUpperCase()}</span>
         <span className="listing-strip__price">{formatCents(listing.price_cents)}</span>

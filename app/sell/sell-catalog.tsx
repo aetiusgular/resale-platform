@@ -222,8 +222,9 @@ export default function SellCatalog({
           })}
         </div>
       )}
-      <div className="pdp-dock">
-        <PrefetchLink href="/sell/new" className="btn-primary">+ NEW LISTING</PrefetchLink>
+      {/* Mobile web (14): the + NEW LISTING bar sits in the flow after the grid, the footer below it. */}
+      <div className="sell-newbar">
+        <PrefetchLink href="/sell/new" className="btn-primary" data-testid="sell-new-m">+ NEW LISTING</PrefetchLink>
       </div>
     </main>
   )

@@ -2,7 +2,8 @@
 
 /**
  * Listing-page save control — the square bookmark next to MESSAGE SELLER
- * (design 4A). Optimistic; guests get the sign-in popup instead of the API.
+ * (design 4A). Optimistic; guests get the sign-in popup instead of the API —
+ * dressed as the save gate (mobile-web 25) when the listing is passed in.
  */
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -14,11 +15,14 @@ export default function SaveButton({
   listingId,
   initialSaved,
   guest = false,
+  listing,
 }: {
   listingId: string
   initialSaved: boolean
   /** Signed-out viewer: clicking opens the sign-in popup instead of saving. */
   guest?: boolean
+  /** What the guest is saving — names the item in the sign-in popup. */
+  listing?: { brand: string; title: string; image?: string | null }
 }) {
   const [saved, setSaved] = useState(initialSaved)
   const [loading, setLoading] = useState(false)
@@ -27,7 +31,7 @@ export default function SaveButton({
 
   async function toggle() {
     if (guest) {
-      openAuthModal(pathname)
+      openAuthModal(pathname, listing ? { title: 'SIGN IN TO SAVE', cta: 'SIGN IN & SAVE →', listing } : undefined)
       return
     }
     setLoading(true)

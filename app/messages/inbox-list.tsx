@@ -51,7 +51,9 @@ export default function InboxList({ rows, activeId }: { rows: InboxRow[]; active
         {list.map((c, i) => {
           const unread = c.id === activeId ? 0 : c.unread
           return (
-            <PrefetchLink key={c.id} className={`conv${activeId === c.id ? ' is-active' : ''}`} href={`/messages/${c.id}`} data-testid="inbox-row">
+            <PrefetchLink key={c.id} className={`conv${activeId === c.id ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} href={`/messages/${c.id}`} data-testid="inbox-row">
+              {/* ≤720px (mobile-web 07): initials left, the listing thumb moves to the right */}
+              <span className={`conv__avatar${unread ? ' is-unread' : ''}`} aria-hidden="true">{c.handle.slice(0, 2).toUpperCase()}</span>
               <span className="conv__thumb" style={{ background: `var(--tone-${(i % 8) + 1})`, overflow: 'hidden' }}>
                 {c.image && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -62,6 +64,7 @@ export default function InboxList({ rows, activeId }: { rows: InboxRow[]; active
                 <span className="conv__top">
                   <span className="conv__handle">@{c.handle}</span>
                   <span className="tag">{c.role}</span>
+                  <span className="conv__time conv__time--m">{inboxTime(c.updated_at)}</span>
                 </span>
                 <span className={`conv__preview${unread ? ' is-unread' : ''}`}>{c.previewMine ? 'You: ' : ''}{c.preview}</span>
                 <span className="conv__listing">{c.brand.toUpperCase()} · {c.price}{c.status === 'sold' ? ' · SOLD' : ''}</span>

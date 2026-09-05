@@ -1,51 +1,63 @@
 /**
- * /onboarding/verify — identity verification handoff (step 2 of onboarding).
- * ID check is behind VERIFICATION_ENABLED; until then the button is inert and
- * the member can skip to setup.
+ * /onboarding/verify — identity verification (step 03 of ACCOUNT → PREFERENCES → VERIFY,
+ * mobile-web 24). Stripe Identity behind VERIFICATION_ENABLED; until then the button is
+ * inert and the member can skip to browse. `?required=sell|payout` (the sell / payout
+ * gates) sends a verified member back where they were going.
  */
 import type { Metadata } from 'next'
 import { VERIFICATION_ENABLED } from '@/lib/flags'
 import { createClient } from '@/lib/supabase/server'
 import { AuthPage } from '@/app/components/auth-frame'
+import StepRail from '../step-rail'
 import VerifyActions from './verify-actions'
 
 export const metadata: Metadata = { title: 'Verify your identity' }
 
-export default async function VerifyPage() {
+export default async function VerifyPage({ searchParams }: { searchParams: Promise<{ required?: string }> }) {
+  const { required } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   let status: string | null = null
+  let handle = ''
   if (user) {
     const { data } = await supabase
       .from('profiles')
-      .select('id_verification_status')
+      .select('id_verification_status, username')
       .eq('id', user.id)
       .single()
-    status = (data as { id_verification_status?: string } | null)?.id_verification_status ?? null
+    const row = data as { id_verification_status?: string; username?: string } | null
+    status = row?.id_verification_status ?? null
+    handle = row?.username ? `@${row.username.toUpperCase()}` : ''
   }
   const verified = status === 'verified'
   const pending = status === 'pending'
+  const statusLabel = verified ? 'VERIFIED' : pending ? 'IN REVIEW' : 'NOT STARTED'
+  const after = required === 'sell' ? '/sell/new' : required === 'payout' ? '/settings/payouts' : '/browse'
 
   return (
-    <AuthPage cta={{ href: '/browse', label: 'BROWSE FIRST →' }}>
-      <div className="step-list">
-        <span className="step-list__item is-done">01 ACCOUNT</span>
-        <span className="step-list__item is-on">02 VERIFY</span>
-        <span className="step-list__item">03 SIZES</span>
-      </div>
-      <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>IDENTITY</div>
-      <h1 className="auth-form__title">{verified ? 'Verified — you’re all set.' : 'Verify once, sell forever.'}</h1>
+    <AuthPage onboarding cta={{ href: '/browse', label: handle || 'BROWSE FIRST →' }}>
+      <StepRail current={3} />
+      <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>IDENTITY VERIFICATION</div>
+      <h1 className="auth-form__title">{verified ? 'Verified — you’re all set.' : 'One person, one account.'}</h1>
       <p className="auth-form__sub">
         {verified
           ? 'Your identity is verified. You can buy, sell and take part in legit checks across the platform.'
           : pending
             ? 'Verification in progress — this updates automatically once your check is reviewed. One-time check, no biometric storage.'
-            : 'One-time check, no biometric storage. Required to sell — browsing and buying work without it. It protects sellers as much as buyers: everyone you transact with is a real, accountable person.'}
+            : 'Verified members get the badge buyers filter for. Required before your first sale — optional for browsing and buying. One-time check, no biometric storage.'}
       </p>
-      <div className="kv"><span className="kv__k">1 · PHOTO ID</span><span className={`tag${verified ? ' tag--ink' : ''}`}>{verified ? 'DONE' : pending ? 'IN REVIEW' : 'PENDING'}</span></div>
-      <div className="kv"><span className="kv__k">2 · SELFIE MATCH</span><span className={`tag${verified ? ' tag--ink' : ''}`}>{verified ? 'DONE' : pending ? 'IN REVIEW' : 'PENDING'}</span></div>
-      <VerifyActions enabled={VERIFICATION_ENABLED} verified={verified} />
+      <div className="idv-box">
+        <div className="idv-box__row"><span className="idv-box__k">GOVERNMENT ID</span><span className="idv-box__v">PASSPORT · LICENSE · NATIONAL ID</span></div>
+        <div className="idv-box__row"><span className="idv-box__k">LIVE SELFIE</span><span className="idv-box__v">MATCHED TO YOUR ID</span></div>
+        <div className="idv-box__row"><span className="idv-box__k">TIME</span><span className="idv-box__v">≈ 2 MINUTES — VIA STRIPE IDENTITY</span></div>
+      </div>
+      <div className="idv-status">
+        <span className="idv-status__k">STATUS</span>
+        <span className={`tag${verified ? ' tag--ink' : ''}`} data-testid="idv-status">{statusLabel}</span>
+      </div>
+      <div className="auth-form__hint" style={{ paddingTop: 14 }}>ENCRYPTED — NEVER SHOWN TO OTHER MEMBERS.</div>
+      <VerifyActions enabled={VERIFICATION_ENABLED} verified={verified} after={after} />
     </AuthPage>
   )
 }

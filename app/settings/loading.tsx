@@ -1,11 +1,11 @@
 /**
  * /settings loading skeleton — header + account rail + section ghosts.
  */
-import { SiteHeaderGhost, Ghost, PageHeadGhost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, Ghost, PageHeadGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell has-tabbar">
+    <div className="app-shell">
       <SiteHeaderGhost />
       <div className="layout">
         <aside className="rail" aria-hidden="true">
@@ -30,7 +30,6 @@ export default function Loading() {
           </div>
         </main>
       </div>
-      <TabBarGhost />
     </div>
   )
 }

@@ -1,11 +1,11 @@
 /**
  * /boost/[listingId] loading skeleton — header chrome + package-picker ghosts.
  */
-import { Ghost, SiteHeaderGhost, PageHeadGhost, TabBarGhost } from '@/app/components/skeletons'
+import { Ghost, SiteHeaderGhost, PageHeadGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell has-tabbar">
+    <div className="app-shell">
       <SiteHeaderGhost />
       <main className="page-main">
         <Ghost style={{ height: 9, width: 120, marginBottom: 12 }} />
@@ -31,7 +31,6 @@ export default function Loading() {
           </div>
         </div>
       </main>
-      <TabBarGhost />
     </div>
   )
 }

@@ -17,8 +17,11 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  // ≤720px the placeholder collapses to "Search" (reference Header / useIsMobile).
+  // ≤720px the placeholder collapses to "Search" (reference Header / useIsMobile), and the
+  // row itself only belongs to browse + saved (Mobile Pages 1A / 1C) — every other page
+  // keeps the single 52px header row.
   const compact = useCompact()
+  const mobileRow = pathname === '/browse' || pathname === '/saved' ? 'show' : 'hide'
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -36,6 +39,7 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
     <form
       className="search"
       role="search"
+      data-mobile={mobileRow}
       onSubmit={(e) => {
         e.preventDefault()
         const q = (ref.current?.value ?? '').trim()

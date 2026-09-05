@@ -204,12 +204,23 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
       <div className="pdp-page">
         <div className="pdp">
-          {/* LEFT: gallery + measurements (4A) */}
+          {/* LEFT: gallery + measurements (4A). ≤720px both columns unwrap into one
+              stack ordered like the mobile-web 05 mock (globals.css `.pdp` rules). */}
           <div className="pdp__left">
             <PrefetchLink className="pdp__crumb" href={crumbHref}>
-              ← SEARCH · {crumbParts.map((p) => p.toUpperCase()).join(' / ')}
+              <span className="pdp__crumb-full">← SEARCH · {crumbParts.map((p) => p.toUpperCase()).join(' / ')}</span>
+              <span className="pdp__crumb-short">← BACK TO RESULTS</span>
             </PrefetchLink>
-            <ListingGallery images={images} title={listing.title} showPossession={isSeller || isAdmin} />
+            <ListingGallery
+              images={images}
+              title={listing.title}
+              showPossession={isSeller || isAdmin}
+              saveSlot={!isSeller && (
+                user
+                  ? <SaveButton listingId={id} initialSaved={isSaved} />
+                  : <SaveButton listingId={id} initialSaved={false} guest listing={{ brand: listing.brand, title: listing.title, image: images[0] ?? null }} />
+              )}
+            />
             <MeasurementsPanel labels={measLabels} values={measurements} />
           </div>
 
@@ -233,6 +244,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 {formatCents(listing.price_cents)}
               </span>
               <span className="pdp__ship">+ {formatCents(shippingCents)} SHIPPING · US</span>
+              <span className="pdp__listed pdp__listed--m">{listedLine.split(' · ')[0]}</span>
+            </div>
+            {/* Mobile spec rows (05): SIZE / CONDITION / SHIPPING */}
+            <div className="pdp-specs">
+              {listing.size && <div className="pdp-specs__row"><span className="pdp-specs__k">SIZE</span><span className="pdp-specs__v">{listing.size.toUpperCase()}</span></div>}
+              {listing.color && <div className="pdp-specs__row"><span className="pdp-specs__k">COLOR</span><span className="pdp-specs__v">{listing.color.toUpperCase()}</span></div>}
+              <div className="pdp-specs__row"><span className="pdp-specs__k">CONDITION</span><span className="pdp-specs__v">{listing.condition_score ?? '—'} / 10</span></div>
+              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{formatCents(shippingCents)} · US ONLY</span></div>
             </div>
 
             <div className="pdp__ctas">
@@ -266,7 +285,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 {!isSeller && (
                   user
                     ? <SaveButton listingId={id} initialSaved={isSaved} />
-                    : <SaveButton listingId={id} initialSaved={false} guest />
+                    : <SaveButton listingId={id} initialSaved={false} guest listing={{ brand: listing.brand, title: listing.title, image: images[0] ?? null }} />
                 )}
                 {canBuy ? (
                   user ? (
@@ -311,11 +330,19 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   <span className="pdp__seller-meta">{trustLine}</span>
                 </span>
               </span>
-              {FOLLOWS_ENABLED && !isSeller ? (
-                <FollowButton sellerId={listing.seller_id} initialFollowing={isFollowing} small guest={!user} />
-              ) : seller?.username ? (
-                <PrefetchLink href={`/sellers/${seller.username}`} className="btn-follow btn-follow--sm">VIEW PROFILE</PrefetchLink>
-              ) : null}
+              <span className="pdp__seller-right">
+                {/* Mobile (05): MESSAGE sits in the seller row; the placard's MESSAGE SELLER hides ≤720px. */}
+                {canBuy && (
+                  user
+                    ? <MessageSellerButton listingId={id} className="link-underline link-underline--ink pdp__seller-msg" label="MESSAGE" testId="message-seller-m" />
+                    : <GuestAction next={`/listings/${id}`} className="link-underline link-underline--ink pdp__seller-msg">MESSAGE</GuestAction>
+                )}
+                {FOLLOWS_ENABLED && !isSeller ? (
+                  <FollowButton sellerId={listing.seller_id} initialFollowing={isFollowing} small guest={!user} />
+                ) : seller?.username ? (
+                  <PrefetchLink href={`/sellers/${seller.username}`} className="btn-follow btn-follow--sm">VIEW PROFILE</PrefetchLink>
+                ) : null}
+              </span>
             </div>
           </div>
         </div>
