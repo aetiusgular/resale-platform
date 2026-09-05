@@ -3,9 +3,14 @@
 /**
  * Browse / search — design option 16A: filter rail (left) + results header
  * (count, MY SIZES toggle, EDIT SIZES, SAVE SEARCH +, cycling boxed SORT) +
- * active filter chips + 4-col listing grid + LOAD MORE. ≤960px the rail hides
- * behind a FILTERS sheet; ≤720px a fixed dock (FILTERS · SORT) sits above the
- * tab bar.
+ * active filter chips + 4-col listing grid + LOAD MORE.
+ *
+ * Mobile web (≤720px, mobile-web handoff 01–04): the rail hides; a dock fixed at the
+ * viewport bottom (FILTERS · n | SORT · label) is part of this page, not a tab bar.
+ * FILTERS opens the full-screen takeover (02: "FILTER (n)" / CLEAR FILTERS / ×, the rail,
+ * SHOW n RESULTS); SORT opens a bottom sheet (03); MY SIZES is a row at the top of the
+ * takeover and its editor is a bottom sheet (04). The results head keeps only the count,
+ * the scope and SAVE SEARCH +.
  *
  * All filter state lives in the URL (searchParams) so pages are shareable and
  * the server does the querying; this component only edits the URL, appends
@@ -27,7 +32,7 @@ import {
 import ListingCard from '@/app/components/listing-card'
 import SizesModal from '@/app/components/sizes-modal'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
-import { CheckIcon, XIcon } from '@/app/components/icons'
+import { CheckIcon, FilterIcon, XIcon } from '@/app/components/icons'
 
 type Props = {
   initialListings: BrowseListing[]
@@ -45,11 +50,11 @@ type Props = {
   recsTelemetryEnabled: boolean
 }
 
-/** Cycling sort — option 16A: NEWEST → PRICE ↑ → PRICE ↓. */
+/** Cycling sort — option 16A: NEWEST → PRICE ↑ → PRICE ↓. `hint` is the mobile sheet's right column (03). */
 const SORTS = [
-  { value: 'newest',     label: 'NEWEST' },
-  { value: 'price_asc',  label: 'PRICE ↑' },
-  { value: 'price_desc', label: 'PRICE ↓' },
+  { value: 'newest',     label: 'NEWEST',  hint: 'DEFAULT' },
+  { value: 'price_asc',  label: 'PRICE ↑', hint: 'LOW TO HIGH' },
+  { value: 'price_desc', label: 'PRICE ↓', hint: 'HIGH TO LOW' },
 ]
 const SHOW_ONLY: Array<{ id: 'authenticated' | 'verified' | 'dropped' | 'sold'; label: string }> = [
   { id: 'authenticated', label: 'Authenticated' },
@@ -372,6 +377,7 @@ export default function BrowseClient({
   const [loadingMore, setLoadingMore]       = useState(false)
   const [savedIds, setSavedIds]             = useState(() => new Set(initialSavedIds))
   const [sheetOpen, setSheetOpen]           = useState(false)
+  const [sortOpen, setSortOpen]             = useState(false)
   const [sizesOpen, setSizesOpen]           = useState(false)
   const [followPending, setFollowPending]   = useState(false)
   const [followedMsg, setFollowedMsg]       = useState('')
@@ -409,6 +415,14 @@ export default function BrowseClient({
     const disconnect = observeImpressions(document)
     return disconnect
   }, [recsTelemetryEnabled, shownCount])
+
+  // Escape closes the mobile takeover / sort sheet (the × and the scrim do too).
+  useEffect(() => {
+    if (!sheetOpen && !sortOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setSheetOpen(false); setSortOpen(false) } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sheetOpen, sortOpen])
 
   function buildUrl(updates: Record<string, string | null>) {
     const p = new URLSearchParams(searchParams.toString())
@@ -457,7 +471,13 @@ export default function BrowseClient({
   // ── Save / unsave ──────────────────────────────────────────────────────────
   async function handleSaveToggle(listingId: string, currentlySaved: boolean) {
     if (isGuest) {
-      openAuthModal(pathname)
+      // Guest save gate (mobile-web 25): the popup names the item they tried to save.
+      const l = allListings.find((x) => x.id === listingId)
+      openAuthModal(pathname, l ? {
+        title: 'SIGN IN TO SAVE',
+        cta: 'SIGN IN & SAVE →',
+        listing: { brand: l.brand, title: l.title, image: l.images[0] ?? null },
+      } : undefined)
       return
     }
     setSavedIds((prev) => {
@@ -587,6 +607,7 @@ export default function BrowseClient({
 
   const sortIndex = Math.max(0, SORTS.findIndex((o) => o.value === sort))
   const cycleSort = () => updateFilter('sort', SORTS[(sortIndex + 1) % SORTS.length].value)
+  const pickSort = (value: string) => { setSortOpen(false); if (value !== SORTS[sortIndex].value) updateFilter('sort', value) }
 
   const scopeDept = departmentScopeLabel(depts)
   const scopeCat = categoryScopeLabel({ cats, picks })
@@ -603,7 +624,7 @@ export default function BrowseClient({
   const shownLabel = `SHOWING ${fmt(allListings.length)} OF ${fmt(totalCount)}`
 
   return (
-    <div>
+    <div className="browse-page">
       <div className="layout">
         {rail}
         <main className="main" style={{ opacity: isPending ? 0.55 : 1, transition: 'opacity 200ms' }}>
@@ -620,8 +641,8 @@ export default function BrowseClient({
                 <span className="mysizes-toggle__label">MY SIZES:</span>
                 {mySizesOn ? <span className="pill-on">ON</span> : <span className="pill-off">OFF</span>}
               </button>
-              <button type="button" className="link-btn" onClick={editSizes}>EDIT SIZES</button>
-              <button type="button" className="link-btn" onClick={followSearch} disabled={followPending} data-testid="follow-search-btn">
+              <button type="button" className="link-btn results__edit" onClick={editSizes}>EDIT SIZES</button>
+              <button type="button" className="link-btn results__save" onClick={followSearch} disabled={followPending} data-testid="follow-search-btn">
                 {followedMsg || 'SAVE SEARCH +'}
               </button>
               <button type="button" className="btn-outline results__sort" onClick={cycleSort} data-testid="sort-dropdown-btn">
@@ -697,27 +718,78 @@ export default function BrowseClient({
         </main>
       </div>
 
-      {/* Mobile dock (≤720px) */}
-      <div className="dock">
+      {/* Mobile-web dock (≤720px, 01): fixed at the viewport bottom, part of this page. */}
+      <div className="dock" data-testid="browse-dock">
         <button type="button" className="dock__btn" onClick={() => setSheetOpen(true)} data-testid="mobile-filter-btn">
+          <FilterIcon />
           FILTERS{chips.length > 0 ? ` · ${chips.length}` : ''}
         </button>
-        <button type="button" className="dock__btn" onClick={cycleSort}>
+        <button type="button" className="dock__btn" onClick={() => setSortOpen(true)} data-testid="mobile-sort-btn">
           SORT · {SORTS[sortIndex].label}
         </button>
       </div>
 
+      {/* Filter takeover (02): full-screen over the page. */}
       {sheetOpen && (
-        <div className="filter-sheet" role="dialog" aria-label="Filters" data-testid="mobile-filter-drawer">
+        <div className="filter-sheet" role="dialog" aria-modal="true" aria-label="Filters" data-testid="mobile-filter-drawer">
           <div className="filter-sheet__head">
-            <span className="modal__title">FILTERS</span>
-            <button type="button" className="link-underline link-underline--ink" onClick={() => setSheetOpen(false)}>DONE</button>
+            <span className="modal__title">FILTER{chips.length > 0 ? ` (${chips.length})` : ''}</span>
+            <span className="filter-sheet__tools">
+              <button type="button" className="link-underline filter-sheet__clear" onClick={clearAll}>CLEAR FILTERS</button>
+              <button type="button" className="modal__close" aria-label="Close filters" onClick={() => setSheetOpen(false)}>
+                <XIcon size={12} strokeWidth={1.2} />
+              </button>
+            </span>
           </div>
-          <div className="filter-sheet__body">{rail}</div>
+          <div className="filter-sheet__body">
+            {/* MY SIZES lives in the takeover on mobile (the results head keeps only the count +
+                SAVE SEARCH). Anything that opens a sheet (the sizes editor, the guest sign-in)
+                closes the takeover first so the sheet sits over the page (04). */}
+            <div className="sheet-sizes">
+              <button
+                type="button"
+                className="mysizes-toggle"
+                onClick={() => { if (isGuest || (!mySizesOn && sizeChip === 'NONE SET')) setSheetOpen(false); toggleMySizes() }}
+                aria-pressed={mySizesOn}
+                data-testid="sheet-my-sizes-toggle"
+              >
+                <span className="rail-sec__label">MY SIZES</span>
+                {mySizesOn ? <span className="pill-on">ON</span> : <span className="pill-off">OFF</span>}
+              </button>
+              <button type="button" className="link-underline" onClick={() => { setSheetOpen(false); editSizes() }}>EDIT SIZES</button>
+            </div>
+            {rail}
+          </div>
           <div className="filter-sheet__foot">
             <button type="button" className="btn-primary" onClick={() => setSheetOpen(false)} data-testid="drawer-show-btn">
               SHOW {fmt(totalCount)} RESULTS
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sort sheet (03): bottom sheet over the dimmed page. */}
+      {sortOpen && (
+        <div className="scrim scrim--sheet" onClick={() => setSortOpen(false)}>
+          <div className="sheet" role="dialog" aria-modal="true" aria-label="Sort" onClick={(e) => e.stopPropagation()} data-testid="sort-sheet">
+            <div className="sheet__head">
+              <span className="modal__title">SORT</span>
+              <button type="button" className="modal__close" aria-label="Close" onClick={() => setSortOpen(false)}>
+                <XIcon size={11} strokeWidth={1.2} />
+              </button>
+            </div>
+            {SORTS.map((o, i) => {
+              const on = i === sortIndex
+              return (
+                <button key={o.value} type="button" className="sheet-row" onClick={() => pickSort(o.value)} aria-pressed={on}>
+                  <span className="sheet-row__left">
+                    <span className={`checkbox${on ? ' is-on' : ''}`}>{on && <CheckIcon size={9} />}</span>
+                    <span className={`sheet-row__label${on ? ' is-on' : ''}`}>{o.label}</span>
+                  </span>
+                  <span className="sheet-row__hint">{o.hint}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

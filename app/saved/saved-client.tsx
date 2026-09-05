@@ -137,35 +137,55 @@ export default function SavedClient({ listings: initialListings, searches: initi
     }
   }, [])
 
-  const tabs: [SavedTab, string][] = [
-    ['items', `ITEMS (${visible.length})`],
-    ['searches', `SEARCHES (${searches.length})`],
-    ['sellers', `SELLERS (${sellers.length})`],
+  // Tab labels: "ITEMS (7)" on desktop (1A); ≤720px "ITEMS" / "SEARCHES · 3" / "SELLERS · 5"
+  // (mobile-web 06) — the item count sits in the page head there.
+  const tabs: [SavedTab, string, number][] = [
+    ['items', 'ITEMS', visible.length],
+    ['searches', 'SEARCHES', searches.length],
+    ['sellers', 'SELLERS', sellers.length],
   ]
 
   const noteParts = [
     sinceVisit.drops > 0 ? `${sinceVisit.drops} PRICE DROP${sinceVisit.drops > 1 ? 'S' : ''}` : '',
     sinceVisit.sold > 0 ? `${sinceVisit.sold} SOLD` : '',
   ].filter(Boolean)
-  const note = noteParts.length > 0
+  const changed = noteParts.length > 0
+  const note = changed
     ? `${noteParts.join(' · ')} SINCE LAST VISIT`
     : sinceVisit.hadVisit ? 'NO CHANGES SINCE LAST VISIT' : 'ITEMS, SEARCHES AND SELLERS YOU FOLLOW'
+
+  // Mobile strip VIEW → the items grid, first flagged card in view.
+  const viewChanges = () => {
+    if (tab !== 'items') setTab('items')
+    requestAnimationFrame(() => {
+      const card = document.querySelector('[data-testid="saved-items-grid"] .flag')?.closest('.card')
+        ?? document.querySelector('[data-testid="saved-items-grid"]')
+      card?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   return (
     <main className="saved-main">
       <div className="page-head">
         <h1 className="page-title">Saved</h1>
-        <span className="page-note" data-testid="saved-note">{note}</span>
+        <span className="page-note page-note--d" data-testid="saved-note">{note}</span>
+        <span className="page-note page-note--m">{visible.length} ITEM{visible.length === 1 ? '' : 'S'}</span>
       </div>
       <div className="tabs-line" role="tablist">
-        {tabs.map(([id, label]) => (
+        {tabs.map(([id, label, n]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={`tab-mono${tab === id ? ' is-active' : ''}`} onClick={() => setTab(id)} data-testid={`saved-tab-${id}`}>
-            {label}
+            {label}<span className="tab-mono__n--d"> ({n})</span>{id !== 'items' && <span className="tab-mono__n--m"> · {n}</span>}
           </button>
         ))}
         <span className="spacer" />
         {tab === 'items' && <span className="link-underline tabs-line__sort" style={{ textDecoration: 'none' }}>SORT: RECENTLY SAVED</span>}
       </div>
+      {changed && (
+        <div className="since-strip">
+          <span>{noteParts.join(' · ')} SINCE YOUR LAST VISIT</span>
+          <button type="button" className="link-underline link-underline--ink" onClick={viewChanges}>VIEW</button>
+        </div>
+      )}
 
       {tab === 'items' && (
         visible.length === 0 ? (

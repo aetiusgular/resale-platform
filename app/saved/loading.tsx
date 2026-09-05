@@ -1,11 +1,11 @@
 /**
  * /saved loading skeleton — page head + tab line + saved grid.
  */
-import { SiteHeaderGhost, CardGhosts, Ghost, PageHeadGhost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, CardGhosts, Ghost, PageHeadGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell has-tabbar">
+    <div className="app-shell">
       <SiteHeaderGhost />
       <main className="saved-main">
         <PageHeadGhost />
@@ -18,7 +18,6 @@ export default function Loading() {
           <CardGhosts count={10} />
         </div>
       </main>
-      <TabBarGhost />
     </div>
   )
 }

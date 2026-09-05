@@ -8,6 +8,7 @@
  */
 import Link from 'next/link'
 import { BRAND_STAGE, BRAND_WORDMARK } from './brand'
+import SiteFooter from './site-footer'
 
 export const ENTRY_TAGLINE = 'A quieter market for the things worth keeping.'
 export const ENTRY_POINTS: [string, string][] = [
@@ -50,13 +51,19 @@ export function AuthSplit({ children }: { children: React.ReactNode }) {
       <div className="auth-side">
         <div className="auth-form">{children}</div>
       </div>
+      <SiteFooter mobileOnly />
     </div>
   )
 }
 
-export function AuthPage({ cta, children }: { cta?: { href: string; label: string }; children: React.ReactNode }) {
+export function AuthPage({ cta, children, onboarding }: {
+  cta?: { href: string; label: string }
+  children: React.ReactNode
+  /** Onboarding steps (mobile-web 22–24): the bar keeps its right-hand link at every width. */
+  onboarding?: boolean
+}) {
   return (
-    <div className="auth-page">
+    <div className={`auth-page${onboarding ? ' auth-page--onb' : ''}`}>
       <header className="auth-page__bar">
         <Link href="/browse" title="Browse"><Brand /></Link>
         {cta && <Link className="auth-page__cta" href={cta.href}>{cta.label}</Link>}
@@ -67,6 +74,7 @@ export function AuthPage({ cta, children }: { cta?: { href: string; label: strin
       <div className="auth-page__foot">
         BY CONTINUING YOU AGREE TO THE&nbsp;<Link href="/terms" style={{ textDecoration: 'underline' }}>TERMS</Link>&nbsp;&amp;&nbsp;<Link href="/privacy" style={{ textDecoration: 'underline' }}>PRIVACY POLICY</Link>
       </div>
+      <SiteFooter mobileOnly />
     </div>
   )
 }

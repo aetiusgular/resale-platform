@@ -1,7 +1,7 @@
 /**
  * /messages loading skeleton — inbox list + desktop empty pane.
  */
-import { SiteHeaderGhost, Ghost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, Ghost } from '@/app/components/skeletons'
 
 function ConversationRowGhost() {
   return (
@@ -21,7 +21,7 @@ function ConversationRowGhost() {
 
 export default function Loading() {
   return (
-    <div className="app-shell has-tabbar">
+    <div className="app-shell">
       <SiteHeaderGhost />
       <div className="msgs">
         <aside className="msgs__list" aria-hidden="true">
@@ -41,7 +41,6 @@ export default function Loading() {
           </div>
         </div>
       </div>
-      <TabBarGhost />
     </div>
   )
 }

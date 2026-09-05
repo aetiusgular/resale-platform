@@ -18,17 +18,18 @@ import PrefetchLink from '@/app/components/prefetch-link'
 import { normalizeSizes, sizesChipLabel } from '@/lib/sizes'
 import { DEFAULT_PREFS } from '@/lib/notify/prefs'
 import type { NotificationPrefs } from '@/lib/notify/types'
-import SettingsSections, { type SettingsData, type SettingsSection, type SettingsAddress, type SettingsOrderRow, type ReviewTarget } from './settings-sections'
+import SettingsSections, { SettingsMenu, type SettingsData, type SettingsSection, type SettingsAddress, type SettingsOrderRow, type ReviewTarget } from './settings-sections'
 import SignOutLink from './sign-out-link'
+import { BRAND_STAGE } from '@/app/components/brand'
 
 const LEGACY_SECTIONS: Record<string, SettingsSection> = {
-  'my-sizes': 'sizes', addresses: 'address', payments: 'payouts', power: 'tiers', profile: 'hub',
+  'my-sizes': 'sizes', addresses: 'address', payments: 'payouts', power: 'tiers',
 }
 
 export function resolveSection(raw: string | undefined): SettingsSection {
   if (!raw) return 'hub'
   if (raw in LEGACY_SECTIONS) return LEGACY_SECTIONS[raw]
-  const known: SettingsSection[] = ['hub', 'orders', 'review', 'address', 'sizes', 'notifications', 'payouts', 'phone', 'tiers']
+  const known: SettingsSection[] = ['hub', 'profile', 'orders', 'review', 'address', 'sizes', 'notifications', 'payouts', 'phone', 'tiers']
   return known.includes(raw as SettingsSection) ? (raw as SettingsSection) : 'hub'
 }
 
@@ -202,7 +203,7 @@ export default async function SettingsShell({
   ]
   if (PHONE_VERIFICATION_ENABLED) nav.push({ id: 'phone', label: 'PHONE', href: '/settings/phone', meta: data.phoneVerified ? 'VERIFIED' : undefined })
   if (TIER_DASHBOARD_ENABLED) nav.push({ id: 'tiers', label: 'FEES & TIERS', href: '/settings/tiers' })
-  const activeNav = section === 'review' ? 'orders' : section
+  const activeNav = section === 'review' ? 'orders' : section === 'profile' ? 'hub' : section
 
   return (
     <AppShell username={username} displayName={displayName ?? undefined}>
@@ -227,12 +228,12 @@ export default async function SettingsShell({
           <div className="rail__signout"><SignOutLink /></div>
         </aside>
         <main className="main main--settings">
-          <div className="settings-tabs">
-            {nav.map((n) => (
-              <PrefetchLink key={n.id} className={`tab-mono tab-mono--sm${n.id === activeNav ? ' is-active' : ''}`} href={n.href}>{n.label}</PrefetchLink>
-            ))}
+          {/* ≤720px (mobile-web 09): the hub is a menu into the sections; each section carries
+              a "← SETTINGS" back link (Crumb). The desktop hub body hides there. */}
+          {section === 'hub' && <SettingsMenu data={data} activeOrders={activeOrders ?? 0} stage={BRAND_STAGE} />}
+          <div className={`settings-section${section === 'hub' ? ' settings-desk' : ''}`}>
+            <SettingsSections section={section} data={data} />
           </div>
-          <SettingsSections section={section} data={data} />
         </main>
       </div>
     </AppShell>

@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
 import PrefetchLink from './prefetch-link'
 import { ThemeSegment } from './theme'
+import { useCompact } from './use-compact'
 
 interface Props {
   open: boolean
@@ -25,6 +26,8 @@ interface Props {
 export default function AccountPopout({ open, username, displayName, initials, notifCount, onClose, onNotifications }: Props) {
   const router = useRouter()
   const [signingOut, setSigningOut] = useState(false)
+  // Mobile web (handoff 27): notifications are a full page, reached from here.
+  const compact = useCompact()
 
   useEffect(() => {
     if (!open) return
@@ -56,10 +59,17 @@ export default function AccountPopout({ open, username, displayName, initials, n
           </span>
         </div>
         <nav className="acct-panel__nav">
-          <button type="button" className="acct-row" onClick={onNotifications}>
-            Notifications
-            {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
-          </button>
+          {compact ? (
+            <PrefetchLink className="acct-row" href="/notifications" onClick={onClose} data-testid="acct-notifications">
+              Notifications
+              {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
+            </PrefetchLink>
+          ) : (
+            <button type="button" className="acct-row" onClick={onNotifications} data-testid="acct-notifications">
+              Notifications
+              {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
+            </button>
+          )}
           <PrefetchLink className="acct-row" href="/settings/orders" onClick={onClose}>Orders</PrefetchLink>
           <PrefetchLink className="acct-row" href="/settings" onClick={onClose}>Settings</PrefetchLink>
         </nav>

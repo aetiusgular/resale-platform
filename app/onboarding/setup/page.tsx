@@ -1,19 +1,25 @@
 'use client'
 
 /**
- * /onboarding/setup — quick preferences (step 3): sizes (saved to profiles.sizes so
- * the MY SIZES filter works from the first browse), optional taste picks for the
- * recs cold-start, and a shipping note. Skippable.
+ * /onboarding/setup — quick preferences (step 02 of ACCOUNT → PREFERENCES → VERIFY,
+ * mobile-web 23): sizes (saved to profiles.sizes so the MY SIZES filter works from the
+ * first browse), optional taste picks for the recs cold-start, and a shipping note.
+ * CONTINUE and SKIP both go on to /onboarding/verify.
  */
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
 import { AuthPage } from '@/app/components/auth-frame'
-import { SETTINGS_SIZE_GROUPS, sizeKey, type UserSizes } from '@/lib/sizes'
+import { SETTINGS_SIZE_GROUPS, SIZE_DEPTS, sizeKey, type SizeDept, type UserSizes } from '@/lib/sizes'
+import StepRail from '../step-rail'
+
+const NEXT_STEP = '/onboarding/verify'
 
 export default function SetupPage() {
   const router = useRouter()
   const [sizes, setSizes] = useState<UserSizes>({})
+  const [dept, setDept] = useState<SizeDept>('menswear')
+  const [handle, setHandle] = useState('')
   const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,6 +32,20 @@ export default function SetupPage() {
       const cur = prev[cat] ?? []
       return { ...prev, [cat]: cur.includes(size) ? cur.filter((s) => s !== size) : [...cur, size] }
     })
+
+  // The bar shows the member's handle (mobile-web 23); fail-soft when signed out.
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+    supabase.auth.getUser()
+      .then(async ({ data: { user } }) => {
+        if (!user || cancelled) return
+        const { data } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle()
+        if (!cancelled && data?.username) setHandle(`@${String(data.username).toUpperCase()}`)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // Fetch the engine's aesthetic options once. Fail-soft: on off/unreachable the
   // proxy returns { aesthetics: [] } and the picker renders nothing.
@@ -82,27 +102,28 @@ export default function SetupPage() {
         keepalive: true,
       }).catch(() => {})
     }
-    router.push(sizeCount > 0 ? '/browse?my_sizes=1' : '/browse')
+    router.push(NEXT_STEP)
   }
 
   return (
-    <AuthPage cta={{ href: '/browse', label: 'SKIP — GO TO BROWSE →' }}>
-      <div className="step-list">
-        <span className="step-list__item is-done">01 ACCOUNT</span>
-        <span className="step-list__item is-done">02 VERIFY</span>
-        <span className="step-list__item is-on">03 SIZES</span>
-      </div>
-      <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>QUICK SETUP</div>
-      <h1 className="auth-form__title">Set up once, browse in your size.</h1>
+    <AuthPage onboarding cta={handle ? { href: '/browse', label: handle } : { href: '/browse', label: 'SKIP — GO TO BROWSE →' }}>
+      <StepRail current={2} />
+      <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>QUICK PREFERENCES</div>
+      <h1 className="auth-form__title">Seed your feed.</h1>
       <p className="auth-form__sub">Your sizes power the MY SIZES filter and size alerts — never shown publicly. Everything here can change later in Settings.</p>
 
       <div className="sec-head" style={{ marginTop: 8 }}><span className="sec-head__label">1 — MY SIZES</span><span className="page-note">{sizeCount} SELECTED</span></div>
-      {SETTINGS_SIZE_GROUPS.menswear.map((g) => {
-        const key = sizeKey('menswear', g.id)
+      <div className="tabs-line tabs-line--tight" role="tablist" style={{ marginTop: 12 }}>
+        {SIZE_DEPTS.map((d) => (
+          <button key={d} type="button" role="tab" aria-selected={dept === d} className={`tab-mono${dept === d ? ' is-active' : ''}`} onClick={() => setDept(d)}>{d.toUpperCase()}</button>
+        ))}
+      </div>
+      {SETTINGS_SIZE_GROUPS[dept].map((g) => {
+        const key = sizeKey(dept, g.id)
         return (
-          <div key={g.id}>
+          <div key={key}>
             <div className="chip-grid__label">{g.label}</div>
-            <div className="chip-grid" style={{ gridTemplateColumns: `repeat(${g.cols}, 1fr)` }}>
+            <div className="chip-grid" style={{ '--cols': g.cols } as React.CSSProperties}>
               {g.scale.map((s) => {
                 const on = (sizes[key] ?? []).includes(s)
                 return (
@@ -137,10 +158,12 @@ export default function SetupPage() {
       </div>
 
       {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
-      <button type="button" className="btn-primary" onClick={handleContinue} disabled={loading}>
-        {loading ? 'SAVING…' : 'CONTINUE TO BROWSE →'}
-      </button>
-      <button type="button" className="btn-ghost" style={{ marginTop: 6 }} onClick={() => router.push('/browse')}>SKIP FOR NOW</button>
+      <div className="onb-cta">
+        <button type="button" className="btn-primary" onClick={handleContinue} disabled={loading} data-testid="setup-continue">
+          {loading ? 'SAVING…' : 'CONTINUE →'}
+        </button>
+        <button type="button" className="link-underline onb-cta__skip" onClick={() => router.push(NEXT_STEP)} data-testid="setup-skip">SKIP</button>
+      </div>
     </AuthPage>
   )
 }

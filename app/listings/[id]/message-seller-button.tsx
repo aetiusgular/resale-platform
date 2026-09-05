@@ -6,9 +6,13 @@ import { useAuthModal } from '@/app/components/auth-modal-provider'
 
 interface Props {
   listingId: string
+  /** Button styling — the placard's ghost button by default; the mobile seller row passes a link style. */
+  className?: string
+  label?: string
+  testId?: string
 }
 
-export default function MessageSellerButton({ listingId }: Props) {
+export default function MessageSellerButton({ listingId, className = 'btn-ghost', label = 'MESSAGE SELLER', testId = 'message-seller-btn' }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const { openAuthModal } = useAuthModal()
@@ -36,12 +40,12 @@ export default function MessageSellerButton({ listingId }: Props) {
   return (
     <button
       type="button"
-      className="btn-ghost"
+      className={className}
       onClick={() => void handleClick()}
       disabled={loading}
-      data-testid="message-seller-btn"
+      data-testid={testId}
     >
-      {loading ? 'OPENING…' : 'MESSAGE SELLER'}
+      {loading ? 'OPENING…' : label}
     </button>
   )
 }

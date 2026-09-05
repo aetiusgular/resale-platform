@@ -1,11 +1,17 @@
 /**
- * AppShell — header + page + footer + mobile tab bar, the frame every consumer
- * page renders inside. Server component; pages pass the username they already
- * loaded. `footer={false}` for full-height panes (messages).
+ * AppShell — header + page + footer, the frame every consumer page renders
+ * inside. Server component; pages pass the username they already loaded.
+ * `footer={false}` for full-height panes (messages) — desktop only: mobile web ends
+ * every page with the footer in the scroll (handoff 17), so it still renders there.
+ *
+ * Mobile WEB chrome (handoff "Mobile Web", Sept 2026): the same 6A header (wordmark,
+ * SELL / SAVED / MESSAGES icons + account chip; the search row only on browse and
+ * saved), page-owned docked bars (browse FILTERS | SORT, listing BUY | OFFER, sell
+ * + NEW LISTING …) and bottom sheets / takeovers for overlays. No bottom tab bar —
+ * that is native-app chrome and never ships in the web build.
  */
 import SiteHeader from './site-header'
 import SiteFooter from './site-footer'
-import MobileTabBar from './mobile-tabbar'
 
 interface Props {
   username: string
@@ -14,16 +20,14 @@ interface Props {
   searchValue?: string
   footer?: boolean
   footerActive?: string
-  tabbar?: boolean
 }
 
-export default function AppShell({ username, displayName, children, searchValue, footer = true, footerActive, tabbar = true }: Props) {
+export default function AppShell({ username, displayName, children, searchValue, footer = true, footerActive }: Props) {
   return (
-    <div className={`app-shell${tabbar ? ' has-tabbar' : ''}`}>
+    <div className="app-shell">
       <SiteHeader username={username} displayName={displayName} searchValue={searchValue} />
       {children}
-      {footer && <SiteFooter active={footerActive} />}
-      {tabbar && <MobileTabBar username={username} />}
+      <SiteFooter active={footerActive} mobileOnly={!footer} />
     </div>
   )
 }

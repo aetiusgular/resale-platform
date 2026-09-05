@@ -3,11 +3,11 @@
  * bar / scroll / composer structure of thread-client.tsx.
  */
 import Link from 'next/link'
-import { SiteHeaderGhost, Ghost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, Ghost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell has-tabbar">
+    <div className="app-shell">
       <SiteHeaderGhost />
       <div className="msgs msgs--thread">
         <aside className="msgs__list desktop-only" aria-hidden="true">
@@ -43,7 +43,6 @@ export default function Loading() {
           </div>
         </div>
       </div>
-      <TabBarGhost />
     </div>
   )
 }

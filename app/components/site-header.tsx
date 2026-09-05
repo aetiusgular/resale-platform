@@ -8,12 +8,13 @@
  * auth popup).
  */
 import { Suspense } from 'react'
-import PrefetchLink from './prefetch-link'
 import HeaderSearch from './header-search'
 import HeaderActions from './header-actions'
 import { NOTIFICATIONS_ENABLED, SHIPPING_LABELS_ENABLED } from '@/lib/flags'
-import { BRAND_STAGE, BRAND_WORDMARK } from './brand'
 import { getViewer } from './viewer'
+import { Wordmark } from './wordmark'
+
+export { Wordmark }
 
 interface Props {
   /** Empty string ⇒ signed-out visitor. */
@@ -24,15 +25,6 @@ interface Props {
   searchValue?: string
 }
 
-export function Wordmark({ href = '/', small, testId }: { href?: string; small?: boolean; testId?: string }) {
-  return (
-    <PrefetchLink className={small ? 'footer__brand' : 'header__brand'} href={href} title="Home" data-testid={testId}>
-      <span className={small ? 'footer__logo' : 'header__logo'}>{BRAND_WORDMARK}</span>
-      <span className="header__alpha">{BRAND_STAGE}</span>
-    </PrefetchLink>
-  )
-}
-
 export default async function SiteHeader({ username, displayName, searchValue = '' }: Props) {
   // Avatar initials come from the display name everywhere (reference "JD"); pages
   // that didn't load it get it here, memoised per request.
@@ -40,8 +32,9 @@ export default async function SiteHeader({ username, displayName, searchValue = 
   return (
     <header className="header">
       <Wordmark testId="site-wordmark" />
-      {/* useSearchParams inside → needs a Suspense boundary for static shells */}
-      <Suspense fallback={<div className="search" aria-hidden="true" />}>
+      {/* useSearchParams inside → needs a Suspense boundary for static shells. The fallback
+          keeps the desktop layout; ≤720px it stays hidden so no page shows a stray row. */}
+      <Suspense fallback={<div className="search" data-mobile="hide" aria-hidden="true" />}>
         <HeaderSearch defaultValue={searchValue} />
       </Suspense>
       <HeaderActions username={username} displayName={resolvedDisplayName} notificationsEnabled={NOTIFICATIONS_ENABLED} shippingLabelsEnabled={SHIPPING_LABELS_ENABLED} />
