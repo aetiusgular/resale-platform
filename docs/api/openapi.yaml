@@ -528,6 +528,22 @@ components:
         country: { type: string, const: US }
         is_default: { type: boolean }
         created_at: { type: string, format: date-time }
+    AddressWrite:
+      type: object
+      description: Envelope for POST/PATCH /api/settings/addresses (lib/addresses#cleanAddress).
+      properties:
+        address:
+          type: object
+          required: [name, street1, city, state, zip]
+          properties:
+            name: { type: string, maxLength: 100 }
+            street1: { type: string, maxLength: 200 }
+            street2: { type: string, nullable: true, maxLength: 200 }
+            city: { type: string, maxLength: 100 }
+            state: { type: string, description: Two-letter US state code. }
+            zip: { type: string, description: 5 digits or ZIP+4. }
+            country: { type: string, default: US }
+        is_default: { type: boolean }
     NotificationPrefs:
       type: object
       description: 16 booleans, one email + one push per bucket (offers, offer_result, messages, sold, price_drops, search_alerts, orders, alerts). Defaults true.
@@ -1247,16 +1263,18 @@ paths:
     post:
       tags: [settings]
       summary: Add an address (cap 10; the first becomes default). US only.
+      description: "Body is an envelope: `{ address: { name, street1, street2?, city, state, zip, country }, is_default? }` (lib/addresses#cleanAddress). Not a bare Address row."
       security: [{ bearer: [] }]
-      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Address' } } } }
-      responses: { '201': { description: Created. }, '401': { $ref: '#/components/responses/Unauthorized' } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AddressWrite' } } } }
+      responses: { '201': { description: "Created → `{ address }`." }, '400': { description: Validation message. }, '401': { $ref: '#/components/responses/Unauthorized' } }
   /api/settings/addresses/{id}:
     patch:
       tags: [settings]
       security: [{ bearer: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Address' } } } }
-      responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+      description: "Edit (`{ address: {...} }`) and/or set default (`{ is_default: true }`); same envelope as POST."
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/AddressWrite' } } } }
+      responses: { '200': { description: "OK → `{ address }`." }, '400': { description: Nothing to update / validation. }, '401': { $ref: '#/components/responses/Unauthorized' } }
     delete:
       tags: [settings]
       security: [{ bearer: [] }]

@@ -1,12 +1,24 @@
 # HANDOFF.md
-## Current state: M1a (mobile API contract) BUILT on `feat/mobile-api` · native verify/build/verify:ui green · reviewer gates passed · PR to `main` pending
+## Current state: M1 (mobile API + iOS foundation) BUILT · `feat/mobile-api` (PR #4) awaiting founder review · archive-ios repo live
 
 **Last updated:** 2026-09-05
-**Next prompt:** merge `feat/mobile-api` after the founder's own review, apply migration 0046
-(`pnpm exec supabase db push` — db-guard PASS recorded below), then run
-`docs/prompts/M1_mobile_api_ios_foundation.md` **Part B** in the new repo `~/Projects/archive-ios`
-(`aetiusgular/archive-ios`). Part B needs Xcode 26 installed on the Mac for `xcodebuild`; the
-`Packages/ArchiveCore` package builds with Command Line Tools alone.
+**Next prompt:** founder merges `feat/mobile-api`, applies migration 0046 (`pnpm exec supabase db push`),
+runs the archive-ios app once against `pnpm dev` (see `~/Projects/archive-ios/docs/HANDOFF.md`), then
+`docs/prompts/M2_mobile_money_and_selling.md` — Part A here (checkout/boost intents for
+PaymentSheet, dispute + review photo uploads, sell wizard routes), Part B in archive-ios.
+
+## M1 Part B — archive-ios (2026-09-05)
+
+Repo: `aetiusgular/archive-ios` (private), clone at `~/Projects/archive-ios`. SwiftUI, iOS 17,
+XcodeGen, Swift 5 mode. `Packages/ArchiveCore` mirrors `docs/api/openapi.yaml` (DTOs, `Endpoints`,
+`APIClient` with bearer + `X-Client`, `BrowseQuery`); 24 tests green on Linux and macOS. Every M1
+screen is written against the routes added in M1a; checkout, boost and the sell wizard show the
+server preview and hand off to the web until M2. CI: `.github/workflows/ios.yml` (Linux `swift test`,
+macOS xcodegen + xcodebuild + simulator tests). State and open items: that repo's `docs/HANDOFF.md`.
+
+One contract correction surfaced while wiring the app: `POST/PATCH /api/settings/addresses` take
+`{ address: {...}, is_default? }` (lib/addresses#cleanAddress), not a bare row. `openapi.yaml` is
+fixed in this commit; ArchiveCore pins it with a test.
 
 ---
 
@@ -14,7 +26,7 @@
 
 Plan and decision record: `docs/MOBILE_PLAN.md` (supersedes `docs/IOS_PLAN.md`). Audit of the web
 app from a native client's view: `docs/MOBILE_ARCHITECTURE_AUDIT.md`. Contract:
-`docs/api/openapi.yaml` (66 paths, 38 schemas; `tests/unit/api-contract.test.ts` asserts every
+`docs/api/openapi.yaml` (66 paths, 39 schemas; `tests/unit/api-contract.test.ts` asserts every
 documented path/method exists as a route file).
 
 **Auth.** `lib/supabase/server.ts#createClient()` accepts `Authorization: Bearer <supabase access

@@ -22,6 +22,6 @@
 ## Native apps (docs/MOBILE_PLAN.md · one repo per platform · API-first)
 
 - [x] **M1a** — Mobile API contract: bearer auth in `createClient()`, `lib/loaders/*` shared by pages + new GET routes (/api/me, browse facets, listing, seller, saved, inbox, thread, order, settings, sell, checkout preview, boost, idv status, content, mobile config), `POST /api/profile`, JSON Connect/Identity links with `archive://` returns, `push_devices` + APNs sender, `docs/api/openapi.yaml` + contract test. Branch `feat/mobile-api`.
-- [ ] **M1b** — archive-ios foundation: repo, XcodeGen project, ArchiveCore package (DTOs, API client, formatters, `swift test`), auth (email · Apple · Google), tabs, Browse/Listing/Seller/Saved/Inbox/Thread/Notifications/Account/Sell-catalog screens wired to the API.
+- [x] **M1b** — archive-ios foundation: repo `aetiusgular/archive-ios`, XcodeGen project, ArchiveCore package (DTOs, API client, formatters, `swift test` on Linux + macOS), auth (email · Apple · Google), tabs, Browse/Listing/Seller/Saved/Inbox/Thread/Notifications/Account + settings/Sell-catalog screens wired to the API, CI. Open: first run on a simulator against `pnpm dev` (Xcode license + disk on the Mac).
 - [ ] **M2** — Money and selling on iOS: sell wizard + uploads, checkout via PaymentSheet, order actions, disputes, reviews, boosts, Connect/Identity web sessions, LC comments, follows, account deletion.
 - [ ] **M3** — Native value and release: APNs end to end, universal links, privacy manifest, TestFlight, `docs/RELEASE.md`; Android kickoff from the same contract.
