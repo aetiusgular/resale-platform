@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import AdminFrame, { stamp } from '../admin-frame'
 import ModerationActions from './moderation-actions'
 import { COLLUSION_REASON_LABEL } from '@/lib/trust/release-hold'
 import { formatCents } from '@/lib/fees'
@@ -40,20 +41,14 @@ function flagHint(f: Flag): string {
   return ''
 }
 
-function ago(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ' ' + new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-}
-
-const mono = (size: number, color = 'var(--color-ink)') =>
-  ({ fontFamily: 'var(--font-mono)', fontSize: `${size}px`, color } as const)
 
 export default async function ModerationConsolePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
-  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const { data: me } = await supabase.from('profiles').select('role, username').eq('id', user.id).single()
   if (me?.role !== 'admin') redirect('/')
+  const username = (me?.username as string) ?? ''
 
   const service = await createServiceClient()
 
@@ -139,176 +134,178 @@ export default async function ModerationConsolePage() {
   const listingCards = [...byListing.entries()]
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
-      <header style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', gap: '16px', padding: '0 40px' }}>
-        <Link href="/" style={{ font: '600 14px var(--font-ui)', color: 'var(--color-ink)', textDecoration: 'none' }}>←</Link>
-        <span style={{ font: '600 14px var(--font-ui)', color: 'var(--color-ink)' }}>Moderation console</span>
-        <Link href="/admin/queue" style={{ marginLeft: 'auto', ...mono(12, 'var(--color-ink-soft)'), textDecoration: 'none' }}>REVIEW QUEUE →</Link>
-      </header>
+    <AdminFrame username={username} section="moderation" title="Moderation." note={`${holds.length} HELD · ${authListings.length} AUTH · ${listingCards.length} FLAGGED · ${users.length} USERS`}>
 
-      <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '40px 40px 80px', display: 'flex', flexDirection: 'column', gap: '56px' }}>
-
-        {/* Held payouts (collusion) */}
-        <section>
-          <h2 style={{ ...mono(14), fontWeight: 700, letterSpacing: '0.08em', margin: '0 0 8px' }}>HELD PAYOUTS — {holds.length}</h2>
-          <p style={{ ...mono(11, 'var(--color-ink-soft)'), margin: '0 0 20px', maxWidth: '620px', lineHeight: 1.6 }}>
-            Collusion checks parked these transfers. Releasing pays the seller and clears the flag. (Refund/clawback for confirmed collusion is a separate flow.)
-          </p>
-          {holds.length === 0 ? (
-            <div style={mono(12, 'var(--color-ink-soft)')}>NO HELD PAYOUTS</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {holds.map((h) => {
-                const o = holdOrderById.get(h.order_id)
-                return (
-                  <div key={h.id} style={{ border: '1px solid var(--color-alert)', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-                      <Link href={`/orders/${h.order_id}`} style={{ ...mono(13), fontWeight: 700, textDecoration: 'none' }}>ORDER {h.order_id.slice(0, 8)}</Link>
-                      <span style={mono(12)}>{formatCents(o?.transfer_cents ?? 0)} payout</span>
-                      <span style={{ ...mono(11), marginLeft: 'auto', padding: '2px 8px', border: '1px solid var(--color-line)', borderRadius: '2px', textTransform: 'uppercase' }}>{o?.state ?? 'unknown'}</span>
-                    </div>
-                    <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div style={mono(11, 'var(--color-ink-soft)')}>
-                        buyer <Link href={`/sellers/${holdUserName.get(h.buyer_id) ?? ''}`} style={{ ...mono(11), textDecoration: 'none' }}>@{holdUserName.get(h.buyer_id) ?? '?'}</Link>
-                        {' · '}seller <Link href={`/sellers/${holdUserName.get(h.seller_id) ?? ''}`} style={{ ...mono(11), textDecoration: 'none' }}>@{holdUserName.get(h.seller_id) ?? '?'}</Link>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'baseline' }}>
-                        {h.reasons.map((r) => (
-                          <span key={r} style={{ ...mono(10, 'var(--color-bg)'), fontWeight: 700, padding: '2px 8px', borderRadius: '2px', background: 'var(--color-alert)' }}>
-                            {COLLUSION_REASON_LABEL[r] ?? r.toUpperCase()}
-                          </span>
-                        ))}
-                        <span style={{ ...mono(10, 'var(--color-ink-soft)'), marginLeft: 'auto' }}>{ago(h.created_at)}</span>
-                      </div>
-                    </div>
-                    <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-line)' }}>
-                      <ModerationActions targetType="order" targetId={h.order_id} actions={['release', 'refund']} />
+      {/* Held payouts (collusion) */}
+      <section>
+        <div className="sec-head"><span className="sec-head__label">HELD PAYOUTS — {holds.length}</span><span className="page-note">REAL MONEY PARKED · HIGHEST PRIORITY</span></div>
+        <p className="admin-note">
+          Collusion checks parked these transfers. Releasing pays the seller and clears the flag. Refund or clawback for confirmed collusion is a separate flow.
+        </p>
+        {holds.length === 0 ? (
+          <div className="admin-empty">NO HELD PAYOUTS</div>
+        ) : (
+          <div className="admin-list">
+            {holds.map((h) => {
+              const o = holdOrderById.get(h.order_id)
+              return (
+                <div key={h.id} className="admin-item admin-item--alert">
+                  <div className="admin-item__head">
+                    <span className="admin-item__title"><Link href={`/orders/${h.order_id}`}>ORDER {h.order_id.slice(0, 8).toUpperCase()}</Link></span>
+                    <span className="admin-item__meta" style={{ color: 'var(--ink)', fontWeight: 400 }}>{formatCents(o?.transfer_cents ?? 0)} PAYOUT</span>
+                    <span className="admin-item__meta">
+                      BUYER <Link href={`/sellers/${holdUserName.get(h.buyer_id) ?? ''}`}>@{holdUserName.get(h.buyer_id) ?? '?'}</Link>
+                      {' · '}SELLER <Link href={`/sellers/${holdUserName.get(h.seller_id) ?? ''}`}>@{holdUserName.get(h.seller_id) ?? '?'}</Link>
+                    </span>
+                    <div className="admin-item__right">
+                      <span className="tag">{(o?.state ?? 'unknown').toUpperCase()}</span>
+                      <span className="admin-item__meta">{stamp(h.created_at)}</span>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Authentication review (G5) */}
-        <section>
-          <h2 style={{ ...mono(14), fontWeight: 700, letterSpacing: '0.08em', margin: '0 0 20px' }}>AUTHENTICATION — {authListings.length}</h2>
-          {authListings.length === 0 ? (
-            <div style={mono(12, 'var(--color-ink-soft)')}>NO ITEMS AWAITING AUTHENTICATION</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {authListings.map((a) => (
-                <div key={a.id} style={{ border: '1px solid var(--color-line)', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-                    <Link href={`/listings/${a.id}`} style={{ ...mono(13), fontWeight: 700, textDecoration: 'none' }}>{a.title}</Link>
-                    <span style={mono(12, 'var(--color-ink-soft)')}>{a.brand}</span>
-                    <span style={mono(11, 'var(--color-ink-soft)')}>@{authSellerName.get(a.seller_id) ?? '?'}</span>
-                    <span style={{ ...mono(12), marginLeft: 'auto' }}>{formatCents(a.price_cents)}</span>
-                  </div>
-                  <div style={{ padding: '12px 20px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'baseline' }}>
-                    {(a.authentication_reasons ?? []).map((r) => (
-                      <span key={r} style={{ ...mono(10, 'var(--color-bg)'), fontWeight: 700, padding: '2px 8px', borderRadius: '2px', background: 'var(--color-ink-soft)' }}>
-                        {AUTH_REASON_LABEL[r] ?? r.toUpperCase()}
-                      </span>
-                    ))}
-                  </div>
-                  <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-line)' }}>
-                    <ModerationActions targetType="listing" targetId={a.id} actions={['authenticate', 'reject_auth']} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Flagged listings */}
-        <section>
-          <h2 style={{ ...mono(14), fontWeight: 700, letterSpacing: '0.08em', margin: '0 0 20px' }}>FLAGGED LISTINGS — {listingCards.length}</h2>
-          {listingCards.length === 0 ? (
-            <div style={mono(12, 'var(--color-ink-soft)')}>NO FLAGGED LISTINGS</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {listingCards.map(([listingId, lf]) => {
-                const l = listingsById.get(listingId)
-                const hasBlock = lf.some((f) => f.type === 'prohibited_block')
-                return (
-                  <div key={listingId} style={{ border: `1px solid ${hasBlock ? 'var(--color-alert)' : 'var(--color-line)'}`, borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-                      <Link href={`/listings/${listingId}`} style={{ ...mono(13), fontWeight: 700, textDecoration: 'none' }}>{l?.title ?? listingId.slice(0, 8)}</Link>
-                      <span style={mono(12, 'var(--color-ink-soft)')}>{l?.brand}</span>
-                      <span style={mono(11, 'var(--color-ink-soft)')}>@{l ? sellerName.get(l.seller_id) ?? '?' : '?'}</span>
-                      <span style={{ ...mono(11), marginLeft: 'auto', padding: '2px 8px', border: '1px solid var(--color-line)', borderRadius: '2px', textTransform: 'uppercase' }}>{l?.status ?? 'unknown'}</span>
-                    </div>
-                    <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {lf.map((f) => (
-                        <div key={f.id} style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-                          <span style={{ ...mono(10, 'var(--color-bg)'), fontWeight: 700, padding: '2px 8px', borderRadius: '2px', background: f.type === 'prohibited_block' ? 'var(--color-alert)' : 'var(--color-ink-soft)' }}>
-                            {FLAG_LABEL[f.type] ?? f.type.toUpperCase()}
-                          </span>
-                          <span style={mono(11, 'var(--color-ink-soft)')}>{flagHint(f)}</span>
-                          <span style={{ ...mono(10, 'var(--color-ink-soft)'), marginLeft: 'auto' }}>{ago(f.created_at)}</span>
-                        </div>
+                  <div className="admin-item__body">
+                    <div className="row row--wrap" style={{ gap: 6 }}>
+                      {h.reasons.map((r) => (
+                        <span key={r} className="tag tag--alert">{COLLUSION_REASON_LABEL[r] ?? r.toUpperCase()}</span>
                       ))}
                     </div>
-                    <div style={{ padding: '12px 20px', borderTop: '1px solid var(--color-line)' }}>
-                      <ModerationActions
-                        targetType="listing"
-                        targetId={listingId}
-                        actions={l?.status === 'removed' ? ['restore', 'dismiss'] : ['remove', 'dismiss']}
-                      />
+                  </div>
+                  <div className="admin-item__foot">
+                    <ModerationActions targetType="order" targetId={h.order_id} actions={['release', 'refund']} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Authentication review (G5) */}
+      <section>
+        <div className="sec-head"><span className="sec-head__label">AUTHENTICATION — {authListings.length}</span><span className="page-note">HIGH-VALUE OR FLAGGED · AWAITING A DECISION</span></div>
+        {authListings.length === 0 ? (
+          <div className="admin-empty">NO ITEMS AWAITING AUTHENTICATION</div>
+        ) : (
+          <div className="admin-list">
+            {authListings.map((a) => (
+              <div key={a.id} className="admin-item">
+                <div className="admin-item__head">
+                  <span className="admin-item__title"><Link href={`/listings/${a.id}`}>{a.title}</Link></span>
+                  <span className="admin-item__meta">{a.brand.toUpperCase()} · <Link href={`/sellers/${authSellerName.get(a.seller_id) ?? ''}`}>@{authSellerName.get(a.seller_id) ?? '?'}</Link></span>
+                  <div className="admin-item__right">
+                    {(a.authentication_reasons ?? []).map((r) => (
+                      <span key={r} className="tag">{AUTH_REASON_LABEL[r] ?? r.toUpperCase()}</span>
+                    ))}
+                    <span className="admin-item__meta" style={{ color: 'var(--ink)', fontWeight: 400 }}>{formatCents(a.price_cents)}</span>
+                  </div>
+                </div>
+                <div className="admin-item__foot">
+                  <ModerationActions targetType="listing" targetId={a.id} actions={['authenticate', 'reject_auth']} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Flagged listings */}
+      <section>
+        <div className="sec-head"><span className="sec-head__label">FLAGGED LISTINGS — {listingCards.length}</span><span className="page-note">NEWEST FLAG FIRST</span></div>
+        {listingCards.length === 0 ? (
+          <div className="admin-empty">NO FLAGGED LISTINGS</div>
+        ) : (
+          <div className="admin-list">
+            {listingCards.map(([listingId, lf]) => {
+              const l = listingsById.get(listingId)
+              const hasBlock = lf.some((f) => f.type === 'prohibited_block')
+              return (
+                <div key={listingId} className={`admin-item${hasBlock ? ' admin-item--alert' : ''}`}>
+                  <div className="admin-item__head">
+                    <span className="admin-item__title"><Link href={`/listings/${listingId}`}>{l?.title ?? listingId.slice(0, 8)}</Link></span>
+                    <span className="admin-item__meta">{l?.brand?.toUpperCase()}{l ? <> · <Link href={`/sellers/${sellerName.get(l.seller_id) ?? ''}`}>@{sellerName.get(l.seller_id) ?? '?'}</Link></> : null}</span>
+                    <div className="admin-item__right">
+                      <span className="tag">{(l?.status ?? 'unknown').toUpperCase()}</span>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Flagged / banned users */}
-        <section>
-          <h2 style={{ ...mono(14), fontWeight: 700, letterSpacing: '0.08em', margin: '0 0 20px' }}>USERS — {users.length}</h2>
-          {users.length === 0 ? (
-            <div style={mono(12, 'var(--color-ink-soft)')}>NO FLAGGED USERS</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {users.map((u) => (
-                <div key={u.id} style={{ border: `1px solid ${u.banned ? 'var(--color-alert)' : 'var(--color-line)'}`, borderRadius: '2px', padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-                    <Link href={`/sellers/${u.username}`} style={{ ...mono(13), fontWeight: 700, textDecoration: 'none' }}>@{u.username}</Link>
-                    {u.banned && <span style={{ ...mono(10, 'var(--color-bg)'), fontWeight: 700, padding: '2px 8px', borderRadius: '2px', background: 'var(--color-alert)' }}>BANNED</span>}
-                    {u.role === 'admin' && <span style={mono(10, 'var(--color-accent)')}>ADMIN</span>}
-                    <span style={{ ...mono(11, 'var(--color-ink-soft)'), marginLeft: 'auto' }}>{u.upheld_complaints} UPHELD COMPLAINT{u.upheld_complaints === 1 ? '' : 'S'}</span>
+                  <div className="admin-item__body">
+                    {lf.map((f) => (
+                      <div key={f.id} className="row row--wrap" style={{ gap: 10, padding: '4px 0' }}>
+                        <span className={`tag${f.type === 'prohibited_block' ? ' tag--alert' : ''}`}>{FLAG_LABEL[f.type] ?? f.type.toUpperCase()}</span>
+                        <span className="admin-item__meta grow">{flagHint(f)}</span>
+                        <span className="admin-item__meta">{stamp(f.created_at)}</span>
+                      </div>
+                    ))}
                   </div>
-                  {u.banned && u.banned_reason && <span style={mono(11, 'var(--color-ink-soft)')}>Reason: {u.banned_reason}</span>}
-                  {u.role !== 'admin' && (
-                    <ModerationActions targetType="user" targetId={u.id} actions={u.banned ? ['unban'] : ['ban']} />
-                  )}
+                  <div className="admin-item__foot">
+                    <ModerationActions
+                      targetType="listing"
+                      targetId={listingId}
+                      actions={l?.status === 'removed' ? ['restore', 'dismiss'] : ['remove', 'dismiss']}
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
-        {/* Audit log */}
-        <section>
-          <h2 style={{ ...mono(14), fontWeight: 700, letterSpacing: '0.08em', margin: '0 0 20px' }}>RECENT ACTIONS — {audit.length}</h2>
-          {audit.length === 0 ? (
-            <div style={mono(12, 'var(--color-ink-soft)')}>NO ACTIONS YET</div>
-          ) : (
-            <div style={{ border: '1px solid var(--color-line)', borderRadius: '2px' }}>
-              {audit.map((a, i) => (
-                <div key={a.id} style={{ padding: '10px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--color-line)', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
-                  <span style={{ ...mono(11, 'var(--color-ink)'), fontWeight: 700, textTransform: 'uppercase' }}>{a.action}</span>
-                  <span style={mono(11, 'var(--color-ink-soft)')}>{a.target_type} {a.target_id.slice(0, 8)}</span>
-                  {a.reason && <span style={mono(11, 'var(--color-ink-soft)')}>“{a.reason}”</span>}
-                  <span style={{ ...mono(10, 'var(--color-ink-soft)'), marginLeft: 'auto' }}>@{a.actor_id ? actorName.get(a.actor_id) ?? '?' : 'system'} · {ago(a.created_at)}</span>
+      {/* Flagged / banned users */}
+      <section>
+        <div className="sec-head"><span className="sec-head__label">USERS — {users.length}</span><span className="page-note">BANNED OR WITH UPHELD COMPLAINTS</span></div>
+        {users.length === 0 ? (
+          <div className="admin-empty">NO FLAGGED USERS</div>
+        ) : (
+          <div className="admin-list">
+            {users.map((u) => (
+              <div key={u.id} className={`admin-item${u.banned ? ' admin-item--alert' : ''}`}>
+                <div className="admin-item__head">
+                  <span className="admin-item__title"><Link href={`/sellers/${u.username}`}>@{u.username}</Link></span>
+                  {u.banned && <span className="tag tag--alert">BANNED</span>}
+                  {u.role === 'admin' && <span className="tag tag--ink">ADMIN</span>}
+                  <div className="admin-item__right">
+                    <span className="admin-item__meta">{u.upheld_complaints} UPHELD COMPLAINT{u.upheld_complaints === 1 ? '' : 'S'}</span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    </div>
+                {u.banned && u.banned_reason && (
+                  <div className="admin-item__body"><span className="admin-item__meta">REASON: {u.banned_reason}</span></div>
+                )}
+                {u.role !== 'admin' && (
+                  <div className="admin-item__foot">
+                    <ModerationActions targetType="user" targetId={u.id} actions={u.banned ? ['unban'] : ['ban']} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Audit log */}
+      <section>
+        <div className="sec-head"><span className="sec-head__label">RECENT ACTIONS — {audit.length}</span><span className="page-note">APPEND-ONLY AUDIT LOG · LAST 50</span></div>
+        {audit.length === 0 ? (
+          <div className="admin-empty">NO ACTIONS YET</div>
+        ) : (
+          <div style={{ overflowX: 'auto', paddingTop: 8 }}>
+            <table className="admin-table">
+              <thead>
+                <tr><th>ACTION</th><th>TARGET</th><th>REASON</th><th>BY</th><th>WHEN</th></tr>
+              </thead>
+              <tbody>
+                {audit.map((a) => (
+                  <tr key={a.id}>
+                    <td style={{ color: 'var(--ink)', fontWeight: 400 }}>{a.action.toUpperCase()}</td>
+                    <td>{a.target_type.toUpperCase()} {a.target_id.slice(0, 8)}</td>
+                    <td className="is-sans">{a.reason ? `“${a.reason}”` : '—'}</td>
+                    <td>@{a.actor_id ? actorName.get(a.actor_id) ?? '?' : 'system'}</td>
+                    <td>{stamp(a.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </AdminFrame>
   )
 }

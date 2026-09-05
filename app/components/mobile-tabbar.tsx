@@ -1,202 +1,60 @@
 'use client'
 
+/**
+ * Mobile tab bar (≤767px): BROWSE · SAVED · SELL · MESSAGES · ACCOUNT.
+ * `auth` tabs require a session — for a guest they open the sign-in popup
+ * instead of navigating. Hidden on desktop via the .mobile-only utility.
+ */
 import PrefetchLink from './prefetch-link'
 import { usePathname } from 'next/navigation'
 import { useAuthModal } from './auth-modal-provider'
+import { GridIcon, BookmarkIcon, SellIcon, ChatIcon, UserIcon } from './icons'
 
 interface Props {
-  /** Empty string ⇒ signed-out visitor: Sell / Messages / Profile open the popup. */
+  /** Empty string ⇒ signed-out visitor: Saved / Sell / Messages / Account open the popup. */
   username: string
   hasUnread?: boolean
 }
 
 export default function MobileTabBar({ username, hasUnread }: Props) {
-  const pathname = usePathname()
+  const pathname = usePathname() ?? ''
   const { openAuthModal } = useAuthModal()
   const isGuest = !username
 
-  // `auth: true` tabs require a session — for a guest they open the sign-in popup
-  // instead of navigating. Feed/Discover are the public browse feed either way.
   const tabs = [
-    { label: 'FEED', href: '/browse', icon: feedIcon, match: (p: string) => p === '/' || p === '/browse', auth: false },
-    { label: 'DISCOVER', href: '/browse', icon: discoverIcon, match: (p: string) => p.startsWith('/browse'), auth: false },
-    { label: 'SELL', href: '/sell', icon: sellIcon, match: (p: string) => p.startsWith('/sell'), auth: true },
-    { label: 'MESSAGES', href: '/messages', icon: messagesIcon, match: (p: string) => p.startsWith('/messages'), auth: true },
-    { label: 'PROFILE', href: username ? `/sellers/${username}` : '/settings', icon: profileIcon, match: (p: string) => p === `/sellers/${username}`, auth: true },
+    { label: 'BROWSE', href: '/browse', icon: <GridIcon />, match: (p: string) => p === '/' || p.startsWith('/browse') || p.startsWith('/listings'), auth: false },
+    { label: 'SAVED', href: '/saved', icon: <BookmarkIcon />, match: (p: string) => p.startsWith('/saved'), auth: true },
+    { label: 'SELL', href: '/sell', icon: <SellIcon />, match: (p: string) => p.startsWith('/sell'), auth: true },
+    { label: 'MESSAGES', href: '/messages', icon: <ChatIcon />, match: (p: string) => p.startsWith('/messages'), auth: true },
+    { label: 'ACCOUNT', href: '/settings', icon: <UserIcon />, match: (p: string) => p.startsWith('/settings') || p.startsWith('/orders'), auth: true },
   ]
 
-  const tabInner = (tab: (typeof tabs)[number], active: boolean, color: string) => (
-    <>
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke={color}
-        strokeWidth={active ? '2' : '1.5'}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        {tab.icon(active)}
-      </svg>
-      {tab.label === 'MESSAGES' && hasUnread && (
-        <span
-          style={{
-            position: 'absolute',
-            top: '6px',
-            right: 'calc(50% - 14px)',
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: 'var(--color-accent)',
-          }}
-        />
-      )}
-      <span
-        style={{
-          fontFamily: 'var(--font-ui)',
-          fontSize: '10px',
-          fontWeight: active ? 600 : 400,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color,
-          lineHeight: 1,
-        }}
-      >
-        {tab.label}
-      </span>
-    </>
-  )
-
-  const tabStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '2px',
-    flex: 1,
-    height: '56px',
-    textDecoration: 'none',
-    position: 'relative',
-    background: 'none',
-    border: 'none',
-    padding: 0,
-    cursor: 'pointer',
-  }
-
   return (
-    <nav
-      data-testid="mobile-tabbar"
-      className="mobile-only"
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '56px',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        background: 'var(--color-bg)',
-        borderTop: '1px solid var(--color-line)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        zIndex: 100,
-      }}
-    >
+    <nav data-testid="mobile-tabbar" className="tabbar mobile-only" aria-label="Primary">
       {tabs.map((tab) => {
         const active = tab.match(pathname)
-        const color = active ? 'var(--color-ink)' : 'var(--color-ink-soft)'
+        const cls = `tabbar__btn${active ? ' is-active' : ''}`
         const testId = `tab-${tab.label.toLowerCase()}`
-
-        // Guest + auth-required tab → open the popup instead of navigating.
+        const inner = (
+          <>
+            {tab.icon}
+            {tab.label === 'MESSAGES' && hasUnread && <span className="tabbar__dot" />}
+            <span className="tabbar__label">{tab.label}</span>
+          </>
+        )
         if (isGuest && tab.auth) {
           return (
-            <button
-              key={tab.label}
-              type="button"
-              onClick={() => openAuthModal(tab.href)}
-              data-testid={testId}
-              style={tabStyle}
-            >
-              {tabInner(tab, active, color)}
+            <button key={tab.label} type="button" className={cls} onClick={() => openAuthModal(tab.href)} data-testid={testId}>
+              {inner}
             </button>
           )
         }
-
         return (
-          <PrefetchLink
-            key={tab.label}
-            href={tab.href}
-            data-testid={testId}
-            style={tabStyle}
-          >
-            {tabInner(tab, active, color)}
+          <PrefetchLink key={tab.label} href={tab.href} className={cls} data-testid={testId}>
+            {inner}
           </PrefetchLink>
         )
       })}
     </nav>
-  )
-}
-
-/* Simple 20px line icons — inline SVG paths, no icon library */
-
-function feedIcon(active: boolean) {
-  // Grid/home icon
-  return active ? (
-    <>
-      <rect x="3" y="3" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-      <rect x="11" y="3" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-      <rect x="3" y="11" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-      <rect x="11" y="11" width="6" height="6" fill="var(--color-ink)" stroke="var(--color-ink)" />
-    </>
-  ) : (
-    <>
-      <rect x="3" y="3" width="6" height="6" />
-      <rect x="11" y="3" width="6" height="6" />
-      <rect x="3" y="11" width="6" height="6" />
-      <rect x="11" y="11" width="6" height="6" />
-    </>
-  )
-}
-
-function discoverIcon(active: boolean) {
-  // Search/compass icon
-  return (
-    <>
-      <circle cx="9" cy="9" r="5" fill={active ? 'var(--color-ink)' : 'none'} />
-      <line x1="13" y1="13" x2="17" y2="17" />
-    </>
-  )
-}
-
-function sellIcon(active: boolean) {
-  // Plus icon
-  return (
-    <>
-      <circle cx="10" cy="10" r="7" fill={active ? 'var(--color-ink)' : 'none'} />
-      <line x1="10" y1="7" x2="10" y2="13" stroke={active ? 'var(--color-bg)' : undefined} />
-      <line x1="7" y1="10" x2="13" y2="10" stroke={active ? 'var(--color-bg)' : undefined} />
-    </>
-  )
-}
-
-function messagesIcon(active: boolean) {
-  // Chat bubble icon
-  return (
-    <path
-      d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8l-4 3V5a1 1 0 0 1 1-1z"
-      fill={active ? 'var(--color-ink)' : 'none'}
-    />
-  )
-}
-
-function profileIcon(active: boolean) {
-  // Person icon
-  return (
-    <>
-      <circle cx="10" cy="7" r="3" fill={active ? 'var(--color-ink)' : 'none'} />
-      <path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" fill={active ? 'var(--color-ink)' : 'none'} />
-    </>
   )
 }

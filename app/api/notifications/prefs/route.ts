@@ -1,13 +1,23 @@
 /**
- * PUT /api/notifications/prefs { email_offers, push_offers, email_orders, push_orders,
- * email_messages, push_messages } — upsert the caller's channel preferences.
+ * PUT /api/notifications/prefs { email_<bucket>, push_<bucket>, … } — upsert the caller's
+ * per-event channel preferences (Settings → NOTIFICATIONS: offers, offer result, messages,
+ * sold, price drops, search alerts, orders; `alerts` = platform notices, no UI row).
  * Behind NOTIFICATIONS_ENABLED. RLS (notification_prefs_rw_own) scopes to the caller.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
 
-const KEYS = ['email_offers', 'push_offers', 'email_orders', 'push_orders', 'email_messages', 'push_messages', 'email_alerts', 'push_alerts'] as const
+const KEYS = [
+  'email_offers', 'push_offers',
+  'email_offer_result', 'push_offer_result',
+  'email_messages', 'push_messages',
+  'email_sold', 'push_sold',
+  'email_price_drops', 'push_price_drops',
+  'email_search_alerts', 'push_search_alerts',
+  'email_orders', 'push_orders',
+  'email_alerts', 'push_alerts',
+] as const
 
 export async function PUT(req: NextRequest) {
   if (!NOTIFICATIONS_ENABLED) return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -1,49 +1,48 @@
 /**
  * /listings/[id] loading skeleton — the hottest navigation on the site
- * (browse card → detail). Paints header + gallery/right-rail layout instantly.
+ * (browse card → detail). Paints header + gallery / placard layout instantly.
  */
 import { SiteHeaderGhost, Ghost, TabBarGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
+    <div className="app-shell has-tabbar">
       <SiteHeaderGhost />
-
-      <div className="listing-detail-inner" style={{ maxWidth: '1280px', margin: '0 auto', padding: '40px 80px 64px' }}>
-        <div className="listing-detail-grid" style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '48px', alignItems: 'start' }}>
-          {/* LEFT: gallery */}
-          <div>
-            <div className="skeleton" style={{ aspectRatio: '3/4' }} />
-            <div className="listing-thumbnails" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginTop: '16px' }}>
+      <div className="pdp-page">
+        <div className="pdp" aria-hidden="true">
+          <div className="pdp__left">
+            <Ghost style={{ height: 9, width: 180, marginBottom: 14 }} />
+            <div className="skeleton" style={{ aspectRatio: '3 / 4', width: '100%' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginTop: 10 }}>
               {Array.from({ length: 6 }, (_, i) => (
-                <Ghost key={i} style={{ aspectRatio: '3/4' }} />
+                <Ghost key={i} style={{ aspectRatio: '3 / 4' }} />
               ))}
             </div>
           </div>
-
-          {/* RIGHT: details rail */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Ghost style={{ height: '12px', width: '96px' }} />
-            <Ghost style={{ height: '28px', width: '80%' }} />
-            <Ghost style={{ height: '16px', width: '40%' }} />
-            <Ghost style={{ height: '22px', width: '96px' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-              <Ghost style={{ height: '44px', width: '100%' }} />
-              <Ghost style={{ height: '44px', width: '100%' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '24px' }}>
-              <Ghost style={{ height: '13px', width: '100%' }} />
-              <Ghost style={{ height: '13px', width: '92%' }} />
-              <Ghost style={{ height: '13px', width: '64%' }} />
-            </div>
-            <div style={{ borderTop: '1px solid var(--color-line)', marginTop: '24px', paddingTop: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <Ghost style={{ height: '12px', width: '128px' }} />
-              <Ghost style={{ height: '12px', width: '96px' }} />
+          <div className="pdp__right">
+            <Ghost style={{ height: 8, width: 150 }} />
+            <Ghost style={{ height: 10, width: 90, marginTop: 22 }} />
+            <Ghost style={{ height: 26, width: '85%', marginTop: 10 }} />
+            <Ghost style={{ height: 9, width: '55%', marginTop: 10 }} />
+            <Ghost style={{ height: 22, width: 110, marginTop: 22 }} />
+            <Ghost style={{ height: 8, width: 200, marginTop: 8 }} />
+            <Ghost style={{ height: 40, width: '100%', marginTop: 22 }} />
+            <Ghost style={{ height: 40, width: '100%', marginTop: 8 }} />
+            <Ghost style={{ height: 11, width: '100%', marginTop: 26 }} />
+            <Ghost style={{ height: 11, width: '92%', marginTop: 8 }} />
+            <Ghost style={{ height: 11, width: '64%', marginTop: 8 }} />
+            <div style={{ borderTop: '1px solid var(--line)', marginTop: 24, paddingTop: 16 }}>
+              <div className="row" style={{ gap: 10 }}>
+                <Ghost style={{ width: 40, height: 40, flexShrink: 0 }} />
+                <div className="grow">
+                  <Ghost style={{ height: 11, width: 110 }} />
+                  <Ghost style={{ height: 8, width: 150, marginTop: 8 }} />
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
       <TabBarGhost />
     </div>
   )

@@ -59,25 +59,11 @@ export default function RecommendModeratorButton({
   const disabled = loading || recommended || promoted
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-      <button
-        onClick={submit}
-        disabled={disabled}
-        aria-pressed={recommended}
-        style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          height: 44, padding: '0 20px', borderRadius: 2,
-          cursor: disabled ? 'default' : 'pointer',
-          background: 'var(--color-bg)', color: 'var(--color-ink)',
-          border: '1px solid var(--color-ink)', font: '500 13px var(--font-ui)',
-          opacity: loading ? 0.6 : 1, whiteSpace: 'nowrap',
-        }}
-      >
-        {label}
+    <span className="stack" style={{ alignItems: 'flex-end', gap: 4 }}>
+      <button type="button" className={`btn-follow${recommended || promoted ? ' is-on' : ''}`} onClick={submit} disabled={disabled} aria-pressed={recommended}>
+        {label.toUpperCase()}
       </button>
-      {error && (
-        <span style={{ fontSize: '11px', color: 'var(--color-alert)' }}>{error}</span>
-      )}
-    </div>
+      {error && <span className="alert-line" style={{ paddingTop: 2 }}>{error.toUpperCase()}</span>}
+    </span>
   )
 }

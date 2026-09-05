@@ -12,46 +12,28 @@ export default function VerifyActions({ enabled, verified }: { enabled: boolean;
 
   if (verified) {
     return (
-      <div style={{ marginTop: '24px', maxWidth: '480px', margin: '24px auto 0', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 20px', border: '1px solid var(--color-accent)', borderRadius: '2px', color: 'var(--color-accent)', font: '500 14px var(--font-ui)' }}>
-          ✓ Verified
-        </div>
-        <button
-          onClick={() => router.push('/')}
-          style={{ font: '500 13px var(--font-ui)', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-        >
-          continue
-        </button>
-      </div>
+      <>
+        <button type="button" className="btn-primary" onClick={() => router.push('/onboarding/setup')}>CONTINUE →</button>
+        <div className="auth-form__hint">NEXT: YOUR SIZES AND WHAT YOU COLLECT</div>
+      </>
     )
   }
 
   return (
-    <div style={{ marginTop: '24px', maxWidth: '480px', margin: '24px auto 0', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
+    <>
       <button
+        type="button"
+        className="btn-primary"
         disabled={!enabled}
         onClick={() => { if (enabled) window.location.href = '/api/idv/start' }}
-        title={!enabled ? 'coming in beta' : undefined}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%',
-          background: enabled ? 'var(--color-ink)' : 'var(--color-line)',
-          color: enabled ? 'var(--color-bg)' : 'var(--color-ink-soft)',
-          border: `1px solid ${enabled ? 'var(--color-ink)' : 'var(--color-line)'}`,
-          borderRadius: '2px', font: '500 14px var(--font-ui)', letterSpacing: '-0.01em',
-          cursor: enabled ? 'pointer' : 'not-allowed',
-        }}
+        title={!enabled ? 'Coming in beta' : undefined}
       >
-        Verify now
-        {!enabled && (
-          <span style={{ marginLeft: '8px', fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>· COMING IN BETA</span>
-        )}
+        {enabled ? 'VERIFY NOW →' : 'VERIFY NOW · COMING IN BETA'}
       </button>
-      <button
-        onClick={() => router.push('/onboarding/setup')}
-        style={{ font: '500 13px var(--font-ui)', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-      >
-        skip for now — browse only
+      <button type="button" className="btn-ghost" style={{ marginTop: 6 }} onClick={() => router.push('/onboarding/setup')} data-testid="verify-skip">
+        SKIP FOR NOW — BROWSE AND BUY
       </button>
-    </div>
+      <div className="auth-form__hint">YOU CAN VERIFY LATER FROM SETTINGS BEFORE YOUR FIRST LISTING</div>
+    </>
   )
 }

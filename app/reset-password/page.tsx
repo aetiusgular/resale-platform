@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/browser'
+import { AuthPage } from '@/app/components/auth-frame'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -41,62 +42,35 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100svh', boxSizing: 'border-box', padding: '0 24px 40px' }}>
-      <div style={{ padding: '40px 0 0', textAlign: 'center' }}>
-        <span style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
-        <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
-          SET A NEW PASSWORD
-        </div>
-      </div>
-
+    <AuthPage cta={{ href: '/enter/login', label: 'BACK TO SIGN IN →' }}>
+      <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>SET A NEW PASSWORD</div>
       {ready === null ? (
-        <div style={{ marginTop: '48px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)' }}>LOADING…</div>
+        <div className="mono-note">LOADING…</div>
       ) : ready === false ? (
-        <div style={{ maxWidth: '480px', margin: '40px auto 0', display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center' }}>
-          <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--color-ink)' }}>
-            This reset link is invalid or has expired.
-          </p>
-          <Link href="/enter/forgot" style={{ fontSize: '13px', color: 'var(--color-ink)', textDecoration: 'underline' }}>
-            request a new link
-          </Link>
-        </div>
+        <>
+          <h1 className="auth-form__title">This link has expired.</h1>
+          <p className="auth-form__sub">Reset links are single-use and time-limited. Request a fresh one and open it on this device.</p>
+          <Link href="/enter/forgot" className="btn-primary" style={{ marginTop: 0 }}>REQUEST A NEW LINK →</Link>
+        </>
       ) : done ? (
-        <div style={{ marginTop: '48px', textAlign: 'center', fontSize: '14px', color: 'var(--color-ink)' }}>
-          Password updated — taking you in…
-        </div>
+        <>
+          <h1 className="auth-form__title">Password updated.</h1>
+          <p className="auth-form__sub">Taking you in…</p>
+        </>
       ) : (
-        <form onSubmit={handleSubmit} style={{ maxWidth: '480px', margin: '40px auto 0', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <FloatingInput label="New password" type="password" value={password}
-            onChange={(v) => { setPassword(v); setError(null) }} autoComplete="new-password" />
-          <FloatingInput label="Confirm password" type="password" value={confirm}
-            onChange={(v) => { setConfirm(v); setError(null) }} autoComplete="new-password" />
-          {error && <div style={{ fontSize: '14px', color: 'var(--color-alert)' }}>{error}</div>}
-          <button type="submit" disabled={loading || !password || !confirm}
-            style={{ height: '44px', border: 'none', borderRadius: '2px', background: 'var(--color-ink)',
-              color: 'var(--color-bg)', font: '500 15px var(--font-ui)', cursor: loading ? 'wait' : 'pointer',
-              opacity: loading || !password || !confirm ? 0.6 : 1 }}>
-            {loading ? 'Saving…' : 'Set password'}
+        <form onSubmit={handleSubmit}>
+          <h1 className="auth-form__title" style={{ paddingBottom: 20 }}>Choose a new password.</h1>
+          <label className="field-label" htmlFor="reset-password">NEW PASSWORD</label>
+          <input id="reset-password" className="input-mono" type="password" placeholder="Min 8 characters" autoComplete="new-password" value={password} onChange={(e) => { setPassword(e.target.value); setError(null) }} />
+          <label className="field-label" htmlFor="reset-confirm" style={{ paddingTop: 16, display: 'block' }}>CONFIRM PASSWORD</label>
+          <input id="reset-confirm" className="input-mono" type="password" placeholder="Same again" autoComplete="new-password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(null) }} />
+          <div className="auth-form__hint">MIN 8 CHARACTERS</div>
+          {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
+          <button type="submit" className="btn-primary" disabled={loading || !password || !confirm}>
+            {loading ? 'SAVING…' : 'SET PASSWORD →'}
           </button>
         </form>
       )}
-    </div>
-  )
-}
-
-function FloatingInput({ label, type, value, onChange, autoComplete }: {
-  label: string; type: string; value: string; onChange: (v: string) => void; autoComplete?: string
-}) {
-  return (
-    <div style={{ position: 'relative', height: '44px', border: '1px solid var(--color-line)',
-      borderRadius: '2px', display: 'flex', alignItems: 'center', padding: '0 12px', boxSizing: 'border-box' }}>
-      <span style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)',
-        padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em',
-        textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>
-        {label}
-      </span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete}
-        style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent',
-          fontFamily: 'var(--font-ui)', fontSize: '14px', color: 'var(--color-ink)' }} />
-    </div>
+    </AuthPage>
   )
 }

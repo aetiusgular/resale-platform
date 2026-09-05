@@ -3,11 +3,13 @@
  * Counter an open offer: marks the existing offer as 'countered' and creates
  * a new open offer with the counter amount. Only the RECIPIENT may counter.
  */
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { canRespond } from '@/lib/offers'
 import type { Offer, Conversation } from '@/lib/offers'
+import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { notify } from '@/lib/notify'
 
 interface RouteContext {
   params: Promise<{ id: string; offerId: string }>
@@ -83,6 +85,26 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     await service.from('offers').update({ state: 'open' }).eq('id', offerId)
     console.error('[offers/counter] insert error:', insertErr)
     return NextResponse.json({ error: 'Failed to create counter-offer' }, { status: 500 })
+  }
+
+  // "Counter received — $x" to the other party (OFFER RESULT bucket, design 14A).
+  if (NOTIFICATIONS_ENABLED) {
+    const recipientId = conv.buyer_id === user.id ? conv.seller_id : conv.buyer_id
+    after(async () => {
+      const [{ data: actor }, { data: l }] = await Promise.all([
+        service.from('profiles').select('username').eq('id', user.id).single(),
+        service.from('listings').select('title, brand').eq('id', conv.listing_id).single(),
+      ])
+      await notify(service, recipientId, 'offer_countered', {
+        actorName: (actor as { username?: string } | null)?.username,
+        itemTitle: (l as { title?: string } | null)?.title,
+        brand: (l as { brand?: string } | null)?.brand,
+        amountCents,
+        oldAmountCents: offer.amount_cents,
+        conversationId,
+        offerId: newOffer.id,
+      })
+    })
   }
 
   return NextResponse.json({ offer: newOffer }, { status: 201 })

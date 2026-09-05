@@ -25,8 +25,9 @@ const ENDPOINT: Record<Action, string> = {
 }
 const NEEDS_REASON: Action[] = ['remove', 'ban', 'dismiss', 'release', 'refund', 'reject_auth']
 const DESTRUCTIVE: Action[] = ['remove', 'ban', 'refund', 'reject_auth']
+const AFFIRMATIVE: Action[] = ['restore', 'unban', 'release', 'authenticate']
 const LABEL: Record<Action, string> = {
-  remove: 'Remove', restore: 'Restore', dismiss: 'Dismiss', ban: 'Ban', unban: 'Unban', release: 'Release payout', refund: 'Refund buyer', authenticate: 'Authenticate', reject_auth: 'Reject',
+  remove: 'REMOVE', restore: 'RESTORE', dismiss: 'DISMISS', ban: 'BAN', unban: 'UNBAN', release: 'RELEASE PAYOUT', refund: 'REFUND BUYER', authenticate: 'AUTHENTICATE', reject_auth: 'REJECT',
 }
 
 export default function ModerationActions({
@@ -70,40 +71,38 @@ export default function ModerationActions({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="stack" style={{ gap: 10 }}>
       {needsReason && (
         <input
           type="text"
+          className="input-sans"
+          style={{ maxWidth: 520 }}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason (required for remove / ban / dismiss — logged to the audit trail)"
-          style={{ height: '40px', border: '1px solid var(--color-line)', borderRadius: '2px', padding: '0 12px', fontSize: '13px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none', maxWidth: '560px' }}
+          placeholder="Reason — required for remove / ban / dismiss; logged to the audit trail"
+          aria-label="Reason"
         />
       )}
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <div className="admin-actions">
         {actions.map((a) => {
           const destructive = DESTRUCTIVE.includes(a)
+          const affirmative = AFFIRMATIVE.includes(a)
           return (
             <button
               key={a}
+              type="button"
+              className={`btn-mini ${affirmative ? 'btn-mini--solid' : 'btn-mini--outline'}`}
+              style={destructive ? { color: 'var(--alert)', borderColor: 'var(--alert)' } : undefined}
               onClick={() => run(a)}
               disabled={loading !== null}
-              style={{
-                height: '36px', padding: '0 20px', borderRadius: '2px',
-                cursor: loading ? 'wait' : 'pointer',
-                font: '500 13px var(--font-ui)',
-                background: destructive ? 'var(--color-bg)' : a === 'restore' || a === 'unban' || a === 'release' || a === 'authenticate' ? 'var(--color-ink)' : 'var(--color-bg)',
-                color: destructive ? 'var(--color-alert)' : a === 'restore' || a === 'unban' || a === 'release' || a === 'authenticate' ? 'var(--color-bg)' : 'var(--color-ink)',
-                border: `1px solid ${destructive ? 'var(--color-alert)' : 'var(--color-ink)'}`,
-                opacity: loading === a ? 0.6 : 1,
-              }}
+              data-testid={`mod-${a}`}
             >
               {loading === a ? '…' : LABEL[a]}
             </button>
           )
         })}
       </div>
-      {error && <span style={{ fontSize: '12px', color: 'var(--color-alert)' }}>{error}</span>}
+      {error && <div className="alert-line" role="alert" style={{ paddingTop: 0 }}>{error.toUpperCase()}</div>}
     </div>
   )
 }

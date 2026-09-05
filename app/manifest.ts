@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: SITE_TAGLINE,
     start_url: '/browse',
     display: 'standalone',
-    background_color: '#131210',
-    theme_color: '#131210',
+    background_color: '#f5f5f3',
+    theme_color: '#f5f5f3',
     icons: [
       { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' },
       { src: '/apple-icon', sizes: '180x180', type: 'image/png' },

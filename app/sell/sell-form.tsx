@@ -1,34 +1,58 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import Link from 'next/link'
+/**
+ * Create-listing wizard (reference WizardView): steps rail on the left (01 PHOTOS
+ * · 02 DETAILS · 03 MEASUREMENTS · 04 PRICING · 05 REVIEW with live meta), one
+ * long form on the right. The draft auto-saves as the seller types
+ * (POST /api/listings/drafts once, then debounced PATCH /api/listings/[id]);
+ * PUBLISH LISTING → posts the full listing to /api/listings (anti-slop, pHash,
+ * prohibited scan) with `draft_id` so the draft is consumed. `mode: 'edit'`
+ * re-opens a published listing: copy, price, measurements and taxonomy are
+ * editable, photos are locked (hashed at publish time).
+ */
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { createBrowserClient } from '@supabase/ssr'
-import { sellerFeeAt, formatCents, welcomeSellerFeeCents, WELCOME_SALES } from '@/lib/fees'
+import { sellerFeeAt, formatCents, welcomeSellerFeeCents, FEE_TIERS } from '@/lib/fees'
 import { floorShippingCents } from '@/lib/shipping'
-import {
-  CONDITION_DEFINITIONS,
-  PHOTO_SLOTS,
-  DAMAGE_FLAGS,
-  type DamageFlag,
-} from '@/lib/condition'
+import { fmtRate } from '@/lib/tier-dashboard'
+import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
+import { CATEGORY_TREE, COLORS, DEPARTMENTS, measurementLabelsFor } from '@/lib/taxonomy'
+import { sizeScaleFor } from '@/lib/sizes'
+import { PlusIcon, XIcon } from '@/app/components/icons'
 
-const CATEGORIES = [
-  'Outerwear', 'Tops', 'Bottoms', 'Footwear', 'Accessories',
-  'Knitwear', 'Denim', 'Tailoring', 'Sportswear', 'Other',
-]
+const SLOT_LABELS: Record<string, string> = {
+  FRONT: 'FRONT', BACK: 'BACK', TAG: 'TAG', DETAIL: 'DETAIL', FLAW: 'FLAW', POSSESSION: 'POSSESSION',
+}
+const WIZARD_STEPS = ['01 PHOTOS', '02 DETAILS', '03 MEASUREMENTS', '04 PRICING', '05 REVIEW']
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
-const SIZES = [
-  'XS', 'S', 'M', 'L', 'XL', 'XXL',
-  'XS / 44', 'S / 46', 'M / 48', 'L / 50', 'XL / 52', 'XXL / 54',
-  'UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10', 'UK 11', 'UK 12',
-  'US 6', 'US 7', 'US 8', 'US 9', 'US 10', 'US 11', 'US 12',
-  'One Size',
-]
+export interface ListingInitial {
+  id: string
+  status: string
+  title: string | null
+  brand: string | null
+  category: string | null
+  department: string | null
+  subcategory: string | null
+  size: string | null
+  color: string | null
+  description: string | null
+  condition_score: number | null
+  price_cents: number | null
+  images: string[]
+  possession_photo_url: string | null
+  measurements: Record<string, number>
+}
 
 interface SellFormProps {
   userId: string
   sellerBps: number
   welcomeSalesRemaining?: number
+  /** Existing row: a draft to continue, or a published listing to edit. */
+  initial?: ListingInitial | null
+  mode?: 'new' | 'edit'
 }
 
 type SlotUploading = { [key: string]: boolean }
@@ -59,11 +83,28 @@ async function resizeToJpeg(file: File, maxPx = 2000): Promise<Blob> {
   })
 }
 
-export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 }: SellFormProps) {
-  // Draft ID — stable for this session; used as storage path prefix
-  const draftId = useRef(
-    typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+function SectionLabel({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+  return (
+    <div className="review-label" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+      <span>{children}</span>
+      {right && <em>{right}</em>}
+    </div>
   )
+}
+
+function useFlash(): [boolean, () => void] {
+  const [on, setOn] = useState(false)
+  return [on, () => { setOn(true); window.setTimeout(() => setOn(false), 1400) }]
+}
+
+/** Category select value: "menswear|Tops|Short-sleeve tees" — dept / category / subcategory. */
+const catValue = (dept: string, cat: string, sub: string) => [dept, cat, sub].join('|')
+
+export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0, initial = null, mode = 'new' }: SellFormProps) {
+  const router = useRouter()
+  const isEdit = mode === 'edit'
+  // Storage path prefix: the row id when we have one, else a session id.
+  const pathId = useRef(initial?.id ?? (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2)))
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -71,44 +112,112 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 
   )
 
   // ── form state ──────────────────────────────────────────────────────────────
-  const [slotUrls, setSlotUrls]         = useState<SlotUrls>({})
+  const initialSlots: SlotUrls = {}
+  if (initial) {
+    PHOTO_SLOTS.forEach((slot, i) => { const u = initial.images[i]; if (u) initialSlots[slot] = u })
+    if (initial.possession_photo_url) initialSlots.POSSESSION = initial.possession_photo_url
+  }
+  const [slotUrls, setSlotUrls]         = useState<SlotUrls>(initialSlots)
   const [uploading, setUploading]       = useState<SlotUploading>({})
   const [uploadErrors, setUploadErrors] = useState<SlotErrors>({})
 
-  const [brand, setBrand]             = useState('')
-  const [category, setCategory]       = useState('')
-  const [size, setSize]               = useState('')
-  const [title, setTitle]             = useState('')
-  const [description, setDescription] = useState('')
+  const [title, setTitle]             = useState(initial?.title ?? '')
+  const [brand, setBrand]             = useState(initial?.brand ?? '')
+  const [department, setDepartment]   = useState(initial?.department ?? 'menswear')
+  const [category, setCategory]       = useState(initial?.category ?? '')
+  const [subcategory, setSubcategory] = useState(initial?.subcategory ?? '')
+  const [size, setSize]               = useState(initial?.size ?? '')
+  const [color, setColor]             = useState(initial?.color ?? '')
+  const [conditionScore, setConditionScore] = useState<number | null>(initial?.condition_score ?? null)
+  const [description, setDescription] = useState(initial?.description ?? '')
+  const [meas, setMeas]               = useState<Record<string, string>>(() =>
+    Object.fromEntries(Object.entries(initial?.measurements ?? {}).map(([k, v]) => [k, String(v)])))
+  const [priceRaw, setPriceRaw]       = useState(initial?.price_cents ? String(initial.price_cents / 100) : '')
 
-  const [conditionScore, setConditionScore]       = useState<number | null>(null)
-  const [damageFlags, setDamageFlags]             = useState<DamageFlag[]>([])
-  const [damageNotes, setDamageNotes]             = useState<Record<DamageFlag, string>>({
-    stains: '', repairs: '', fading: '', odor: '',
-  })
-
-  const [priceRaw, setPriceRaw] = useState('')
-
-  const [submitting, setSubmitting] = useState(false)
+  const [draftId, setDraftId]         = useState<string | null>(initial && initial.status === 'draft' ? initial.id : null)
+  const [draftState, setDraftState]   = useState<'idle' | 'saving' | 'saved' | 'error'>(initial ? 'saved' : 'idle')
+  const [draftFlash, flashDraft]      = useFlash()
+  const [pubFlash, flashPub]          = useFlash()
+  const [submitting, setSubmitting]   = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [submitted, setSubmitted]     = useState(false)
-  const [submittedId, setSubmittedId] = useState('')
 
-  // ── price calculation ───────────────────────────────────────────────────────
+  // ── derived ─────────────────────────────────────────────────────────────────
   const priceDollars = parseFloat(priceRaw.replace(/[^0-9.]/g, ''))
   const priceCents   = Number.isFinite(priceDollars) ? Math.round(priceDollars * 100) : 0
-  // Welcome ramp: first 10 sales are 0% commission — the seller only covers card processing
-  // (est. on item + the system shipping for the chosen category). After that, the tier rate.
   const inWelcome    = welcomeSalesRemaining > 0
   const estShipping  = floorShippingCents(category || 'Other')
-  const feeAmount    = priceCents > 0 ? (inWelcome ? welcomeSellerFeeCents(priceCents, estShipping) : sellerFeeAt(priceCents, sellerBps)) : 0
+  const tierFee      = priceCents > 0 ? sellerFeeAt(priceCents, sellerBps) : 0
+  const cardCost     = priceCents > 0 && inWelcome ? welcomeSellerFeeCents(priceCents, estShipping) : 0
+  const feeAmount    = inWelcome ? cardCost : tierFee
   const payoutAmount = priceCents > 0 ? priceCents - feeAmount : 0
+  const tierIdx      = FEE_TIERS.findIndex((t) => t.bps === sellerBps)
+  const tierNumber   = tierIdx >= 0 ? FEE_TIERS.length - tierIdx : 1
+  const measLabels   = measurementLabelsFor(category || null)
+  const measurements = Object.fromEntries(
+    measLabels.map((l) => [l, parseFloat((meas[l] ?? '').replace(/[^0-9.]/g, ''))]).filter(([, v]) => Number.isFinite(v as number) && (v as number) > 0),
+  ) as Record<string, number>
+  const sizeOptions  = sizeScaleFor(department, category)
+
+  // ── draft auto-save (debounced) ─────────────────────────────────────────────
+  const fields = useCallback(() => ({
+    title, brand, category: category || null, department, subcategory: subcategory || null, size: size || null,
+    color: color || null, description, condition_score: conditionScore, price_cents: priceCents > 0 ? priceCents : null,
+    images: PHOTO_SLOTS.slice(0, 5).map((slot) => (slotUrls[slot] ?? '').split('?')[0]),
+    possession_photo_url: slotUrls.POSSESSION ? slotUrls.POSSESSION.split('?')[0] : null,
+    measurements,
+  }), [title, brand, category, department, subcategory, size, color, description, conditionScore, priceCents, slotUrls, measurements])
+
+  const dirtyRef = useRef(false)
+  const saveTimer = useRef<number | null>(null)
+  const savingRef = useRef(false)
+  const draftIdRef = useRef<string | null>(draftId)
+  useEffect(() => { draftIdRef.current = draftId }, [draftId])
+
+  const persistDraft = useCallback(async (): Promise<string | null> => {
+    if (isEdit || savingRef.current) return draftIdRef.current
+    savingRef.current = true
+    setDraftState('saving')
+    try {
+      const body = fields()
+      if (draftIdRef.current) {
+        const res = await fetch(`/api/listings/${draftIdRef.current}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        if (!res.ok && res.status !== 400) throw new Error('patch failed')
+      } else {
+        const res = await fetch('/api/listings/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        if (!res.ok) throw new Error('create failed')
+        const d = await res.json()
+        draftIdRef.current = d.id
+        setDraftId(d.id)
+        window.history.replaceState(null, '', `/sell/new?draft=${d.id}`)
+      }
+      dirtyRef.current = false
+      setDraftState('saved')
+      return draftIdRef.current
+    } catch {
+      setDraftState('error')
+      return draftIdRef.current
+    } finally {
+      savingRef.current = false
+    }
+  }, [fields, isEdit])
+
+  // Any edit schedules a save 900ms later (first edit creates the draft row).
+  const firstRender = useRef(true)
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return }
+    if (isEdit) return
+    dirtyRef.current = true
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(() => { void persistDraft() }, 900)
+    return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, brand, category, department, subcategory, size, color, description, conditionScore, priceCents, slotUrls, meas])
 
   // ── image upload ────────────────────────────────────────────────────────────
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const handleSlotClick = (slot: string) => {
-    if (uploading[slot]) return
+    if (uploading[slot] || isEdit) return
     fileInputRefs.current[slot]?.click()
   }
 
@@ -119,18 +228,15 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 
       setUploadErrors((e) => ({ ...e, [slot]: '' }))
       try {
         const blob = await resizeToJpeg(file)
-        const path = `listings/${userId}/${draftId.current}/${slot.toLowerCase()}.jpg`
+        const path = `listings/${userId}/${pathId.current}/${slot.toLowerCase()}.jpg`
         const { error } = await supabase.storage
           .from('product-images')
           .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
         if (error) throw error
         const { data } = supabase.storage.from('product-images').getPublicUrl(path)
-        setSlotUrls((u) => ({ ...u, [slot]: data.publicUrl }))
+        setSlotUrls((u) => ({ ...u, [slot]: `${data.publicUrl}?v=${Date.now()}` }))
       } catch (err) {
-        setUploadErrors((e) => ({
-          ...e,
-          [slot]: err instanceof Error ? err.message : 'upload failed',
-        }))
+        setUploadErrors((e) => ({ ...e, [slot]: err instanceof Error ? err.message : 'upload failed' }))
       } finally {
         setUploading((u) => ({ ...u, [slot]: false }))
       }
@@ -142,38 +248,28 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 
     setSlotUrls((u) => { const n = { ...u }; delete n[slot]; return n })
   }
 
-  // ── damage flag toggle ──────────────────────────────────────────────────────
-  const toggleFlag = (flag: DamageFlag) => {
-    setDamageFlags((f) =>
-      f.includes(flag) ? f.filter((x) => x !== flag) : [...f, flag],
-    )
+  // ── save draft / publish / save edits ───────────────────────────────────────
+  async function saveDraftNow() {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    await persistDraft()
+    flashDraft()
   }
 
-  // ── submit ──────────────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
+  async function publish() {
     setSubmitError('')
-    if (!slotUrls['FRONT']) { setSubmitError('Front photo is required.'); return }
-    if (!slotUrls['POSSESSION']) { setSubmitError('Possession photo is required.'); return }
+    if (!slotUrls.FRONT) { setSubmitError('Front photo is required.'); return }
+    if (!slotUrls.POSSESSION) { setSubmitError('Possession photo is required.'); return }
     if (!brand.trim()) { setSubmitError('Brand is required.'); return }
     if (!category) { setSubmitError('Category is required.'); return }
     if (!size) { setSubmitError('Size is required.'); return }
     if (!title.trim()) { setSubmitError('Title is required.'); return }
-    if (!conditionScore) { setSubmitError('Condition score is required.'); return }
+    if (!conditionScore) { setSubmitError('Condition grade is required.'); return }
     if (priceCents <= 0) { setSubmitError('Enter a valid price.'); return }
-
-    const images = PHOTO_SLOTS.map((slot) => slotUrls[slot] ?? '')
-
-    const condition_notes: Record<string, unknown> = {
-      damage: damageFlags,
-      notes: Object.fromEntries(
-        damageFlags
-          .filter((f) => damageNotes[f])
-          .map((f) => [f, damageNotes[f]]),
-      ),
-    }
 
     setSubmitting(true)
     try {
+      if (saveTimer.current) window.clearTimeout(saveTimer.current)
+      const id = draftIdRef.current
       const res = await fetch('/api/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,23 +277,27 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 
           title: title.trim(),
           brand: brand.trim(),
           category,
+          department,
+          subcategory: subcategory || null,
           size,
+          color: color || null,
           description,
           condition_score: conditionScore,
-          condition_notes,
+          condition_notes: {},
           price_cents: priceCents,
-          images,
-          possession_photo_url: slotUrls['POSSESSION'],
+          images: PHOTO_SLOTS.map((slot) => (slotUrls[slot] ?? '').split('?')[0]),
+          possession_photo_url: (slotUrls.POSSESSION ?? '').split('?')[0],
+          measurements,
+          draft_id: id,
         }),
       })
       if (!res.ok) {
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
         setSubmitError(data.error ?? 'Submission failed.')
         return
       }
-      const data = await res.json()
-      setSubmittedId(data.id)
-      setSubmitted(true)
+      flashPub()
+      window.setTimeout(() => { router.push('/sell'); router.refresh() }, 1200)
     } catch {
       setSubmitError('Network error. Please try again.')
     } finally {
@@ -205,344 +305,305 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0 
     }
   }
 
-  // ── submitted state ─────────────────────────────────────────────────────────
-  if (submitted) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', paddingTop: '112px' }}>
-        <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400, fontSize: '28px', lineHeight: 1.35, color: 'var(--color-ink)', margin: 0 }}>
-          In the queue.
-        </p>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)' }}>
-          REVIEW: PENDING · YOUR LISTING IS QUEUED
-        </div>
-        <button
-          style={{ fontSize: '14px', color: 'var(--color-ink)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', textDecorationThickness: '1px', textUnderlineOffset: '3px', padding: 0 }}
-          onClick={() => window.location.reload()}
-        >
-          list another
-        </button>
+  async function saveEdits() {
+    if (!initial) return
+    setSubmitError('')
+    if (priceCents <= 0) { setSubmitError('Enter a valid price.'); return }
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/listings/${initial.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(), description, price_cents: priceCents, size, color: color || null,
+          category, subcategory: subcategory || null, department, measurements, condition_score: conditionScore,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setSubmitError(data.error ?? 'Could not save changes.')
+        return
+      }
+      flashPub()
+      window.setTimeout(() => { router.push('/sell'); router.refresh() }, 1200)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
-        {/* Seller Protection card */}
-        <div style={{ marginTop: '32px', width: '480px', maxWidth: '90%', border: '1px solid var(--color-line)', borderRadius: '2px' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-line)', font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>
-            Seller protection
-          </div>
-          {[
-            { label: 'EVIDENCE ARCHIVED', desc: '— your photos are timestamped and stored' },
-            { label: 'AUTO-RELEASE', desc: '— you\'re paid 3 days after delivery unless a dispute is opened' },
-            { label: 'VERIFIED BUYERS ONLY', desc: '— every buyer is ID-checked, you see their record' },
-          ].map((row) => (
-            <div key={row.label} style={{ display: 'flex', alignItems: 'baseline', gap: '10px', padding: '12px 16px', borderTop: '1px solid var(--color-line)' }}>
-              <span style={{ color: 'var(--color-accent)', fontSize: '13px', flex: 'none' }}>✓</span>
-              <span style={{ fontSize: '12px', lineHeight: 1.6, color: 'var(--color-ink)' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em' }}>{row.label}</span>{' '}
-                <span style={{ color: 'var(--color-ink-soft)' }}>{row.desc}</span>
-              </span>
-            </div>
-          ))}
-        </div>
+  // ── rail meta ───────────────────────────────────────────────────────────────
+  const filledCount = PHOTO_SLOTS.filter((s) => slotUrls[s]).length
+  const detailsDone = !!(brand.trim() && category && size && title.trim() && conditionScore)
+  const measCount = Object.keys(measurements).length
+  const stepDone = [
+    !!slotUrls.FRONT && !!slotUrls.POSSESSION,
+    detailsDone,
+    measCount > 0,
+    priceCents > 0,
+    false,
+  ]
+  const stepMeta = [`${filledCount}/6`, detailsDone ? '✓' : '', measCount > 0 ? `${measCount} SET` : '', priceCents > 0 ? `$${Math.round(priceCents / 100)}` : '—', '']
+  const currentStep = Math.max(0, stepDone.findIndex((d) => !d))
+  const draftLabel = isEdit ? 'EDITING' : draftState === 'saving' ? 'SAVING…' : draftState === 'saved' ? 'DRAFT ✓' : draftState === 'error' ? 'NOT SAVED' : 'DRAFT'
+  const headNote = isEdit
+    ? `LIVE LISTING · CHANGES APPLY IMMEDIATELY`
+    : `${draftState === 'saved' ? 'DRAFT AUTO-SAVED' : draftState === 'saving' ? 'SAVING DRAFT…' : draftState === 'error' ? 'DRAFT NOT SAVED' : 'DRAFT AUTO-SAVES'} · STEP ${currentStep + 1} OF 5`
 
-        {submittedId && (
-          <Link href={`/listings/${submittedId}`} style={{ marginTop: '8px', fontSize: '13px', color: 'var(--color-ink-soft)' }}>
-            view your listing →
-          </Link>
-        )}
-      </div>
-    )
+  const categoryValue = category ? catValue(department, category, subcategory) : ''
+  const onCategoryChange = (v: string) => {
+    const [d, c, s] = v.split('|')
+    setDepartment(d || 'menswear'); setCategory(c || ''); setSubcategory(s || '')
+    if (c !== category) setSize('')
   }
 
   return (
-    <div style={{ maxWidth: '720px', margin: '0 auto', padding: '48px 24px 96px' }}>
-
-      {/* ── STEP 1: PHOTOS ── */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', borderBottom: '1px solid var(--color-line)', paddingBottom: '12px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink-soft)' }}>01</span>
-          <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Photos</span>
+    <div className="layout">
+      <aside className="rail">
+        <div className="rail__top">
+          <span className="rail__title">{isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</span>
+          <span className="rail__handle" data-testid="draft-state">{draftLabel}</span>
         </div>
+        {WIZARD_STEPS.map((s, i) => {
+          const on = i === currentStep
+          return (
+            <div key={s} className={`side-link${i === WIZARD_STEPS.length - 1 ? ' side-link--last' : ''}`}>
+              <span className="side-link__left">
+                <span className={`dot${on || stepDone[i] ? ' is-on' : ''}`} />
+                <span className={`side-link__label${on ? ' is-on' : ''}`}>{s}</span>
+              </span>
+              {stepMeta[i] && <span className="side-link__meta">{stepMeta[i]}</span>}
+            </div>
+          )
+        })}
+        <div className="wizard-rail-note">
+          TIER {tierNumber} SELLER<br />
+          FEE {fmtRate(sellerBps)}{inWelcome ? ` · RAMP −${fmtRate(sellerBps)}` : ''}<br />
+          {isEdit ? 'PHOTOS ARE LOCKED ONCE LIVE' : 'FIRST BUMP FREE ON PUBLISH'}
+        </div>
+      </aside>
 
-        <div className="sell-photo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginTop: '24px' }}>
-          {PHOTO_SLOTS.map((slot) => {
-            const url   = slotUrls[slot]
-            const busy  = uploading[slot]
-            const err   = uploadErrors[slot]
-            const isPossession = slot === 'POSSESSION'
-            const label = slot.charAt(0) + slot.slice(1).toLowerCase()
+      <main className="main main--settings">
+        <div className="settings-body">
+          <div className="crumb"><PrefetchLink href="/sell">SELL</PrefetchLink> / {isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</div>
+          <div className="page-head page-head--ruled">
+            <h1 className="page-title">{isEdit ? 'Edit listing' : 'New listing'}</h1>
+            <span className="page-note">{headNote}</span>
+          </div>
 
-            return (
-              <div key={slot} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div
-                  style={{
-                    position: 'relative',
-                    aspectRatio: '3/4',
-                    boxSizing: 'border-box',
-                    border: `1px ${url ? 'solid var(--color-ink)' : err ? 'dashed var(--color-alert)' : 'dashed var(--color-line)'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: busy ? 'wait' : 'pointer',
-                    overflow: 'hidden',
-                    transition: 'border-color 120ms linear',
-                  }}
-                  onClick={() => url ? undefined : handleSlotClick(slot)}
-                >
+          {/* ── 01 PHOTOS ── */}
+          <SectionLabel right={`${filledCount} / 6 · FRONT + POSSESSION REQUIRED · DUPLICATE CHECK (PHASH) ON UPLOAD`}>01 — PHOTOS</SectionLabel>
+          <div className="slots" data-testid="sell-photo-grid">
+            {PHOTO_SLOTS.map((slot) => {
+              const url  = slotUrls[slot]
+              const busy = uploading[slot]
+              const err  = uploadErrors[slot]
+              return (
+                <div key={slot}>
                   {url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={url} alt={slot} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : busy ? (
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--color-ink-soft)' }}>…</span>
+                    <span className="slot__img" style={{ display: 'block', position: 'relative', overflow: 'hidden' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={slot} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {!isEdit && (
+                        <button type="button" className="card__unsave" aria-label={`Remove ${slot}`} onClick={() => removeSlot(slot)} style={{ top: 6, right: 6 }}>
+                          <XIcon size={9} />
+                        </button>
+                      )}
+                    </span>
                   ) : (
-                    <span style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: err ? 'var(--color-alert)' : 'var(--color-ink-soft)' }}>{label}</span>
-                  )}
-                  {url && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); removeSlot(slot) }}
-                      style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', background: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', cursor: 'pointer', color: 'var(--color-ink)' }}
-                      aria-label={`Remove ${slot}`}
-                    >×</button>
+                      type="button"
+                      className="slot__add"
+                      style={{ borderStyle: err ? 'dashed' : 'solid', borderColor: err ? 'var(--alert)' : undefined }}
+                      aria-label={`Add ${slot} photo`}
+                      onClick={() => handleSlotClick(slot)}
+                      disabled={busy || isEdit}
+                    >
+                      {busy ? <span className="mono-note">…</span> : <PlusIcon />}
+                    </button>
                   )}
-                  {isPossession && url && (
-                    <span style={{ position: 'absolute', top: '4px', left: '4px', width: '16px', height: '16px', background: 'var(--color-accent)', borderRadius: '2px', color: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</span>
-                  )}
+                  <input
+                    ref={(el) => { fileInputRefs.current[slot] = el }}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    style={{ display: 'none' }}
+                    onChange={(e) => handleFileChange(slot, e.target.files?.[0] ?? null)}
+                    aria-label={`Upload ${slot} photo`}
+                  />
+                  <div className={`slot__label${url ? ' is-filled' : ''}`}>{SLOT_LABELS[slot]}{url ? ' ✓' : ''}</div>
+                  {err && <div className="alert-line" style={{ paddingTop: 4 }}>{err.toUpperCase()}</div>}
                 </div>
+              )
+            })}
+          </div>
+          <div className="settings-note" style={{ paddingTop: 12 }}>
+            POSSESSION = a handwritten tag with your username and today&rsquo;s date, in frame with the item. Tag and flaw photos are archived as evidence.
+          </div>
+
+          {/* ── 02 DETAILS ── */}
+          <SectionLabel>02 — DETAILS</SectionLabel>
+          <div className="field-grid" style={{ paddingTop: 0 }}>
+            <div>
+              <label className="field-label" htmlFor="sell-title">TITLE</label>
+              <input id="sell-title" className="input-sans" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 1998 painter-dyed tee" data-testid="sell-title" />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="sell-brand">BRAND</label>
+              <input id="sell-brand" className="input-sans" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Designer or label" data-testid="sell-brand" />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="sell-category">CATEGORY</label>
+              <span className="select-wrap">
+                <select id="sell-category" className="select-row" value={categoryValue} onChange={(e) => onCategoryChange(e.target.value)} data-testid="sell-category">
+                  <option value="" disabled>Department / Category</option>
+                  {DEPARTMENTS.map((d) => (
+                    <optgroup key={d} label={cap(d)}>
+                      {CATEGORY_TREE.flatMap((node) => [
+                        <option key={catValue(d, node.label, '')} value={catValue(d, node.label, '')}>{cap(d)} / {node.label}</option>,
+                        ...node.children.map((sub) => (
+                          <option key={catValue(d, node.label, sub)} value={catValue(d, node.label, sub)}>{cap(d)} / {node.label} / {sub}</option>
+                        )),
+                      ])}
+                    </optgroup>
+                  ))}
+                </select>
+                <span className="select-row__caret select-wrap__caret">▾</span>
+              </span>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="sell-size">SIZE</label>
+              <span className="select-wrap">
+                <select id="sell-size" className="select-row" value={size} onChange={(e) => setSize(e.target.value)} data-testid="sell-size">
+                  <option value="" disabled>{category ? 'Choose a size' : 'Pick a category first'}</option>
+                  {size && !sizeOptions.includes(size) && <option value={size}>{size}</option>}
+                  {sizeOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <span className="select-row__caret select-wrap__caret">▾</span>
+              </span>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="sell-color">COLOR</label>
+              <span className="select-wrap">
+                <select id="sell-color" className="select-row" value={color} onChange={(e) => setColor(e.target.value)}>
+                  <option value="">Not set</option>
+                  {COLORS.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
+                </select>
+                <span className="select-row__caret select-wrap__caret">▾</span>
+              </span>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="sell-condition">CONDITION</label>
+              <span className="select-wrap">
+                <select id="sell-condition" className="select-row" value={conditionScore ?? ''} onChange={(e) => setConditionScore(e.target.value ? Number(e.target.value) : null)} data-testid="sell-condition">
+                  <option value="" disabled>Grade 1–10</option>
+                  {Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => (
+                    <option key={n} value={n}>{n} / 10 — {CONDITION_DEFINITIONS[n]}</option>
+                  ))}
+                </select>
+                <span className="select-row__caret select-wrap__caret">▾</span>
+              </span>
+            </div>
+          </div>
+          <div className="field-block">
+            <label className="field-label" htmlFor="sell-desc">DESCRIPTION</label>
+            <textarea id="sell-desc" className="review-text" maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provenance, fit, wear —" data-testid="sell-desc" />
+            <div className="review-count"><span>CONDITION, FLAWS AND PROVENANCE — BE SPECIFIC</span><span>{description.length} / 1000</span></div>
+          </div>
+
+          {/* ── 03 MEASUREMENTS ── */}
+          <SectionLabel right="FLAT · INCHES — SHOWN ON THE LISTING">03 — MEASUREMENTS</SectionLabel>
+          <div className="meas-grid">
+            {measLabels.map((label) => (
+              <div key={label}>
+                <div className="field-label">{label}</div>
                 <input
-                  ref={(el) => { fileInputRefs.current[slot] = el }}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  style={{ display: 'none' }}
-                  onChange={(e) => handleFileChange(slot, e.target.files?.[0] ?? null)}
-                  aria-label={`Upload ${slot} photo`}
+                  className="input-mono"
+                  inputMode="decimal"
+                  value={meas[label] ?? ''}
+                  onChange={(e) => setMeas((m) => ({ ...m, [label]: e.target.value }))}
+                  placeholder={'—"'}
+                  aria-label={label}
                 />
-                <span style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: url ? 'var(--color-ink)' : 'var(--color-ink-soft)', textAlign: 'center' }}>{label}</span>
-                {err && <span style={{ fontSize: '11px', lineHeight: 1.5, color: 'var(--color-alert)' }}>{err}</span>}
-                {isPossession && !url && (
-                  <span style={{ fontSize: '11px', lineHeight: 1.5, color: 'var(--color-ink-soft)' }}>
-                    handwritten tag with your username + today&apos;s date, in frame with the item.
-                  </span>
-                )}
               </div>
-            )
-          })}
-        </div>
-        <div style={{ marginTop: '16px', fontSize: '12px', lineHeight: 1.6, color: 'var(--color-ink-soft)' }}>
-          your tag, serial, and flaw photos are archived as evidence — if a buyer ever disputes with a swapped item, these protect you.
-        </div>
-      </div>
-
-      {/* ── STEP 2: DETAILS ── */}
-      <div style={{ marginTop: '80px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', borderBottom: '1px solid var(--color-line)', paddingBottom: '12px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink-soft)' }}>02</span>
-          <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Details</span>
-        </div>
-
-        {/* Brand */}
-        <div style={{ marginTop: '28px', position: 'relative', maxWidth: '400px' }}>
-          <label style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', zIndex: 1 }}>Brand</label>
-          <input
-            type="text"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-            placeholder=""
-            style={{ width: '100%', boxSizing: 'border-box', height: '44px', border: `1px solid ${brand ? 'var(--color-ink)' : 'var(--color-line)'}`, borderRadius: '2px', padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }}
-          />
-        </div>
-
-        {/* Category + Size */}
-        <div style={{ marginTop: '28px', display: 'flex', gap: '16px', maxWidth: '400px' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <label style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', zIndex: 1 }}>Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              style={{ width: '100%', height: '44px', border: `1px solid ${category ? 'var(--color-ink)' : 'var(--color-line)'}`, borderRadius: '2px', padding: '0 12px', fontSize: '14px', color: category ? 'var(--color-ink)' : 'var(--color-ink-soft)', background: 'var(--color-bg)', outline: 'none', appearance: 'none', cursor: 'pointer' }}
-            >
-              <option value="" disabled />
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            ))}
           </div>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <label style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', zIndex: 1 }}>Size</label>
-            <select
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-              style={{ width: '100%', height: '44px', border: `1px solid ${size ? 'var(--color-ink)' : 'var(--color-line)'}`, borderRadius: '2px', padding: '0 12px', fontFamily: 'var(--font-mono)', fontSize: '14px', color: size ? 'var(--color-ink)' : 'var(--color-ink-soft)', background: 'var(--color-bg)', outline: 'none', appearance: 'none', cursor: 'pointer' }}
-            >
-              <option value="" disabled />
-              {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
 
-        {/* Title */}
-        <div style={{ marginTop: '28px', maxWidth: '560px', position: 'relative' }}>
-          <label style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', zIndex: 1 }}>Title</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={120}
-            style={{ width: '100%', boxSizing: 'border-box', height: '44px', border: `1px solid ${title ? 'var(--color-ink)' : 'var(--color-line)'}`, borderRadius: '2px', padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }}
-          />
-          {title && (
-            <div style={{ marginTop: '12px' }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '14px', color: 'var(--color-ink)' }}>{title.toUpperCase()}</div>
-              <div style={{ marginTop: '2px', fontSize: '11px', color: 'var(--color-ink-soft)' }}>this is how buyers see it</div>
-            </div>
-          )}
-        </div>
-
-        {/* Description */}
-        <div style={{ marginTop: '28px', maxWidth: '560px', position: 'relative' }}>
-          <label style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', zIndex: 1 }}>Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            maxLength={600}
-            rows={4}
-            style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${description ? 'var(--color-ink)' : 'var(--color-line)'}`, borderRadius: '2px', padding: '12px 12px 28px', fontSize: '14px', lineHeight: 1.6, color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none', resize: 'vertical', minHeight: '120px' }}
-          />
-          <span style={{ position: 'absolute', right: '10px', bottom: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>{description.length} / 600</span>
-        </div>
-      </div>
-
-      {/* ── STEP 3: CONDITION ── */}
-      <div style={{ marginTop: '80px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', borderBottom: '1px solid var(--color-line)', paddingBottom: '12px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink-soft)' }}>03</span>
-          <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Condition</span>
-        </div>
-
-        {/* Rubric */}
-        <div style={{ marginTop: '24px', display: 'flex', gap: '4px', maxWidth: '560px' }}>
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((score) => {
-            const active = conditionScore === score
-            return (
-              <button
-                key={score}
-                onClick={() => setConditionScore(score)}
-                style={{
-                  flex: 1,
-                  height: '40px',
-                  boxSizing: 'border-box',
-                  border: `1px solid ${active ? 'var(--color-ink)' : 'var(--color-line)'}`,
-                  borderRadius: '2px',
-                  background: active ? 'var(--color-ink)' : 'var(--color-bg)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: active ? 700 : 400,
-                  fontSize: '12px',
-                  color: active ? 'var(--color-bg)' : 'var(--color-ink-soft)',
-                  cursor: 'pointer',
-                  transition: 'all 120ms linear',
-                }}
-                aria-pressed={active}
-                aria-label={`Condition ${score}`}
-              >
-                {score}
-              </button>
-            )
-          })}
-        </div>
-
-        {conditionScore && (
-          <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--color-ink)' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.08em' }}>{conditionScore}</span>
-            {' '}— {CONDITION_DEFINITIONS[conditionScore]}
-          </div>
-        )}
-
-        {/* Damage checklist */}
-        <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '2px', maxWidth: '560px' }}>
-          {DAMAGE_FLAGS.map((flag) => {
-            const checked = damageFlags.includes(flag)
-            const label   = flag.charAt(0).toUpperCase() + flag.slice(1)
-            return (
-              <div key={flag}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', cursor: 'pointer' }}
-                  onClick={() => toggleFlag(flag)}
-                >
-                  <span style={{
-                    width: '16px', height: '16px', flexShrink: 0, boxSizing: 'border-box',
-                    border: '1px solid var(--color-ink)', borderRadius: '2px',
-                    background: checked ? 'var(--color-ink)' : 'var(--color-bg)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '11px', lineHeight: 1, color: 'var(--color-bg)',
-                  }}>
-                    {checked ? '✓' : ''}
-                  </span>
-                  <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>{label}</span>
+          {/* ── 04 PRICING ── */}
+          <SectionLabel>04 — PRICING</SectionLabel>
+          <div className="price-flex">
+            <div className="price-flex__fields field-grid" style={{ padding: 0 }}>
+              <div>
+                <label className="field-label" htmlFor="sell-price">PRICE — USD</label>
+                <input
+                  id="sell-price"
+                  className="input-mono"
+                  inputMode="decimal"
+                  value={priceRaw}
+                  onChange={(e) => setPriceRaw(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder="0"
+                  aria-label="Price in USD"
+                  data-testid="sell-price"
+                />
+              </div>
+              <div>
+                <div className="field-label">SHIPPING</div>
+                <div className="select-row" style={{ cursor: 'default' }} title="Calculated by item type — prepaid label">
+                  Buyer pays — {formatCents(estShipping)} flat
+                  <span className="select-row__caret">▾</span>
                 </div>
-                {checked && (
-                  <div style={{ margin: '4px 0 8px 26px' }}>
-                    <div style={{ position: 'relative' }}>
-                      <label style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', zIndex: 1 }}>Note — required</label>
-                      <input
-                        type="text"
-                        value={damageNotes[flag]}
-                        onChange={(e) => setDamageNotes((n) => ({ ...n, [flag]: e.target.value }))}
-                        style={{ width: '100%', boxSizing: 'border-box', height: '44px', border: '1px solid var(--color-line)', borderRadius: '2px', padding: '0 12px', fontSize: '13px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ── STEP 4: PRICE ── */}
-      <div style={{ marginTop: '80px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', borderBottom: '1px solid var(--color-line)', paddingBottom: '12px' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '12px', color: 'var(--color-ink-soft)' }}>04</span>
-          <span style={{ font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink)' }}>Price</span>
-        </div>
-
-        <div style={{ marginTop: '28px', maxWidth: '280px', position: 'relative' }}>
-          <label style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)', padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', zIndex: 1 }}>Asking price</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={priceRaw}
-            onChange={(e) => setPriceRaw(e.target.value)}
-            placeholder="0"
-            style={{ width: '100%', boxSizing: 'border-box', height: '64px', border: `1px solid ${priceCents > 0 ? 'var(--color-ink)' : 'var(--color-line)'}`, borderRadius: '2px', padding: '0 16px', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '28px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }}
-          />
-          {priceCents > 0 && (
-            <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-              {inWelcome ? (
-                <>you receive ~{formatCents(payoutAmount)} — 0% commission, {welcomeSalesRemaining} of {WELCOME_SALES} free sales left (you cover ~{formatCents(feeAmount)} card processing)</>
-              ) : (
-                <>you receive {formatCents(payoutAmount)} — seller fee {sellerBps / 100}% ({formatCents(feeAmount)})</>
-              )}
             </div>
-          )}
-          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>
-            Shipping is calculated automatically by item type and prepaid — you don&apos;t set it; the buyer pays it at checkout.
+            <div className="fee-box" data-testid="fee-box">
+              <div className="fee-box__title">FEE MATH — LIVE</div>
+              <div className="fee-row"><span>ITEM PRICE</span><span>{formatCents(priceCents)}</span></div>
+              <div className="fee-row"><span>TIER {tierNumber} FEE — {fmtRate(sellerBps)}</span><span>−{formatCents(tierFee)}</span></div>
+              {inWelcome && (
+                <>
+                  <div className="fee-row"><span>WELCOME RAMP −{fmtRate(sellerBps)}</span><span>+{formatCents(tierFee)}</span></div>
+                  <div className="fee-row"><span>CARD PROCESSING (EST.)</span><span>−{formatCents(cardCost)}</span></div>
+                </>
+              )}
+              <div className="fee-row fee-row--total"><span>YOU RECEIVE</span><span>{formatCents(payoutAmount)}</span></div>
+            </div>
           </div>
-        </div>
 
-        {/* Submit */}
-        <div style={{ marginTop: '48px', maxWidth: '560px' }}>
-          {submitError && (
-            <div style={{ marginBottom: '12px', fontSize: '13px', color: 'var(--color-alert)' }}>{submitError}</div>
-          )}
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '100%', boxSizing: 'border-box', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 14px var(--font-ui)', letterSpacing: '-0.01em', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.6 : 1, transition: 'opacity 120ms linear' }}
-          >
-            {submitting ? 'Submitting…' : 'Submit for review'}
-          </button>
-          <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)', textAlign: 'center' }}>
-            every listing is reviewed before going live — usually under 24h.
+          {/* ── 05 REVIEW ── */}
+          {submitError && <div className="alert-line" role="alert" style={{ paddingTop: 16 }}>{submitError.toUpperCase()}</div>}
+          <div className="save-row save-row--left wizard-foot">
+            {isEdit ? (
+              <>
+                <PrefetchLink href="/sell" className="btn-ghost btn-ghost--inline">CANCEL</PrefetchLink>
+                <button type="button" className="btn-primary btn-primary--inline" onClick={() => void saveEdits()} disabled={submitting} data-testid="sell-submit">
+                  {submitting ? 'SAVING…' : pubFlash ? 'SAVED ✓' : 'SAVE CHANGES →'}
+                </button>
+                <span className="page-note">A PRICE CUT NOTIFIES EVERYONE WHO SAVED IT</span>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn-ghost btn-ghost--inline" onClick={() => void saveDraftNow()} disabled={draftState === 'saving'} data-testid="sell-save-draft">
+                  {draftFlash ? 'DRAFT SAVED ✓' : 'SAVE DRAFT'}
+                </button>
+                <button type="button" className="btn-primary btn-primary--inline" onClick={() => void publish()} disabled={submitting} data-testid="sell-submit">
+                  {submitting ? 'PUBLISHING…' : pubFlash ? 'PUBLISHED ✓' : 'PUBLISH LISTING →'}
+                </button>
+                <span className="page-note">PUBLISHING TRIGGERS YOUR FREE FIRST BUMP</span>
+              </>
+            )}
           </div>
         </div>
-      </div>
+        <div className="pdp-dock">
+          {isEdit ? (
+            <>
+              <PrefetchLink href="/sell" className="btn-ink">CANCEL</PrefetchLink>
+              <button type="button" className="btn-primary" onClick={() => void saveEdits()} disabled={submitting}>{submitting ? 'SAVING…' : pubFlash ? 'SAVED ✓' : 'SAVE →'}</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn-ink" onClick={() => void saveDraftNow()}>{draftFlash ? 'SAVED ✓' : 'SAVE DRAFT'}</button>
+              <button type="button" className="btn-primary" onClick={() => void publish()} disabled={submitting}>{submitting ? 'PUBLISHING…' : pubFlash ? 'PUBLISHED ✓' : 'PUBLISH →'}</button>
+            </>
+          )}
+        </div>
+      </main>
     </div>
   )
 }

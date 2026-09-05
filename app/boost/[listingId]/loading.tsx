@@ -1,24 +1,37 @@
 /**
- * /boost/[listingId] loading skeleton — package picker ghosts.
+ * /boost/[listingId] loading skeleton — header chrome + package-picker ghosts.
  */
-import { Ghost } from '@/app/components/skeletons'
+import { Ghost, SiteHeaderGhost, PageHeadGhost, TabBarGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
-      <div style={{ maxWidth: 520, margin: '48px auto', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Ghost style={{ height: 22, width: 192 }} />
-        <Ghost style={{ height: 13, width: '60%' }} />
-        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {Array.from({ length: 3 }, (_, i) => (
-            <div key={i} style={{ padding: '14px 16px', border: '1px solid var(--color-line)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} aria-hidden="true">
-              <Ghost style={{ height: 14, width: 128 }} />
-              <Ghost style={{ height: 14, width: 48 }} />
+    <div className="app-shell has-tabbar">
+      <SiteHeaderGhost />
+      <main className="page-main">
+        <Ghost style={{ height: 9, width: 120, marginBottom: 12 }} />
+        <PageHeadGhost ruled />
+        <div className="split mt-24" aria-hidden="true">
+          <div className="split__main">
+            <Ghost style={{ height: 11, width: 110 }} />
+            <div className="option-grid">
+              {Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="option-cell" style={{ cursor: 'default' }}>
+                  <Ghost style={{ height: 12, width: '60%' }} />
+                  <Ghost style={{ height: 8, width: '80%', marginTop: 8 }} />
+                </div>
+              ))}
             </div>
-          ))}
+            <Ghost style={{ height: 11, width: 80, marginTop: 44 }} />
+            <Ghost style={{ height: 42, width: '100%', marginTop: 14 }} />
+            <Ghost style={{ height: 36, width: 220, marginTop: 28 }} />
+          </div>
+          <div className="split__side">
+            <div className="panel"><Ghost style={{ height: 9, width: 80 }} /><Ghost style={{ height: 13, width: '70%', marginTop: 12 }} /></div>
+            <div className="panel"><Ghost style={{ height: 9, width: 110 }} /><Ghost style={{ height: 30, width: '100%', marginTop: 12 }} /><Ghost style={{ height: 30, width: '100%', marginTop: 8 }} /></div>
+          </div>
         </div>
-        <Ghost style={{ marginTop: 16, height: 44, width: '100%' }} />
-      </div>
+      </main>
+      <TabBarGhost />
     </div>
   )
 }

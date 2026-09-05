@@ -104,13 +104,18 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   if (NOTIFICATIONS_ENABLED) {
     const svc = createServiceClientRaw()
     after(async () => {
-      const { data: conv } = await svc.from('conversations').select('buyer_id, seller_id').eq('id', conversationId).single()
+      const { data: conv } = await svc.from('conversations').select('buyer_id, seller_id, listing_id').eq('id', conversationId).single()
       if (!conv) return
-      const c = conv as { buyer_id: string; seller_id: string }
+      const c = conv as { buyer_id: string; seller_id: string; listing_id: string }
       const recipientId = c.buyer_id === user.id ? c.seller_id : c.buyer_id
-      const { data: actor } = await svc.from('profiles').select('username').eq('id', user.id).single()
+      const [{ data: actor }, { data: l }] = await Promise.all([
+        svc.from('profiles').select('username').eq('id', user.id).single(),
+        svc.from('listings').select('title, brand').eq('id', c.listing_id).single(),
+      ])
       await notify(svc, recipientId, 'message', {
         actorName: (actor as { username?: string } | null)?.username,
+        itemTitle: (l as { title?: string } | null)?.title,
+        brand: (l as { brand?: string } | null)?.brand,
         preview: filteredBody,
         conversationId,
       })

@@ -1,16 +1,19 @@
 /**
- * /messages — conversation inbox.
- * Mobile: full-screen conversation list.
- * Desktop: two-pane — list + "select a conversation" empty state.
+ * /messages — conversation inbox (design 1A).
+ * Desktop: two-pane — sidebar list + "select a conversation" empty pane.
+ * Mobile: full-width list; a thread opens as its own route.
  * If ?listing=<id> is present, auto-creates or finds the conversation and redirects.
  */
 import { redirect } from 'next/navigation'
-import PrefetchLink from '@/app/components/prefetch-link'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { formatCents } from '@/lib/fees'
-import SiteHeader from '@/app/components/site-header'
-import MobileTabBar from '@/app/components/mobile-tabbar'
+import AppShell from '@/app/components/app-shell'
+import InboxList from './inbox-list'
+import { loadInbox } from './inbox'
+import { ChatIcon } from '@/app/components/icons'
+
+export const metadata: Metadata = { title: 'Messages' }
 
 interface PageProps {
   searchParams: Promise<{ listing?: string }>
@@ -40,7 +43,6 @@ export default async function MessagesPage({ searchParams }: PageProps) {
 
     if (listingRow && listingRow.seller_id !== user.id &&
         listingRow.status !== 'sold' && listingRow.status !== 'removed') {
-      // Find or create conversation
       const { data: existing } = await service
         .from('conversations')
         .select('id')
@@ -63,87 +65,20 @@ export default async function MessagesPage({ searchParams }: PageProps) {
     // Fall through to inbox if listing not found / user is seller
   }
 
-  // Fetch conversations for inbox
-  const { data: conversations } = await supabase
-    .from('conversations')
-    .select(`
-      id, listing_id, buyer_id, seller_id, updated_at,
-      listings:listing_id (title, brand, price_cents, images, status),
-      buyer:buyer_id (username),
-      seller:seller_id (username)
-    `)
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-    .order('updated_at', { ascending: false })
-    .limit(50)
+  const rows = await loadInbox(supabase, user.id)
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
-      <SiteHeader username={username} />
-
-      <div className="messages-layout" style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '360px 1fr', alignItems: 'stretch', minHeight: 'calc(100vh - 56px)' }}>
-        {/* Conversation list */}
-        <div style={{ borderRight: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--color-line)' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>Messages</h1>
+    <AppShell username={username} footer={false}>
+      <div className="msgs">
+        <InboxList rows={rows} />
+        <div className="thread">
+          <div className="empty" style={{ margin: 'auto', color: 'var(--faint)' }}>
+            <ChatIcon />
+            <div className="empty__title" style={{ paddingTop: 12 }}>Select a conversation</div>
+            <div className="empty__sub">OFFERS, QUESTIONS AND ORDER CHAT LIVE HERE</div>
           </div>
-
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {(!conversations || conversations.length === 0) && (
-              <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--color-ink)' }}>No conversations yet.</p>
-                <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--color-ink-soft)' }}>Start a conversation from a listing page.</p>
-              </div>
-            )}
-
-            {conversations?.map((conv) => {
-              const listing = conv.listings as unknown as { title: string; brand: string; price_cents: number; images: string[]; status: string } | null
-              const isBuyer = conv.buyer_id === user.id
-              const other = isBuyer
-                ? (conv.seller as unknown as { username: string } | null)
-                : (conv.buyer as unknown as { username: string } | null)
-              const timeAgo = formatTimeAgo(conv.updated_at)
-
-              return (
-                <PrefetchLink
-                  key={conv.id}
-                  href={`/messages/${conv.id}`}
-                  style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
-                >
-                  <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column', gap: '4px', cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: 'var(--color-ink)' }}>@{other?.username ?? '—'}</span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', height: '18px', padding: '0 5px', border: '1px solid var(--color-line)', borderRadius: '2px', fontFamily: 'var(--font-mono)', fontSize: '9px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>Bronze</span>
-                      <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--color-ink-soft)' }}>{timeAgo}</span>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--color-ink-soft)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {listing?.title ?? '—'} · {listing ? formatCents(listing.price_cents) : ''}
-                    </div>
-                  </div>
-                </PrefetchLink>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Desktop empty state — hidden on mobile */}
-        <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.2rem', color: 'var(--color-ink)' }}>Select a conversation</p>
-          <p style={{ fontSize: '12px', color: 'var(--color-ink-soft)' }}>Choose from your messages on the left.</p>
         </div>
       </div>
-
-      <MobileTabBar username={username} />
-    </div>
+    </AppShell>
   )
-}
-
-function formatTimeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}M`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}H`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}D`
-  return `${Math.floor(days / 7)}W`
 }

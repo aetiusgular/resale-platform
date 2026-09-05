@@ -14,6 +14,7 @@ import { isBanned } from '@/lib/auth/ban'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { quoteShippingCents } from '@/lib/shipping'
 import { makeEasypostRater } from '@/lib/shipping-easypost'
+import { CATEGORIES, COLOR_LABELS, DEPARTMENTS, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
 
 // Explicitly use Node.js runtime — sharp requires native bindings not on Edge
 export const runtime = 'nodejs'
@@ -78,6 +79,12 @@ export async function POST(request: NextRequest) {
     price_cents,
     images,
     possession_photo_url,
+    // ARCHIVE design review additions (all optional except department's default)
+    department,
+    subcategory,
+    color,
+    measurements,
+    draft_id,
   } = body
 
   // ── Basic validation ───────────────────────────────────────────────────────
@@ -95,7 +102,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid listing data' }, { status: 400 })
   }
 
-  const titleClean = title.trim().toUpperCase()
+  // ── Taxonomy (lib/taxonomy): department, category tree, colour, measurements ──
+  const departmentClean: string = typeof department === 'string' && (DEPARTMENTS as readonly string[]).includes(department) ? department : 'menswear'
+  const categoryClean = category.trim()
+  if (!CATEGORIES.includes(categoryClean)) {
+    return NextResponse.json({ error: 'Unknown category' }, { status: 400 })
+  }
+  const subcategoryClean: string | null =
+    typeof subcategory === 'string' && subcategory.trim() && isValidSubcategory(categoryClean, subcategory.trim())
+      ? subcategory.trim()
+      : null
+  const colorClean: string | null = typeof color === 'string' && COLOR_LABELS.includes(color.trim()) ? color.trim() : null
+  const measurementsClean = normalizeMeasurements(measurements, categoryClean)
+  const draftId: string | null = typeof draft_id === 'string' && /^[0-9a-f-]{36}$/i.test(draft_id) ? draft_id : null
+
+  // Titles keep the seller's casing (reference cards: "1998 painter-dyed tee");
+  // brand + size are normalised upper-case for filtering.
+  const titleClean = title.trim()
   const descClean  = (description ?? '').trim()
 
   // ── Anti-slop: lint check ─────────────────────────────────────────────────
@@ -195,7 +218,7 @@ export async function POST(request: NextRequest) {
   // dormant (returns null → floor) while SHIPPING_LABELS_ENABLED=false. TODO: pass the
   // seller's ship-from ZIP into makeEasypostRater(...) when label infra is enabled so the
   // live worst-zone quote replaces the floor.
-  const shipping = await quoteShippingCents(category.trim(), makeEasypostRater(null))
+  const shipping = await quoteShippingCents(categoryClean, makeEasypostRater(null))
 
   // ── Insert listing ────────────────────────────────────────────────────────
   const { data, error } = await supabase
@@ -204,7 +227,11 @@ export async function POST(request: NextRequest) {
       seller_id: user.id,
       title:     titleClean,
       brand:     brand.trim().toUpperCase(),
-      category:  category.trim(),
+      category:  categoryClean,
+      department: departmentClean,
+      subcategory: subcategoryClean,
+      color: colorClean,
+      measurements: measurementsClean,
       shipping_cents:  shipping.cents,
       shipping_source: shipping.source,
       size:      size.trim().toUpperCase(),
@@ -226,6 +253,12 @@ export async function POST(request: NextRequest) {
 
   const listingId = data.id
 
+  // ── Draft hand-off: the wizard auto-saves a draft row while the seller types; once
+  // the real listing exists the draft is redundant (photos are shared by URL).
+  if (draftId) {
+    await service.from('listings').delete().eq('id', draftId).eq('seller_id', user.id).eq('status', 'draft')
+  }
+
   // ── Prohibited-items scan (G6) — 'block' hides the listing, 'review' queues it ──
   // Always on (trust enforcement, not a flag feature). The 'block' tier is narrow
   // (explicit weapons/ammo) so a fashion listing is never auto-hidden on a graphic
@@ -233,7 +266,7 @@ export async function POST(request: NextRequest) {
   const prohibited = scanListing({
     title: titleClean,
     description: descClean,
-    category: category.trim(),
+    category: categoryClean,
     brand: brand.trim(),
   })
   if (prohibited.length > 0) {

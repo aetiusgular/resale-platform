@@ -12,22 +12,31 @@ test.describe('Gate — unauthenticated', () => {
     await expect(page).toHaveURL(/\/browse$/)
   })
 
-  test('/enter shows tagline and create-account entry', async ({ page }) => {
+  test('/enter shows tagline and the signup form (email + password only)', async ({ page }) => {
+    // ARCHIVE design review (signup 1A): /enter IS the signup form — no separate
+    // username step; the username is derived from the email.
     await page.goto('/enter')
     await expect(page.getByText('A quieter market for the things worth keeping.')).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create account' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'already a member? log in' })).toBeVisible()
+    await expect(page.getByTestId('signup-form')).toBeVisible()
+    await expect(page.locator('input[type="email"]')).toBeVisible()
+    await expect(page.locator('input[autocomplete="new-password"]')).toBeVisible()
+    await expect(page.locator('input[autocomplete="username"]')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Create account' })).toBeVisible()
+    await expect(page.getByText('MIN 10 CHARACTERS · AT LEAST 1 NUMBER')).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Already a member? Sign in' })).toBeVisible()
   })
 
-  test('create account goes to signup', async ({ page }) => {
+  test('signup form enforces the password rule before calling out', async ({ page }) => {
     await page.goto('/enter')
-    await page.getByRole('link', { name: 'Create account' }).click()
-    await expect(page).toHaveURL(/\/onboarding\/account$/)
+    await page.locator('input[type="email"]').fill('someone@example.com')
+    await page.locator('input[autocomplete="new-password"]').fill('short1')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await expect(page.locator('.alert-line[role="alert"]')).toContainText('AT LEAST 10 CHARACTERS')
   })
 
-  test('log in link goes to /enter/login', async ({ page }) => {
+  test('sign in link goes to /enter/login', async ({ page }) => {
     await page.goto('/enter')
-    await page.getByRole('link', { name: 'already a member? log in' }).click()
+    await page.getByRole('link', { name: 'Already a member? Sign in' }).click()
     await expect(page).toHaveURL(/\/enter\/login$/)
   })
 

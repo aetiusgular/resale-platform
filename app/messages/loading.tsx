@@ -5,36 +5,42 @@ import { SiteHeaderGhost, Ghost, TabBarGhost } from '@/app/components/skeletons'
 
 function ConversationRowGhost() {
   return (
-    <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column', gap: '8px' }} aria-hidden="true">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <Ghost style={{ height: '13px', width: '96px' }} />
-        <Ghost style={{ height: '12px', width: '32px', marginLeft: 'auto' }} />
+    <div className="conv" aria-hidden="true" style={{ cursor: 'default' }}>
+      <Ghost style={{ width: 40, height: 40, flexShrink: 0 }} />
+      <div className="grow">
+        <div className="row row--between">
+          <Ghost style={{ height: 11, width: 96 }} />
+          <Ghost style={{ height: 8, width: 32 }} />
+        </div>
+        <Ghost style={{ height: 11, width: '70%', marginTop: 8 }} />
+        <Ghost style={{ height: 8, width: '45%', marginTop: 7 }} />
       </div>
-      <Ghost style={{ height: '13px', width: '70%' }} />
     </div>
   )
 }
 
 export default function Loading() {
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
+    <div className="app-shell has-tabbar">
       <SiteHeaderGhost />
-
-      <div className="messages-layout" style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: '360px 1fr', alignItems: 'stretch', minHeight: 'calc(100vh - 56px)' }}>
-        <div style={{ borderRight: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--color-line)' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--color-ink)', margin: 0 }}>Messages</h1>
+      <div className="msgs">
+        <aside className="msgs__list" aria-hidden="true">
+          <div className="msgs__head"><Ghost style={{ height: 22, width: 110 }} /></div>
+          <div className="msgs__filters">
+            <Ghost style={{ height: 9, width: 28, marginBottom: 9 }} />
+            <Ghost style={{ height: 9, width: 44, marginBottom: 9 }} />
+            <Ghost style={{ height: 9, width: 52, marginBottom: 9 }} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div className="msgs__scroll">
             {Array.from({ length: 6 }, (_, i) => <ConversationRowGhost key={i} />)}
           </div>
-        </div>
-
-        <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Ghost style={{ height: '16px', width: '192px' }} />
+        </aside>
+        <div className="thread desktop-only">
+          <div className="empty" style={{ margin: 'auto' }} aria-hidden="true">
+            <Ghost style={{ height: 14, width: 160, margin: '0 auto' }} />
+          </div>
         </div>
       </div>
-
       <TabBarGhost />
     </div>
   )

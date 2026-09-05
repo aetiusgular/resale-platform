@@ -1,32 +1,43 @@
 'use client'
 
 /**
- * AuthModal — the sign-in / sign-up popup that replaces the full-page /enter/login
- * flow as the primary entry. Opened by useAuthModal().openAuthModal() (header "Sign in"
- * and every guarded write action for guests). Mirrors app/enter/login/page.tsx: email +
- * password sign-in, Google, Apple, and a link into the full create-account flow.
+ * AuthModal (design option 1R) — the sign-in / create-account popup that fronts
+ * every guest-gated action (header SIGN IN, SELL, save, message, buy, offer).
+ * Opened by useAuthModal().openAuthModal(next).
  *
- * `next` is where OAuth returns after login (the page the guest was on). Email sign-in
- * keeps them in place: on success we close and router.refresh() so the same page
- * re-renders with the session, and the action they clicked becomes available.
+ * SIGN IN tab: email + password (Supabase), then the Sign Up Pages 3A social block —
+ * stacked CONTINUE WITH GOOGLE / APPLE rows with brand marks (split GOOGLE | APPLE pair
+ * at ≤720px), always shown. Email sign-in keeps the guest in place:
+ * on success we close and router.refresh() so the same page re-renders with the
+ * session and the action they clicked becomes available. CREATE ACCOUNT is the
+ * reference email + password form inline (password hint, username derived from the
+ * email) with the same social block.
  *
- * The full /enter and /enter/login routes still exist as a fallback (deep links, the
- * OAuth return, no-JS) — this is the primary path, not the only one.
+ * `title` is the context heading — "SIGN IN TO CONTINUE" by default, "SELLING NEEDS AN
+ * ACCOUNT" on the sell gate. `next` is where OAuth returns after login (the page the
+ * guest was on). The full /enter and /enter/login routes still exist as a fallback.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/browser'
-import GoogleButton from '@/app/enter/google-button'
-import AppleButton from '@/app/enter/apple-button'
-import { GOOGLE_AUTH_ENABLED, APPLE_AUTH_ENABLED } from '@/lib/flags'
+import SignupForm from '@/app/enter/signup-form'
+import SocialAuthButtons from './social-auth-buttons'
+import { XIcon } from './icons'
 
-export default function AuthModal({ next, onClose }: { next: string; onClose: () => void }) {
+export default function AuthModal({ next, onClose, title }: { next: string; onClose: () => void; title?: string }) {
   const router = useRouter()
+  const [tab, setTab] = useState<'signin' | 'create'>('create')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -41,10 +52,10 @@ export default function AuthModal({ next, onClose }: { next: string; onClose: ()
       setLoading(false)
       setError(
         signInError.message === 'Invalid login credentials'
-          ? 'wrong email or password'
+          ? 'WRONG EMAIL OR PASSWORD'
           : signInError.message === 'Email not confirmed'
-            ? 'check your email to confirm your address before logging in'
-            : signInError.message,
+            ? 'CHECK YOUR EMAIL TO CONFIRM YOUR ADDRESS BEFORE SIGNING IN'
+            : signInError.message.toUpperCase(),
       )
       return
     }
@@ -54,107 +65,68 @@ export default function AuthModal({ next, onClose }: { next: string; onClose: ()
     router.refresh()
   }
 
-  const hasSocial = GOOGLE_AUTH_ENABLED || APPLE_AUTH_ENABLED
+  const create = tab === 'create'
+  const heading = title ?? (next.startsWith('/sell') ? 'SELLING NEEDS AN ACCOUNT' : 'SIGN IN TO CONTINUE')
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'var(--color-overlay)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px', boxSizing: 'border-box',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: 'relative', width: '100%', maxWidth: '420px',
-          background: 'var(--color-bg)', border: '1px solid var(--color-ink)',
-          borderRadius: '2px', boxShadow: 'var(--shadow-1)',
-          padding: '40px 28px 28px', boxSizing: 'border-box',
-        }}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            position: 'absolute', top: '10px', right: '12px',
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: '20px', lineHeight: 1, color: 'var(--color-ink-soft)',
-            width: '44px', height: '44px',
-          }}
-        >
-          ×
-        </button>
-
-        <div style={{ textAlign: 'center' }}>
-          <span style={{ font: '600 15px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)' }}>———</span>
-          <div style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.08em', color: 'var(--color-ink-soft)', textTransform: 'uppercase' }}>
-            SIGN IN TO CONTINUE
-          </div>
+    <div className="scrim" role="dialog" aria-modal="true" aria-label="Sign in or create account" onClick={onClose}>
+      <div className="modal modal--auth" onClick={(e) => e.stopPropagation()}>
+        <div className="modal__head">
+          <span className="modal__title">{heading}</span>
+          <button type="button" className="modal__close" aria-label="Close" onClick={onClose}>
+            <XIcon size={11} strokeWidth={1.2} />
+          </button>
+        </div>
+        <div className="tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={!create} className={`tab${!create ? ' is-active' : ''}`} onClick={() => setTab('signin')}>
+            SIGN IN
+          </button>
+          <button type="button" role="tab" aria-selected={create} className={`tab${create ? ' is-active' : ''}`} onClick={() => setTab('create')}>
+            CREATE ACCOUNT
+          </button>
         </div>
 
-        <form onSubmit={handleLogin} style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <ModalInput label="Email" type="email" value={email}
-            onChange={(v) => { setEmail(v); setError(null) }} autoComplete="email" />
-          <ModalInput label="Password" type="password" value={password}
-            onChange={(v) => { setPassword(v); setError(null) }} autoComplete="current-password" />
-
-          <div style={{ marginTop: '-12px', textAlign: 'right' }}>
-            <Link href="/enter/forgot" onClick={onClose} style={{ fontSize: '12px', color: 'var(--color-ink-soft)', textDecoration: 'underline' }}>
-              forgot password?
-            </Link>
-          </div>
-
-          {error && <div style={{ fontSize: '14px', color: 'var(--color-alert)' }}>{error}</div>}
-
-          <button type="submit" disabled={loading || !email || !password}
-            style={{ height: '44px', border: 'none', borderRadius: '2px', background: 'var(--color-ink)',
-              color: 'var(--color-bg)', font: '500 15px var(--font-ui)', cursor: loading ? 'wait' : 'pointer',
-              opacity: loading || !email || !password ? 0.6 : 1 }}>
-            {loading ? 'Logging in…' : 'Log in'}
-          </button>
-
-          {hasSocial && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--color-ink-soft)', fontSize: '12px' }}>
-              <span style={{ flex: 1, height: '1px', background: 'var(--color-line)' }} />
-              OR
-              <span style={{ flex: 1, height: '1px', background: 'var(--color-line)' }} />
+        {!create ? (
+          <form className="auth-modal__body" onSubmit={handleLogin}>
+            <label className="field-label" htmlFor="auth-modal-email">EMAIL</label>
+            <input
+              id="auth-modal-email"
+              className="input-mono"
+              type="email"
+              placeholder="you@email.com"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(null) }}
+            />
+            <div className="field-label field-label--row" style={{ paddingTop: 14 }}>
+              <label htmlFor="auth-modal-password">PASSWORD</label>
+              <Link href="/enter/forgot" className="link-underline link-underline--sm" onClick={onClose}>FORGOT?</Link>
             </div>
-          )}
-          {GOOGLE_AUTH_ENABLED && <GoogleButton next={next} />}
-          {APPLE_AUTH_ENABLED && <AppleButton next={next} />}
-
-          <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--color-ink-soft)' }}>
-            new here?{' '}
-            <Link href="/onboarding/account" onClick={onClose} style={{ color: 'var(--color-ink)', textDecoration: 'underline' }}>
-              create an account
-            </Link>
+            <input
+              id="auth-modal-password"
+              className="input-mono"
+              type="password"
+              placeholder="Your password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(null) }}
+            />
+            {error && <div className="alert-line" role="alert">{error}</div>}
+            <button type="submit" className="btn-primary" disabled={loading || !email || !password}>
+              {loading ? 'SIGNING IN…' : 'SIGN IN →'}
+            </button>
+            <div className="or-rule"><span /><em>OR</em><span /></div>
+            <SocialAuthButtons next={next} />
+            <div className="legal-line">
+              BY CONTINUING YOU AGREE TO THE <Link href="/terms" onClick={onClose}>TERMS</Link> &amp; <Link href="/privacy" onClick={onClose}>PRIVACY POLICY</Link>.
+            </div>
+          </form>
+        ) : (
+          <div className="auth-modal__body">
+            <SignupForm next={next} compact onDone={onClose} />
           </div>
-        </form>
+        )}
       </div>
-    </div>
-  )
-}
-
-function ModalInput({ label, type, value, onChange, autoComplete }: {
-  label: string; type: string; value: string; onChange: (v: string) => void; autoComplete?: string
-}) {
-  return (
-    <div style={{ position: 'relative', height: '44px', border: '1px solid var(--color-line)',
-      borderRadius: '2px', display: 'flex', alignItems: 'center', padding: '0 12px', boxSizing: 'border-box' }}>
-      <span style={{ position: 'absolute', left: '6px', top: '-7px', background: 'var(--color-bg)',
-        padding: '0 4px', font: '500 12px var(--font-ui)', letterSpacing: '0.08em',
-        textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>
-        {label}
-      </span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete}
-        style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent',
-          fontFamily: 'var(--font-ui)', fontSize: '14px', color: 'var(--color-ink)' }} />
     </div>
   )
 }

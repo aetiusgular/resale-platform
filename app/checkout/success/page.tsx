@@ -4,18 +4,20 @@
  * Polls for the order to be created (webhook may take a few seconds).
  */
 import { Suspense } from 'react'
+import type { Metadata } from 'next'
+import AppShell from '@/app/components/app-shell'
+import { getViewerUsername } from '@/app/components/viewer'
 import CheckoutSuccessContent from './checkout-success-content'
 
-export default function CheckoutSuccessPage() {
+export const metadata: Metadata = { title: 'Payment confirmed' }
+
+export default async function CheckoutSuccessPage() {
+  const username = await getViewerUsername()
   return (
-    <Suspense fallback={
-      <div style={{ minHeight: '100vh', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--color-ink-soft)' }}>
-          Setting up your order…
-        </div>
-      </div>
-    }>
-      <CheckoutSuccessContent />
-    </Suspense>
+    <AppShell username={username}>
+      <Suspense fallback={<main className="page-main page-main--narrow"><div className="mono-note">SETTING UP YOUR ORDER…</div></main>}>
+        <CheckoutSuccessContent />
+      </Suspense>
+    </AppShell>
   )
 }

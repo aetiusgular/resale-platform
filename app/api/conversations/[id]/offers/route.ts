@@ -110,13 +110,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     after(async () => {
       const [{ data: actor }, { data: l }] = await Promise.all([
         service.from('profiles').select('username').eq('id', user.id).single(),
-        service.from('listings').select('title').eq('id', conv.listing_id).single(),
+        service.from('listings').select('title, brand').eq('id', conv.listing_id).single(),
       ])
       await notify(service, recipientId, 'offer_received', {
         actorName: (actor as { username?: string } | null)?.username,
         itemTitle: (l as { title?: string } | null)?.title,
+        brand: (l as { brand?: string } | null)?.brand,
         amountCents,
         conversationId,
+        offerId: offer.id, // lets the notifications popout ACCEPT / COUNTER / DECLINE inline (14A)
       })
     })
   }

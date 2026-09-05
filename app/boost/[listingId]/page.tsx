@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BOOSTED_POSTS_ENABLED, BUMP_ENABLED } from '@/lib/flags'
 import { BOOST_PACKAGES } from '@/lib/boosts'
 import { BUMP_COOLDOWN_MS } from '@/lib/bump/eligibility'
+import AppShell from '@/app/components/app-shell'
 import BoostClient from './boost-client'
 
 export const metadata = { title: 'Boost listing' }
@@ -14,11 +15,14 @@ export default async function BoostPage({ params }: { params: Promise<{ listingI
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
 
-  const { data: listing } = await supabase
-    .from('listings')
-    .select('id, title, brand, seller_id, status, boosted_until, bumped_at')
-    .eq('id', listingId)
-    .single()
+  const [{ data: listing }, { data: profile }] = await Promise.all([
+    supabase
+      .from('listings')
+      .select('id, title, brand, seller_id, status, boosted_until, bumped_at')
+      .eq('id', listingId)
+      .single(),
+    supabase.from('profiles').select('username').eq('id', user.id).single(),
+  ])
   const l = listing as
     | { id: string; title: string; brand: string; seller_id: string; status: string; boosted_until: string | null; bumped_at: string | null }
     | null
@@ -37,16 +41,18 @@ export default async function BoostPage({ params }: { params: Promise<{ listingI
       : null
 
   return (
-    <BoostClient
-      freeBump={freeBump}
-      listingId={l.id}
-      title={l.title}
-      brand={l.brand}
-      active={l.status === 'active'}
-      boostedUntil={l.boosted_until}
-      packages={BOOST_PACKAGES.map((p) => ({
-        key: p.key, label: p.label, amountCents: p.amountCents, durationDays: p.durationDays,
-      }))}
-    />
+    <AppShell username={(profile?.username as string) ?? ''}>
+      <BoostClient
+        freeBump={freeBump}
+        listingId={l.id}
+        title={l.title}
+        brand={l.brand}
+        active={l.status === 'active'}
+        boostedUntil={l.boosted_until}
+        packages={BOOST_PACKAGES.map((p) => ({
+          key: p.key, label: p.label, amountCents: p.amountCents, durationDays: p.durationDays,
+        }))}
+      />
+    </AppShell>
   )
 }

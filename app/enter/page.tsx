@@ -1,141 +1,29 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { SITE_TAGLINE } from '@/lib/seo'
+import { AuthSplit } from '@/app/components/auth-frame'
+import SignupForm from './signup-form'
 
 /**
- * /enter — public landing. Open signup (G13): create an account or log in.
+ * /enter — public signup (reference SignupPage, option 1A): hero + email/password
+ * form. Open signup (G13): the username is derived from the email and the new
+ * member lands straight in browse.
  */
 export const metadata: Metadata = {
-  title: 'Sign in',
+  title: 'Create account',
   description: SITE_TAGLINE,
   alternates: { canonical: '/enter' },
 }
 
-export default function EnterPage() {
+interface PageProps {
+  searchParams: Promise<{ next?: string }>
+}
+
+export default async function EnterPage({ searchParams }: PageProps) {
+  const { next } = await searchParams
+  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/browse'
   return (
-    <div
-      style={{
-        background: 'var(--color-bg)',
-        minHeight: '100svh',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '0 32px',
-      }}
-    >
-      {/* Main content */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 0,
-          textAlign: 'center',
-        }}
-      >
-        {/* Wordmark dash */}
-        <span
-          style={{
-            font: '600 16px var(--font-ui)',
-            letterSpacing: '0.08em',
-            color: 'var(--color-ink)',
-          }}
-        >
-          ———
-        </span>
-
-        {/* Tagline */}
-        <p
-          style={{
-            margin: '24px 0 0',
-            fontFamily: 'var(--font-serif)',
-            fontStyle: 'italic',
-            fontWeight: 400,
-            fontSize: '28px',
-            lineHeight: 1.35,
-            color: 'var(--color-ink)',
-            maxWidth: '400px',
-          }}
-        >
-          A quieter market for the things worth keeping.
-        </p>
-
-        {/* Create account */}
-        <Link
-          href="/onboarding/account"
-          style={{
-            marginTop: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '44px',
-            width: '100%',
-            maxWidth: '360px',
-            background: 'var(--color-ink)',
-            color: 'var(--color-bg)',
-            border: '1px solid var(--color-ink)',
-            borderRadius: '2px',
-            font: '500 14px var(--font-ui)',
-            letterSpacing: '-0.01em',
-            textDecoration: 'none',
-            boxSizing: 'border-box',
-          }}
-        >
-          Create account
-        </Link>
-
-        <Link
-          href="/enter/login"
-          style={{
-            marginTop: '20px',
-            fontSize: '13px',
-            color: 'var(--color-ink-soft)',
-          }}
-        >
-          already a member? log in
-        </Link>
-      </div>
-
-      {/* Footer */}
-      <div
-        style={{
-          padding: '24px 0 28px',
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '24px',
-        }}
-      >
-        <span
-          style={{
-            font: '500 11px var(--font-ui)',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--color-ink-soft)',
-          }}
-        >
-          About
-        </span>
-        {[
-          { label: 'Terms', href: '/terms' },
-          { label: 'Privacy', href: '/privacy' },
-          { label: 'Fees', href: '/fees' },
-        ].map(({ label, href }) => (
-          <Link
-            key={label}
-            href={href}
-            style={{
-              font: '500 11px var(--font-ui)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--color-ink-soft)',
-              textDecoration: 'none',
-            }}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
-    </div>
+    <AuthSplit>
+      <SignupForm next={safeNext} />
+    </AuthSplit>
   )
 }

@@ -1,26 +1,35 @@
 /**
- * /settings loading skeleton — header + settings form ghosts.
+ * /settings loading skeleton — header + account rail + section ghosts.
  */
-import { SiteHeaderGhost, Ghost, TabBarGhost } from '@/app/components/skeletons'
+import { SiteHeaderGhost, Ghost, PageHeadGhost, TabBarGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }} className="mobile-bottom-pad">
+    <div className="app-shell has-tabbar">
       <SiteHeaderGhost />
-
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 16px 96px' }}>
-        <div style={{ maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <Ghost style={{ height: 28, width: 160 }} />
-          {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} style={{ border: '1px solid var(--color-line)', borderRadius: 2, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }} aria-hidden="true">
-              <Ghost style={{ height: 11, width: 112 }} />
-              <Ghost style={{ height: 14, width: '70%' }} />
-              <Ghost style={{ height: 14, width: '45%' }} />
+      <div className="layout">
+        <aside className="rail" aria-hidden="true">
+          <div className="rail__top"><span className="rail__title">ACCOUNT</span><Ghost style={{ height: 9, width: 80 }} /></div>
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="row row--between" style={{ padding: '13px 0', borderBottom: '1px solid var(--line-row)' }}>
+              <Ghost style={{ height: 10, width: 90 + (i % 3) * 20 }} />
+              <Ghost style={{ height: 8, width: 30 }} />
             </div>
           ))}
-        </div>
+        </aside>
+        <main className="main main--settings">
+          <div className="settings-body">
+            <PageHeadGhost ruled />
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} aria-hidden="true">
+                <Ghost style={{ height: 11, width: 120, marginTop: 44 }} />
+                <Ghost style={{ height: 40, width: '100%', marginTop: 14 }} />
+                <Ghost style={{ height: 40, width: '70%', marginTop: 12 }} />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
-
       <TabBarGhost />
     </div>
   )

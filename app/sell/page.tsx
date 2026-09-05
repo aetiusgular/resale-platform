@@ -1,80 +1,115 @@
-import { Fragment } from 'react'
-import Link from 'next/link'
+/**
+ * /sell — the seller's catalog (reference CatalogView): stats line "n ACTIVE ·
+ * n DRAFTS · n SOLD · TIER 2 — 9.0% FEE", ACTIVE / DRAFTS / SOLD tabs, cards
+ * with "214 VIEWS · 18 SAVES · 1 OFFER · LISTED 4D", EDIT · BUMP ↑ · OFFER $x,
+ * drafts "3 OF 6 PHOTOS · NO PRICE SET" + CONTINUE →, sold "SOLD AUG 12 · PAID
+ * OUT $373" + RELIST / VIEW ORDER. NEW LISTING + → /sell/new.
+ */
 import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import MobileTabBar from '@/app/components/mobile-tabbar'
-import SellForm from './sell-form'
-import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { VERIFICATION_ENABLED } from '@/lib/flags'
-import { WELCOME_SALES } from '@/lib/fees'
-import { sellerMustVerify } from '@/lib/idv/risk-resolver'
+import { formatCents, FEE_TIERS, WELCOME_SALES } from '@/lib/fees'
+import { resolveEffectiveBps } from '@/lib/tier-progress'
+import { fmtRate } from '@/lib/tier-dashboard'
+import { BOOSTED_POSTS_ENABLED, BUMP_ENABLED } from '@/lib/flags'
+import AppShell from '@/app/components/app-shell'
+import PrefetchLink from '@/app/components/prefetch-link'
+import SellCatalog, { type SellerListing } from './sell-catalog'
 
-export const metadata = { title: 'List an item' }
+export const metadata: Metadata = { title: 'Sell' }
 
 export default async function SellPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   if (!user) redirect('/enter')
 
-  // Seller ID-verification gate (behind VERIFICATION_ENABLED): send a risk-flagged
-  // or high-volume unverified seller to verification instead of the listing form.
-  if (VERIFICATION_ENABLED) {
-    const svc = createServiceClientRaw()
-    const { data: vp } = await svc
-      .from('profiles')
-      .select('id_verification_status')
-      .eq('id', user.id)
-      .single()
-    const verified =
-      (vp as { id_verification_status?: string } | null)?.id_verification_status === 'verified'
-    if (!verified && (await sellerMustVerify(svc, user.id))) redirect('/onboarding/verify?required=sell')
-  }
+  const service = createServiceClientRaw()
+  const [{ data: profile }, { data: rows }, sellerBps] = await Promise.all([
+    supabase.from('profiles').select('username, display_name, lifetime_sales_count').eq('id', user.id).single(),
+    supabase
+      .from('listings')
+      .select('id, title, brand, size, price_cents, status, images, possession_photo_url, created_at, updated_at, saves_count, view_count, boosted_until, bumped_at, rejection_reason, is_price_dropped')
+      .eq('seller_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(200),
+    resolveEffectiveBps(service, user.id, 'seller'),
+  ])
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('username, lifetime_sales_count')
-    .eq('id', user.id)
-    .single()
   const username: string = (profile?.username as string) ?? ''
   const salesCount: number = (profile?.lifetime_sales_count as number) ?? 0
-  const welcomeSalesRemaining = Math.max(0, WELCOME_SALES - salesCount)
+  const welcomeLeft = Math.max(0, WELCOME_SALES - salesCount)
 
-  // Seller's fee rate — set by their trailing-365d sales volume (see lib/fee-tier).
-  const sellerBps = await resolveEffectiveBps(createServiceClientRaw(), user.id, 'seller')
+  const ids = (rows ?? []).map((r) => r.id)
+  const soldIds = (rows ?? []).filter((r) => r.status === 'sold').map((r) => r.id)
+
+  // Open buyer offers + the payout for sold items (service role: orders are
+  // party-scoped under RLS, and these are the seller's own listings).
+  const offerCounts = new Map<string, { count: number; top: number }>()
+  const payoutMap = new Map<string, { transfer_cents: number; released_at: string | null; order_id: string; created_at: string }>()
+  if (ids.length > 0) {
+    const [{ data: offers }, { data: orders }] = await Promise.all([
+      supabase.from('offers').select('listing_id, amount_cents, from_user, state').in('listing_id', ids).eq('state', 'open').neq('from_user', user.id),
+      soldIds.length > 0
+        ? service.from('orders').select('id, listing_id, transfer_cents, released_at, created_at').in('listing_id', soldIds).eq('seller_id', user.id).order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+    ])
+    for (const o of offers ?? []) {
+      const cur = offerCounts.get(o.listing_id) ?? { count: 0, top: 0 }
+      offerCounts.set(o.listing_id, { count: cur.count + 1, top: Math.max(cur.top, o.amount_cents) })
+    }
+    for (const o of (orders ?? []) as Array<{ id: string; listing_id: string; transfer_cents: number; released_at: string | null; created_at: string }>) {
+      if (!payoutMap.has(o.listing_id)) payoutMap.set(o.listing_id, { transfer_cents: o.transfer_cents, released_at: o.released_at, order_id: o.id, created_at: o.created_at })
+    }
+  }
+
+  // eslint-disable-next-line react-hooks/purity -- server component render; freshness at request time
+  const now = Date.now()
+  const listings: SellerListing[] = (rows ?? []).map((r) => {
+    const images: string[] = Array.isArray(r.images) ? r.images.filter(Boolean) : []
+    const photoCount = images.length + (r.possession_photo_url && !images.includes(r.possession_photo_url) ? 1 : 0)
+    const payout = payoutMap.get(r.id)
+    return {
+      id: r.id,
+      title: r.title ?? '',
+      brand: r.brand ?? '',
+      size: r.size ?? '',
+      price_cents: r.price_cents ?? null,
+      price_display: r.price_cents ? formatCents(r.price_cents) : '$ —',
+      status: r.status,
+      image: images[0] ?? null,
+      photo_count: Math.min(6, photoCount),
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      saves_count: r.saves_count ?? 0,
+      view_count: r.view_count ?? 0,
+      boosted: !!r.boosted_until && new Date(r.boosted_until).getTime() > now,
+      boosted_until: r.boosted_until,
+      bumped_at: r.bumped_at,
+      rejection_reason: r.rejection_reason,
+      open_offers: offerCounts.get(r.id)?.count ?? 0,
+      top_offer_display: offerCounts.get(r.id) ? formatCents(offerCounts.get(r.id)!.top) : null,
+      sold_at: payout?.released_at ?? payout?.created_at ?? r.updated_at,
+      payout_display: payout ? formatCents(payout.transfer_cents) : null,
+      order_id: payout?.order_id ?? null,
+    }
+  })
+
+  const tierIdx = FEE_TIERS.findIndex((t) => t.bps === sellerBps)
+  const tierNumber = tierIdx >= 0 ? FEE_TIERS.length - tierIdx : 1
+  const feeLine = welcomeLeft > 0
+    ? `WELCOME RAMP — 0% FEE · ${welcomeLeft} OF ${WELCOME_SALES} FREE SALES LEFT`
+    : `TIER ${tierNumber} — ${fmtRate(sellerBps)} FEE`
 
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }} className="mobile-bottom-pad">
-      {/* Header */}
-      <header style={{ height: '56px', borderBottom: '1px solid var(--color-line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}>
-        <Link href="/" style={{ font: '600 16px var(--font-ui)', letterSpacing: '0.08em', color: 'var(--color-ink)', textDecoration: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>———</Link>
-        <span style={{ font: '600 14px var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-ink)' }}>List an item</span>
-        <Link href="/" style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)', textDecoration: 'none', minHeight: '44px', display: 'inline-flex', alignItems: 'center' }}>Cancel</Link>
-      </header>
-
-      {/* Step indicator (sticky visual guide) — wraps on narrow screens */}
-      <div style={{ borderBottom: '1px solid var(--color-line)', background: 'var(--color-bg)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '8px', minHeight: '48px', padding: '8px 16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {[
-            { n: '01', label: 'Photos' },
-            { n: '02', label: 'Details' },
-            { n: '03', label: 'Condition' },
-            { n: '04', label: 'Price' },
-          ].map((step, i) => (
-            <Fragment key={step.n}>
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: '4px', whiteSpace: 'nowrap' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--color-ink-soft)' }}>{step.n}</span>
-                <span style={{ font: '500 11px var(--font-ui)', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--color-ink-soft)' }}>{step.label}</span>
-              </span>
-              {i < 3 && <span style={{ color: 'var(--color-ink-soft)', fontSize: '10px' }}>→</span>}
-            </Fragment>
-          ))}
-        </div>
-      </div>
-
-      <SellForm userId={user.id} sellerBps={sellerBps} welcomeSalesRemaining={welcomeSalesRemaining} />
-      <MobileTabBar username={username} />
-    </div>
+    <AppShell username={username} displayName={(profile?.display_name as string | null) ?? undefined}>
+      <SellCatalog
+        listings={listings}
+        feeLine={feeLine}
+        bumpEnabled={BUMP_ENABLED}
+        boostEnabled={BOOSTED_POSTS_ENABLED}
+        newListing={<PrefetchLink href="/sell/new" className="btn-primary btn-primary--inline" data-testid="new-listing">NEW LISTING +</PrefetchLink>}
+      />
+    </AppShell>
   )
 }

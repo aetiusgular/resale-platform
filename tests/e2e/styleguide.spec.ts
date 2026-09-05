@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test'
 
+/**
+ * Styleguide smoke — updated for the ARCHIVE design system (ui/archive-redesign):
+ * two font families (Archivo + IBM Plex Mono) instead of three, and eleven
+ * colour tokens (--bg … --alert) instead of six. Assertions are against the
+ * resolved CSS custom properties, so a font that fails to load fails the test.
+ */
 test.describe('Styleguide smoke', () => {
-  test('renders and all three font families are applied', async ({ page }) => {
+  test('renders and both font families are applied', async ({ page }) => {
     await page.goto('/styleguide')
 
     // Page loads with correct title
@@ -10,31 +16,36 @@ test.describe('Styleguide smoke', () => {
     // Main heading is visible
     await expect(page.locator('h1')).toBeVisible()
 
-    // Inter — check computed font-family on the explicit font specimen element
-    const interFamily = await page
-      .locator('[data-testid="font-inter"]')
+    // Archivo — computed font-family on the --font-sans specimen
+    const sansFamily = await page
+      .locator('[data-testid="font-sans"]')
       .evaluate((el) => window.getComputedStyle(el).fontFamily)
-    expect(interFamily).toContain('Inter')
+    expect(sansFamily).toMatch(/Archivo/i)
 
-    // EB Garamond
-    const garamondFamily = await page
-      .locator('[data-testid="font-garamond"]')
-      .evaluate((el) => window.getComputedStyle(el).fontFamily)
-    expect(garamondFamily).toContain('EB Garamond')
-
-    // Space Mono
+    // IBM Plex Mono — computed font-family on the --font-mono specimen
+    // (next/font emits the family as "__IBM_Plex_Mono_<hash>", hence the loose match)
     const monoFamily = await page
       .locator('[data-testid="font-mono"]')
       .evaluate((el) => window.getComputedStyle(el).fontFamily)
-    expect(monoFamily).toContain('Space Mono')
+    expect(monoFamily).toMatch(/IBM.?Plex.?Mono/i)
   })
 
   test('color token swatches render', async ({ page }) => {
     await page.goto('/styleguide')
 
-    // Six color swatches present (one per token)
+    // Eleven colour swatches present (one per token, labelled by its light hex)
     const swatches = page.locator('[aria-label^="#"]')
-    await expect(swatches).toHaveCount(6)
+    await expect(swatches).toHaveCount(11)
+  })
+
+  test('theme toggle flips data-theme on <html>', async ({ page }) => {
+    await page.goto('/styleguide')
+
+    await page.locator('main').getByRole('radio', { name: 'DARK' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+    await page.locator('main').getByRole('radio', { name: 'LIGHT' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
   })
 
   test('listing card skeletons render', async ({ page }) => {

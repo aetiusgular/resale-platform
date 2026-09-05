@@ -21,18 +21,13 @@ function anonClient() {
   return createClient(SUPABASE_URL, ANON_KEY)
 }
 
-// ─── UI E2E: full open signup → onboarding → browse ──────────────────────────
+// ─── UI E2E: open signup (email + password) → browse ─────────────────────────
 
-test.describe('@live Signup UI — full onboarding flow', () => {
-  let signedUpUsername: string
+test.describe('@live Signup UI — reference signup flow', () => {
   let signedUpUserId: string | null = null
 
   const ts = Date.now()
   const password = 'TestPass123!'
-
-  test.beforeAll(() => {
-    signedUpUsername = `tu${ts.toString().slice(-8)}`
-  })
 
   test.afterAll(async () => {
     const svc = serviceClient()
@@ -42,46 +37,30 @@ test.describe('@live Signup UI — full onboarding flow', () => {
     }
   })
 
-  test('@live /enter → signup form → onboarding → browse', async ({ page }) => {
-    // ── Step 1: landing → create account ─────────────────────────────────────
+  test('@live /enter signup form (email + password) → browse', async ({ page }) => {
+    // ARCHIVE design review (signup 1A): /enter is the signup form itself. The
+    // username is derived from the email's local part, so use a unique local part.
+    const local = `dcsignup${ts}`
+    const email = `${local}@example.com`
     await page.goto('/enter')
-    await page.getByRole('link', { name: 'Create account' }).click()
-    await expect(page).toHaveURL(/\/onboarding\/account$/, { timeout: 10000 })
-
-    // ── Step 2: fill the signup form ─────────────────────────────────────────
-    const email = `test+${ts}@example.com`
-    // Fill email/username/password — FloatingInput has no <label> so use type/autocomplete
     await page.locator('input[type="email"]').fill(email)
-    await page.locator('input[autocomplete="username"]').fill(signedUpUsername)
     await page.locator('input[autocomplete="new-password"]').fill(password)
     await page.getByRole('button', { name: 'Create account' }).click()
 
-    // ── Step 3: land on /onboarding/verify ───────────────────────────────────
-    await expect(page).toHaveURL(/\/onboarding\/verify/, { timeout: 15000 })
+    // ── Straight into the shop ────────────────────────────────────────────────
+    await expect(page).toHaveURL(/\/browse/, { timeout: 15000 })
 
-    // Capture user ID for teardown
+    // The profile row exists with the derived username (teardown needs the id).
     const svc = serviceClient()
     const { data: profileRow } = await svc
       .from('profiles')
-      .select('id')
-      .eq('username', signedUpUsername)
+      .select('id, username')
+      .eq('username', local)
       .single()
     // Assert rather than guard: a null here means signup did NOT create the profile row,
-    // which is the exact regression this spec exists to catch. Silently skipping left the
-    // test green AND orphaned a real auth user in the live project on every run, because
-    // afterAll then had no id to delete and the username is timestamp-derived (never retried).
+    // which is the exact regression this spec exists to catch.
     expect(profileRow, 'signup did not create a profile row').not.toBeNull()
     signedUpUserId = profileRow!.id
-
-    // ── Step 4: skip ID verification ─────────────────────────────────────────
-    await page.getByRole('button', { name: /skip for now/i }).click()
-
-    // ── Step 5: land on /onboarding/setup ────────────────────────────────────
-    await expect(page).toHaveURL(/\/onboarding\/setup/, { timeout: 10000 })
-
-    // ── Step 6: skip setup → straight into the shop (G13: no codes screen) ───
-    await page.getByRole('button', { name: /skip all/i }).click()
-    await expect(page).toHaveURL(/\/browse/, { timeout: 15000 })
   })
 })
 

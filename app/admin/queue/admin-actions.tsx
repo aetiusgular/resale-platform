@@ -46,52 +46,36 @@ export default function AdminActions({ listingId }: AdminActionsProps) {
   }
 
   return (
-    <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-line)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className="admin-item__foot">
       {!showReject ? (
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={approve}
-            disabled={loading}
-            style={{ height: '36px', padding: '0 24px', background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)', borderRadius: '2px', font: '500 13px var(--font-ui)', cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.6 : 1 }}
-          >
-            Approve → active
+        <div className="admin-actions">
+          <button type="button" className="btn-mini btn-mini--solid" onClick={approve} disabled={loading} data-testid="admin-approve">
+            {loading ? 'APPROVING…' : 'APPROVE → ACTIVE'}
           </button>
-          <button
-            onClick={() => setShowReject(true)}
-            disabled={loading}
-            style={{ height: '36px', padding: '0 24px', background: 'var(--color-bg)', color: 'var(--color-alert)', border: '1px solid var(--color-alert)', borderRadius: '2px', font: '500 13px var(--font-ui)', cursor: 'pointer' }}
-          >
-            Reject
+          <button type="button" className="btn-mini btn-mini--outline" style={{ color: 'var(--alert)', borderColor: 'var(--alert)' }} onClick={() => setShowReject(true)} disabled={loading} data-testid="admin-reject">
+            REJECT
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '560px' }}>
+        <div className="admin-actions">
           <input
             type="text"
+            className="input-sans"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Rejection reason (shown to seller)"
-            style={{ height: '44px', border: '1px solid var(--color-ink)', borderRadius: '2px', padding: '0 12px', fontSize: '14px', color: 'var(--color-ink)', background: 'var(--color-bg)', outline: 'none' }}
+            placeholder="Rejection reason (shown to the seller)"
+            aria-label="Rejection reason"
             autoFocus
           />
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={reject}
-              disabled={loading}
-              style={{ height: '36px', padding: '0 24px', background: 'var(--color-alert)', color: 'var(--color-bg)', border: '1px solid var(--color-alert)', borderRadius: '2px', font: '500 13px var(--font-ui)', cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.6 : 1 }}
-            >
-              Confirm reject
-            </button>
-            <button
-              onClick={() => { setShowReject(false); setReason(''); setError('') }}
-              style={{ height: '36px', padding: '0 16px', background: 'var(--color-bg)', color: 'var(--color-ink-soft)', border: '1px solid var(--color-line)', borderRadius: '2px', font: '500 13px var(--font-ui)', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-          </div>
+          <button type="button" className="btn-mini btn-mini--solid" style={{ background: 'var(--alert)', borderColor: 'var(--alert)' }} onClick={reject} disabled={loading} data-testid="admin-reject-confirm">
+            {loading ? 'REJECTING…' : 'CONFIRM REJECT'}
+          </button>
+          <button type="button" className="btn-mini btn-mini--link" onClick={() => { setShowReject(false); setReason(''); setError('') }}>
+            CANCEL
+          </button>
         </div>
       )}
-      {error && <span style={{ fontSize: '12px', color: 'var(--color-alert)' }}>{error}</span>}
+      {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
     </div>
   )
 }

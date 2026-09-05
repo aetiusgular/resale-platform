@@ -36,19 +36,11 @@ export default function BumpButton({ listingId }: { listingId: string }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <button
-        onClick={bump}
-        disabled={loading}
-        style={{
-          height: '36px', padding: '0 24px', borderRadius: '2px', cursor: loading ? 'wait' : 'pointer',
-          background: 'var(--color-ink)', color: 'var(--color-bg)', border: '1px solid var(--color-ink)',
-          font: '500 13px var(--font-ui)', opacity: loading ? 0.6 : 1,
-        }}
-      >
-        {loading ? 'Bumping…' : 'Bump listing'}
+    <div className="stack" style={{ gap: 8 }}>
+      <button type="button" className="btn-ink" onClick={bump} disabled={loading}>
+        {loading ? 'BUMPING…' : 'BUMP LISTING ↑'}
       </button>
-      {message && <span style={{ fontSize: '12px', color: 'var(--color-ink-soft)' }}>{message}</span>}
+      {message && <span className="mono-note mono-note--sub">{message.toUpperCase()}</span>}
     </div>
   )
 }
