@@ -29,8 +29,37 @@ export async function POST(request: NextRequest) {
   const cleaned = cleanAddress(body.address)
   if ('error' in cleaned) return NextResponse.json({ error: cleaned.error, code: 'incomplete' }, { status: 400 })
 
+  // Same address already in the book (checkout re-saves the typed address on every purchase):
+  // reuse the row instead of inserting a duplicate, promoting it to default when asked.
+  // The default is what the DB trigger mirrors into profiles.shipping_address.
+  const a = cleaned.address
+  const { data: existing } = await supabase
+    .from('addresses')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('name', a.name).eq('street1', a.street1).eq('city', a.city).eq('state', a.state).eq('zip', a.zip)
+    .limit(5)
+  const same = (existing ?? []).find((r) => ((r as { street2?: string | null }).street2 ?? '') === (a.street2 ?? ''))
+  if (same) {
+    if (body.is_default === true && !(same as { is_default?: boolean }).is_default) {
+      const { data: promoted, error: promoteErr } = await supabase
+        .from('addresses')
+        .update({ is_default: true })
+        .eq('id', (same as { id: string }).id)
+        .eq('user_id', user.id)
+        .select('*')
+        .single()
+      if (promoteErr) {
+        console.error('[settings/addresses] promote error:', promoteErr)
+        return NextResponse.json({ error: 'Could not save address' }, { status: 500 })
+      }
+      return NextResponse.json({ address: promoted })
+    }
+    return NextResponse.json({ address: same })
+  }
+
   const { count } = await supabase.from('addresses').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
-  if ((count ?? 0) >= 10) return NextResponse.json({ error: 'Address book is full (10).' }, { status: 429 })
+  if ((count ?? 0) >= 10) return NextResponse.json({ error: 'Address book is full (10). Remove one in Settings → Address.' }, { status: 429 })
   // First address is always the default.
   const isDefault = (count ?? 0) === 0 ? true : body.is_default === true
 

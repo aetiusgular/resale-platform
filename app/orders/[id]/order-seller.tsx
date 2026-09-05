@@ -7,8 +7,8 @@
 import { useState } from 'react'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
-import { autoReleaseAt, STATE_LABELS, type OrderState } from '@/lib/orders'
-import { Timeline, SummaryPanel, ProtectedPanel, countdown, orderNumber, type OrderData, type ListingSnap } from './order-frame'
+import { autoReleaseAt, SHIPPED_AUTO_DELIVER_DAYS, STATE_LABELS, type OrderState } from '@/lib/orders'
+import { Timeline, SummaryPanel, ProtectedPanel, ShipToPanel, countdown, orderNumber, type OrderData, type ListingSnap } from './order-frame'
 
 interface BuyerStats {
   username: string | null
@@ -132,6 +132,7 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
           {reviewPrompt}
         </div>
         <div className="split__side">
+          {state !== 'cancelled' && state !== 'refunded' && <ShipToPanel order={order} />}
           <SummaryPanel order={order} listing={listing} role="seller" />
           {buyerStats && (
             <div className="panel">
@@ -149,7 +150,7 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
             </div>
           )}
           <ProtectedPanel lines={[
-            'CARRIER SCAN CONFIRMS DELIVERY',
+            `BUYER OR CARRIER SCAN CONFIRMS DELIVERY · AUTOMATIC AFTER ${SHIPPED_AUTO_DELIVER_DAYS} DAYS IN TRANSIT`,
             'YOUR LISTING PHOTOS ARE ARCHIVED AS EVIDENCE',
             'DISPUTES REQUIRE BUYER PHOTOS WITHIN 72H',
           ]} />

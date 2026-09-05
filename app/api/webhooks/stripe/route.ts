@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import type Stripe from 'stripe'
 import stripe, { constructWebhookEvent } from '@/lib/stripe'
+import { syncConnectAccount } from '@/lib/stripe-connect-sync'
 import { recsMarkSold, recsMarkRemoved } from '@/lib/recs/sync'
 import { redeemReservedReward } from '@/lib/rewards'
 import { createServiceClientRaw } from '@/lib/supabase/service'
@@ -173,12 +174,17 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     throw new Error(`PI amount mismatch: stripe=${pi.amount} session=${total_cents}`)
   }
 
-  // Fetch buyer's shipping address for order snapshot
+  // Fetch buyer's shipping address for order snapshot. The checkout client saves the typed
+  // address to the address book before confirming the card, so this is normally set; a
+  // null here is loud because the seller has nowhere to ship.
   const { data: buyerProfile } = await service
     .from('profiles')
     .select('shipping_address')
     .eq('id', session.buyer_id)
     .single()
+  if (!buyerProfile?.shipping_address) {
+    console.warn(`[webhook] order for PI ${pi.id}: buyer ${session.buyer_id} has no shipping_address on file`)
+  }
 
   // Create the order record
   const { data: order, error: orderError } = await service
@@ -349,57 +355,10 @@ async function handleBoostSucceeded(pi: Stripe.PaymentIntent, service: ServiceCl
 }
 
 async function handleAccountUpdated(event: Stripe.Event, service: ServiceClient) {
+  // Shared with /api/stripe/connect/return (see lib/stripe-connect-sync.ts). For Express
+  // accounts this event only arrives on a CONNECT webhook endpoint (its own signing secret).
   const account = event.data.object as Stripe.Account
-  const { data: prof } = await service.from('profiles').select('id').eq('stripe_connect_account_id', account.id).single()
-  const uid = (prof as { id?: string } | null)?.id
-
-  // Fetch this account's payout-bank fingerprints once (used for both the G11 hard lock and
-  // collusion accumulation). Only meaningful once Stripe reports the account payout-ready.
-  const captureOn = COLLUSION_HOLD_ENABLED || IDENTITY_LOCKS_ENABLED
-  let banks: Stripe.BankAccount[] = []
-  if (uid && account.payouts_enabled && captureOn) {
-    try {
-      const ext = await stripe.accounts.listExternalAccounts(account.id, { object: 'bank_account', limit: 10 })
-      banks = ext.data as Stripe.BankAccount[]
-    } catch (e) { console.warn('[identity] bank fingerprint fetch failed (fail-open):', e) }
-  }
-  const bankFps = banks.map((b) => b.fingerprint).filter((f): f is string => !!f)
-
-  // G11 bank HARD lock: a payout bank may bind to only ONE account. If any of this account's
-  // banks already belongs to a DIFFERENT user, block payouts here (welcome-farming / ban
-  // evasion). The partial unique index is the DB backstop; this is the app-level enforcement.
-  let bankBlocked = false
-  if (IDENTITY_LOCKS_ENABLED && uid && bankFps.length) {
-    try {
-      const { data: owners } = await service.from('payment_identities')
-        .select('user_id').eq('kind', 'bank').in('fingerprint', bankFps)
-      bankBlocked = (owners ?? []).some((o) => (o as { user_id: string }).user_id !== uid)
-    } catch (e) { console.warn('[identity] bank lock check failed (fail-open):', e) }
-  }
-
-  // payouts_enabled = Stripe's value AND not bank-blocked (unchanged when locks are off).
-  await service
-    .from('profiles')
-    .update({ payouts_enabled: (account.payouts_enabled ?? false) && !bankBlocked })
-    .eq('stripe_connect_account_id', account.id)
-  if (bankBlocked) {
-    console.warn(`[identity] payouts blocked for ${account.id}: payout bank already bound to another account`)
-  }
-
-  // Accumulate this account's bank fingerprint(s) for future checks (bind to this user),
-  // unless blocked (the bank belongs to someone else — never rebind it). Idempotent per user;
-  // the partial unique index rejects a cross-account rebind at the DB as a final guard.
-  if (uid && captureOn && !bankBlocked) {
-    for (const bank of banks) {
-      if (!bank.fingerprint) continue
-      try {
-        await service.from('payment_identities').upsert({
-          user_id: uid, kind: 'bank', fingerprint: bank.fingerprint,
-          billing_name: bank.account_holder_name ?? null, billing_zip: null,
-        }, { onConflict: 'user_id,kind,fingerprint' })
-      } catch (e) { console.warn('[identity] bank capture failed:', e) }
-    }
-  }
+  await syncConnectAccount(account, service)
 }
 
 async function handleChargeRefunded(event: Stripe.Event, service: ServiceClient) {

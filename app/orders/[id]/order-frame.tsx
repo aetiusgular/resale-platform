@@ -6,6 +6,7 @@
  */
 import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
+import { addressLines, normalizeShipTo, isShippable, type ShipToAddress } from '@/lib/addresses'
 import { STATE_LABELS, type OrderState } from '@/lib/orders'
 
 export interface OrderData {
@@ -32,6 +33,10 @@ export interface OrderData {
   refunded_at?: string | null
   cancelled_at: string | null
   created_at: string
+  /** Buyer address snapshots taken at payment (webhook): ship_to_address is the G12
+   *  recipient record; shipping_address the older mirror. Either may be null. */
+  ship_to_address?: ShipToAddress | null
+  shipping_address?: ShipToAddress | null
 }
 
 export type ListingSnap = { title: string; brand: string; size: string; images: string[] }
@@ -152,6 +157,31 @@ export function ProtectedPanel({ lines }: { lines: string[] }) {
       {lines.map((t, i) => (
         <div key={i} className="kv"><span className="kv__k" style={{ color: 'var(--ink)' }}>✓</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>{t}</span></div>
       ))}
+    </div>
+  )
+}
+
+/**
+ * Seller-only: where to ship. Reads the order's own snapshot (never the buyer's live
+ * profile), so a later address-book edit cannot change a paid order's destination.
+ */
+export function ShipToPanel({ order }: { order: OrderData }) {
+  const raw = order.ship_to_address ?? order.shipping_address ?? null
+  const a = normalizeShipTo(raw)
+  const complete = isShippable(raw)
+  return (
+    <div className="panel" data-testid="ship-to-panel">
+      <div className="panel__title">SHIP TO</div>
+      {complete && a ? (
+        <div className="mono-note" style={{ paddingTop: 4, lineHeight: 1.6 }}>
+          {a.name && <div style={{ color: 'var(--ink)' }}>{a.name.toUpperCase()}</div>}
+          {addressLines({ street1: a.street1 ?? '', street2: a.street2 ?? null, city: a.city ?? '', state: a.state ?? '', zip: a.zip ?? '' }).map((line, i) => (
+            <div key={i}>{line.toUpperCase()}</div>
+          ))}
+        </div>
+      ) : (
+        <div className="alert-line" role="alert">NO SHIPPING ADDRESS ON FILE FOR THIS ORDER. MESSAGE THE BUYER BEFORE SHIPPING.</div>
+      )}
     </div>
   )
 }

@@ -6,7 +6,7 @@
  * The checkout_sessions row acts as the atomic lock: UNIQUE on listing_id
  * prevents two buyers from simultaneously locking the same listing.
  *
- * Request body: { listingId: string, offerId?: string, shippingAddress?: object }
+ * Request body: { listingId: string, offerId?: string }
  *   offerId: if provided, price is sourced from the accepted offer (server-verified).
  *            Offer must be state='accepted' and belong to this buyer+listing.
  *            Offer-based checkout: item + 2% buyer fee, no shipping line.
@@ -47,14 +47,14 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 2. Parse and minimally validate body ─────────────────────────────────
-  let body: { listingId?: unknown; offerId?: unknown; shippingAddress?: unknown }
+  let body: { listingId?: unknown; offerId?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { listingId, offerId, shippingAddress } = body
+  const { listingId, offerId } = body
   if (typeof listingId !== 'string' || !listingId) {
     return NextResponse.json({ error: 'listingId required' }, { status: 400 })
   }
@@ -212,13 +212,8 @@ export async function POST(request: NextRequest) {
         transfer_cents:   String(amounts.transfer_cents),
         discount_cents:   String(amounts.discount_cents),
         ...(verifiedOfferId ? { offer_id: verifiedOfferId } : {}),
-        // Shipping address stored for fulfillment reference (no name/email — no PII)
-        ...(shippingAddress && typeof shippingAddress === 'object' ? {
-          shipping_city:    String((shippingAddress as Record<string,unknown>).city ?? '').slice(0, 100),
-          shipping_state:   String((shippingAddress as Record<string,unknown>).state ?? '').slice(0, 50),
-          shipping_zip:     String((shippingAddress as Record<string,unknown>).zip ?? '').slice(0, 20),
-          shipping_country: String((shippingAddress as Record<string,unknown>).country ?? 'US').slice(0, 10),
-        } : {}),
+        // No address here: the order's ship-to snapshot comes from profiles.shipping_address
+        // in the webhook, which the checkout client saves to the address book before paying.
       },
       description: `${listing.title} — ${listing.brand}`,
     })

@@ -25,6 +25,14 @@ export const DISPUTE_WINDOW_HOURS = 72
 /** Checkout session lock window: listing held for 30 minutes while payment processes. */
 export const CHECKOUT_LOCK_MINUTES = 30
 
+/**
+ * Manual-shipping fallback: a `shipped` order with no delivery confirmation (no buyer
+ * MARK AS RECEIVED, no carrier scan) is moved to `delivered` by pg_cron this many days
+ * after shipped_at, so the 3-day escrow clock and the dispute window can start.
+ * Must match auto_deliver_stale_shipped_orders() in migration 0047.
+ */
+export const SHIPPED_AUTO_DELIVER_DAYS = 10
+
 /** Legal state transitions (mirrors transition_order() PL/pgSQL logic). */
 export const LEGAL_TRANSITIONS: Record<OrderState, OrderState[]> = {
   paid_held:        ['seller_confirmed', 'cancelled'],
@@ -79,4 +87,28 @@ export function disputeDeadlineAt(deliveredAt: Date): Date {
  */
 export function isDisputeWindowOpen(deliveredAt: Date): boolean {
   return new Date() < disputeDeadlineAt(deliveredAt)
+}
+
+/**
+ * Returns when a `shipped` order is auto-moved to `delivered` if nobody confirms
+ * receipt (pg_cron fallback, SHIPPED_AUTO_DELIVER_DAYS after shipped_at).
+ */
+export function autoDeliverAt(shippedAt: Date): Date {
+  const d = new Date(shippedAt)
+  d.setDate(d.getDate() + SHIPPED_AUTO_DELIVER_DAYS)
+  return d
+}
+
+/**
+ * The buyer's primary action on the order page for a given state:
+ *  - `receive`: MARK AS RECEIVED (shipped → delivered only; starts the escrow clock and
+ *    opens the dispute window, releases nothing).
+ *  - `confirm`: CONFIRM DELIVERY / RELEASE FUNDS (delivered → released).
+ * Every other state has no buyer action.
+ */
+export type BuyerOrderAction = 'receive' | 'confirm' | null
+export function buyerOrderAction(state: OrderState): BuyerOrderAction {
+  if (state === 'shipped') return 'receive'
+  if (state === 'delivered') return 'confirm'
+  return null
 }

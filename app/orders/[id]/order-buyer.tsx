@@ -7,7 +7,10 @@
 import { useState } from 'react'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
-import { autoReleaseAt, isDisputeWindowOpen, STATE_LABELS, type OrderState } from '@/lib/orders'
+import {
+  autoDeliverAt, autoReleaseAt, buyerOrderAction, isDisputeWindowOpen,
+  AUTO_RELEASE_DAYS, STATE_LABELS, type OrderState,
+} from '@/lib/orders'
 import { Timeline, SummaryPanel, ProtectedPanel, countdown, orderNumber, type OrderData, type ListingSnap } from './order-frame'
 
 interface Props {
@@ -22,8 +25,12 @@ export default function OrderBuyerView({ order, listing, sellerUsername, reviewP
   const [error, setError] = useState<string | null>(null)
 
   const state = order.state as OrderState
+  const action = buyerOrderAction(state)
   const isDelivered = state === 'delivered'
   const releaseDate = order.delivered_at ? autoReleaseAt(new Date(order.delivered_at)) : null
+  // Manual-shipping fallback: with no carrier scan, `shipped` auto-moves to `delivered`
+  // after SHIPPED_AUTO_DELIVER_DAYS (pg_cron), unless the buyer marks it received first.
+  const autoDeliverDate = state === 'shipped' && order.shipped_at ? autoDeliverAt(new Date(order.shipped_at)) : null
   const canDispute = isDelivered && order.delivered_at ? isDisputeWindowOpen(new Date(order.delivered_at)) : false
   const placed = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
   const headline =
@@ -35,14 +42,28 @@ export default function OrderBuyerView({ order, listing, sellerUsername, reviewP
     : state === 'cancelled' ? 'Cancelled.'
     : 'Paid and held in escrow.'
 
+  // shipped → delivered only (starts the 3-day clock + dispute window; releases nothing).
+  async function markReceived() {
+    await post('receive')
+  }
+
+  // delivered → released: funds move to the seller now.
   async function confirmReceipt() {
+    await post('deliver')
+  }
+
+  async function post(route: 'receive' | 'deliver') {
     setLoading(true)
     setError(null)
-    const res = await fetch(`/api/orders/${order.id}/deliver`, { method: 'POST' })
-    const data = await res.json()
-    setLoading(false)
-    if (!res.ok) { setError(data.error); return }
-    window.location.reload()
+    try {
+      const res = await fetch(`/api/orders/${order.id}/${route}`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(data.error ?? 'Something went wrong'); setLoading(false); return }
+      window.location.reload()
+    } catch {
+      setError('Network error, please try again')
+      setLoading(false)
+    }
   }
 
   return (
@@ -57,7 +78,19 @@ export default function OrderBuyerView({ order, listing, sellerUsername, reviewP
           <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">ESCROW TIMELINE</span><span className="page-note">BUYING FROM @{sellerUsername.toUpperCase()}</span></div>
           <Timeline order={order} />
 
-          {isDelivered && (
+          {action === 'receive' && (
+            <div className="mt-32" style={{ maxWidth: 440 }}>
+              <button type="button" className="btn-primary btn-primary--lg" onClick={markReceived} disabled={loading} data-testid="mark-received">
+                {loading ? 'SAVING…' : 'MARK AS RECEIVED'}
+              </button>
+              <div className="mono-note" style={{ paddingTop: 10 }}>
+                STARTS THE {AUTO_RELEASE_DAYS}-DAY RELEASE WINDOW · REPORT AN ISSUE OR RELEASE EARLY ONCE RECEIVED
+                {autoDeliverDate && <> · MARKED DELIVERED AUTOMATICALLY IN {countdown(autoDeliverDate)}</>}
+              </div>
+              {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}
+            </div>
+          )}
+          {action === 'confirm' && (
             <div className="mt-32" style={{ maxWidth: 440 }}>
               <button type="button" className="btn-primary btn-primary--lg" onClick={confirmReceipt} disabled={loading} data-testid="confirm-receipt">
                 {loading ? 'CONFIRMING…' : 'CONFIRM DELIVERY — RELEASE FUNDS'}
@@ -97,7 +130,7 @@ export default function OrderBuyerView({ order, listing, sellerUsername, reviewP
           </div>
           <ProtectedPanel lines={[
             `${formatCents(order.total_cents)} IS HELD UNTIL YOU CONFIRM DELIVERY`,
-            'AUTO-RELEASE 3 DAYS AFTER TRACKED DELIVERY',
+            `AUTO-RELEASE ${AUTO_RELEASE_DAYS} DAYS AFTER DELIVERY IS CONFIRMED (BY YOU OR THE CARRIER)`,
             'OPEN A DISPUTE WITHIN 72H — MODERATORS REVIEW BOTH SIDES',
           ]} />
         </div>

@@ -296,7 +296,7 @@ function orderAction(row: SettingsOrderRow, labels: boolean): { label: string; h
   switch (row.state) {
     case 'paid_held': return buyer ? view : { label: 'CONFIRM & SHIP →', href: `/orders/${row.id}` }
     case 'seller_confirmed': return buyer ? view : { label: labels ? 'PRINT LABEL →' : 'ADD TRACKING →', href: `/orders/${row.id}` }
-    case 'shipped': return row.hasTracking ? { label: 'TRACK →', href: `/orders/${row.id}` } : view
+    case 'shipped': return buyer ? { label: 'MARK AS RECEIVED →', href: `/orders/${row.id}` } : (row.hasTracking ? { label: 'TRACK →', href: `/orders/${row.id}` } : view)
     case 'delivered': return buyer ? { label: 'CONFIRM DELIVERY →', href: `/orders/${row.id}` } : view
     case 'released': return row.canReview ? { label: 'LEAVE FEEDBACK →', href: `/settings/review?order=${row.id}` } : view
     case 'disputed': return { label: 'VIEW DISPUTE →', href: `/orders/${row.id}` }

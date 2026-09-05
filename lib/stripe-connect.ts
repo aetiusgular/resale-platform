@@ -2,7 +2,8 @@
  * Stripe Connect Express onboarding link — shared by GET /api/stripe/connect (web redirect) and
  * POST /api/stripe/connect/link (native clients receive `{url}` and open it in an auth session).
  * SERVER ONLY. Creates the Express account on first use and persists its id immediately (never
- * waits for account.updated); `payouts_enabled` is only ever written by the webhook.
+ * waits for account.updated); `payouts_enabled` is written by the account.updated webhook and by
+ * /api/stripe/connect/return, both through lib/stripe-connect-sync.
  */
 import type { User } from '@supabase/supabase-js'
 import { createServiceClientRaw } from '@/lib/supabase/service'
@@ -49,6 +50,11 @@ export async function createConnectOnboardingLink(opts: {
     const account = await stripe.accounts.create({
       type:    'express',
       email:   user.email,
+      // Separate charges & transfers: the platform charges the buyer, then transfers the
+      // payout (lib/stripe createOrderTransfer). The connected account only needs the
+      // `transfers` capability; request it explicitly rather than relying on the Connect
+      // dashboard's default-capabilities setting.
+      capabilities: { transfers: { requested: true } },
       metadata: { user_id: user.id, username: (profile?.username as string | undefined) ?? '' },
     })
     connectAccountId = account.id

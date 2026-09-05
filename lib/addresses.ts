@@ -49,3 +49,45 @@ export function addressLines(a: Pick<AddressInput, 'street1' | 'street2' | 'city
     'United States',
   ]
 }
+
+/**
+ * Order ship-to snapshot as stored on orders.ship_to_address / orders.shipping_address
+ * (JSON copied from profiles.shipping_address at payment time). Current rows use the
+ * address-book keys; rows written by the pre-2026-09 checkout form or onboarding
+ * quick_setup used free-text keys, which normalizeShipTo() maps.
+ */
+export type ShipToAddress = {
+  name?: string | null
+  street1?: string | null
+  street2?: string | null
+  city?: string | null
+  state?: string | null
+  zip?: string | null
+  country?: string | null
+  // Legacy free-text keys.
+  fullName?: string | null
+  street?: string | null
+  apt?: string | null
+  stateZip?: string | null
+}
+
+/** Address-book shape from either the current snapshot or the legacy free-text keys. */
+export function normalizeShipTo(a: ShipToAddress | null | undefined): ShipToAddress | null {
+  if (!a) return null
+  const legacy = (a.stateZip ?? '').trim().split(/\s+/)
+  return {
+    name: a.name ?? a.fullName ?? null,
+    street1: a.street1 ?? a.street ?? null,
+    street2: a.street2 ?? a.apt ?? null,
+    city: a.city ?? null,
+    state: a.state ?? (legacy.length === 2 ? legacy[0] : null),
+    zip: a.zip ?? (legacy.length === 2 ? legacy[1] : null),
+    country: a.country ?? 'US',
+  }
+}
+
+/** True when the snapshot has everything a seller needs to address a parcel. */
+export function isShippable(a: ShipToAddress | null | undefined): a is ShipToAddress & { street1: string; city: string; state: string; zip: string } {
+  const n = normalizeShipTo(a)
+  return !!(n && n.street1 && n.city && n.state && n.zip)
+}

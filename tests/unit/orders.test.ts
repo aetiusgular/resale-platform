@@ -7,6 +7,9 @@ import {
   AUTO_RELEASE_DAYS,
   DISPUTE_WINDOW_HOURS,
   LEGAL_TRANSITIONS,
+  SHIPPED_AUTO_DELIVER_DAYS,
+  autoDeliverAt,
+  buyerOrderAction,
   type OrderState,
 } from '../../lib/orders'
 
@@ -94,5 +97,45 @@ describe('isDisputeWindowOpen', () => {
   it('returns false exactly at 72h boundary', () => {
     const delivered = new Date(Date.now() - 72 * 60 * 60 * 1000 - 1) // just past
     expect(isDisputeWindowOpen(delivered)).toBe(false)
+  })
+})
+
+// ── Manual-shipping fallback (go-live audit 2026-09-05, P0-1) ───────────────────
+describe('SHIPPED_AUTO_DELIVER_DAYS / autoDeliverAt', () => {
+  it('is 10 days and must match auto_deliver_stale_shipped_orders() in migration 0047', () => {
+    expect(SHIPPED_AUTO_DELIVER_DAYS).toBe(10)
+  })
+
+  it('autoDeliverAt adds SHIPPED_AUTO_DELIVER_DAYS to shipped_at', () => {
+    const shipped = new Date('2026-09-01T12:00:00Z')
+    const auto = autoDeliverAt(shipped)
+    expect(auto.getTime()).toBe(shipped.getTime() + SHIPPED_AUTO_DELIVER_DAYS * 24 * 60 * 60 * 1000)
+  })
+
+  it('autoDeliverAt does not mutate its input', () => {
+    const shipped = new Date('2026-09-01T12:00:00Z')
+    autoDeliverAt(shipped)
+    expect(shipped.toISOString()).toBe('2026-09-01T12:00:00.000Z')
+  })
+})
+
+describe('buyerOrderAction', () => {
+  it('shipped → receive (shipped → delivered only, releases nothing)', () => {
+    expect(buyerOrderAction('shipped')).toBe('receive')
+  })
+
+  it('delivered → confirm (delivered → released)', () => {
+    expect(buyerOrderAction('delivered')).toBe('confirm')
+  })
+
+  it('every other state has no buyer action', () => {
+    const none: OrderState[] = ['paid_held', 'seller_confirmed', 'released', 'disputed', 'refunded', 'cancelled']
+    for (const st of none) expect(buyerOrderAction(st)).toBeNull()
+  })
+
+  it('the receive action targets a legal edge in the state machine', () => {
+    expect(LEGAL_TRANSITIONS.shipped).toContain('delivered')
+    expect(LEGAL_TRANSITIONS.delivered).toContain('released')
+    expect(LEGAL_TRANSITIONS.delivered).toContain('disputed')
   })
 })

@@ -114,14 +114,23 @@ Legend: 🧑 = founder/human-only step (never delegate). 💻 = terminal on your
 
 ## Phase 4 — Stripe LIVE cutover (🧑 HUMAN-ONLY, per LAUNCH.md §2)
 
-20. Stripe dashboard (Live mode) → Developers → Webhooks → **Add endpoint**
-    `https://<project>.vercel.app/api/webhooks/stripe`, subscribed to EXACTLY what the handler
-    processes (**supersedes LAUNCH.md's older list** — `transfer.created` isn't handled;
-    the identity events are):
-    `payment_intent.succeeded` · `payment_intent.payment_failed` · `charge.refunded` ·
-    `account.updated` · `identity.verification_session.verified` ·
-    `identity.verification_session.canceled` · `identity.verification_session.requires_input`
-21. Copy the endpoint's signing secret → `STRIPE_WEBHOOK_SECRET` in Vercel.
+20. Stripe dashboard (Live mode) → Developers → Webhooks → **Add TWO endpoints**, both at
+    `https://<project>.vercel.app/api/webhooks/stripe` (corrected 2026-09-05, go-live audit
+    P0-3; **supersedes the one-endpoint instruction and LAUNCH.md's older list**):
+    - **"Events on your account"** → `payment_intent.succeeded` · `payment_intent.payment_failed`
+      · `charge.refunded` · `identity.verification_session.verified` ·
+      `identity.verification_session.canceled` · `identity.verification_session.requires_input`.
+    - **"Events on Connected accounts"** → `account.updated`. The sellers' Express accounts are
+      connected accounts, so their `account.updated` events are Connect events and NEVER reach
+      an "Events on your account" endpoint. This event is what sets `profiles.payouts_enabled`;
+      without it every listing approval and every checkout returns 422. (`stripe listen` forwards
+      both kinds to one URL with one secret, which is why local runs never showed this.)
+    `charge.dispute.created` is not handled yet (audit Finding 2); add it to the first endpoint
+    when the handler ships.
+21. Copy each endpoint's signing secret → `STRIPE_WEBHOOK_SECRET` (your account) and
+    `STRIPE_CONNECT_WEBHOOK_SECRET` (Connected accounts) in Vercel. The route tries both.
+    Belt and braces: `/api/stripe/connect/return` also retrieves the account from Stripe when the
+    seller comes back from onboarding and syncs `payouts_enabled` through the same code path.
 22. Enter `sk_live_…` / `pk_live_…` in Vercel. **Redeploy** (env changes need it).
 
 ## Phase 5 — Production smoke (you + a second account, before anyone else)
@@ -211,7 +220,11 @@ A ~30-minute migration; testers' vercel.app links keep working throughout:
 
 ## Superseded / stale-doc notes
 - **LAUNCH.md §2 webhook event list** (had `transfer.created`, missed identity events) → use Phase 4 step 20.
-- **LAUNCH.md §6 pg_cron** → replaced by Vercel crons + `CRON_SECRET` (Phase 3 step 15).
+- **LAUNCH.md §6 pg_cron** → the ESCROW TRANSFER retry moved to a Vercel cron + `CRON_SECRET`
+  (Phase 3 step 15). pg_cron itself is still required: `auto-release-delivered-orders`,
+  `auto-deliver-stale-shipped-orders` (migration 0047), `release-expired-checkouts`,
+  `expire-and-void-offers` and `expire-boosts` run in the database. Check
+  `SELECT jobname, schedule FROM cron.job;` after migrating.
 - **LAUNCH.md §9 / LAUNCH_SERVICES "Persona"** → Stripe Identity (G11).
 - **LAUNCH_SEQUENCE Wave B invite decision** → dead (G13, open signup).
 - **Any doc mentioning invite codes/waitlist** → system removed 2026-08-24.

@@ -20,6 +20,7 @@ import {
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
+import { cleanAddress, type AddressInput } from '@/lib/addresses'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -37,6 +38,31 @@ const ELEMENT_OPTIONS = {
 
 type Amounts = { item_cents: number; shipping_cents: number; total_cents: number; buyer_fee_cents?: number; discount_cents?: number }
 
+type AddressForm = { name: string; street1: string; street2: string; city: string; state: string; zip: string }
+
+/** Prefill from profiles.shipping_address (address-book shape, or the legacy free-text keys). */
+function addressFormFrom(saved: Record<string, string> | null): AddressForm {
+  const s = saved ?? {}
+  const legacyStateZip = (s.stateZip ?? '').trim().split(/\s+/)
+  return {
+    name: s.name ?? s.fullName ?? '',
+    street1: s.street1 ?? s.street ?? '',
+    street2: s.street2 ?? s.apt ?? '',
+    city: s.city ?? '',
+    state: s.state ?? (legacyStateZip.length === 2 ? legacyStateZip[0] : ''),
+    zip: s.zip ?? (legacyStateZip.length === 2 ? legacyStateZip[1] : ''),
+  }
+}
+
+/** Stable key for "is the typed address the one already saved as default?" (null = nothing valid saved). */
+function addressKey(a: Record<string, string> | AddressInput | null): string | null {
+  if (!a) return null
+  const cleaned = cleanAddress(a)
+  if ('error' in cleaned) return null
+  const c = cleaned.address
+  return [c.name, c.street1, c.street2 ?? '', c.city, c.state, c.zip].map((v) => v.trim().toLowerCase()).join('|')
+}
+
 interface Props {
   listingId: string
   offerId: string | null
@@ -50,14 +76,10 @@ function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Pro
   const elements = useElements()
   const router = useRouter()
 
-  const [address, setAddress] = useState({
-    fullName: savedAddress?.fullName ?? savedAddress?.name ?? '',
-    street: savedAddress?.street ?? savedAddress?.street1 ?? '',
-    apt: savedAddress?.apt ?? savedAddress?.street2 ?? '',
-    city: savedAddress?.city ?? '',
-    stateZip: savedAddress?.stateZip ?? [savedAddress?.state, savedAddress?.zip].filter(Boolean).join(' '),
-    country: savedAddress?.country ?? 'United States',
-  })
+  // Same shape as the address book (lib/addresses AddressInput). profiles.shipping_address
+  // is the mirrored default address; the legacy free-text keys are read for old rows only.
+  const [address, setAddress] = useState<AddressForm>(() => addressFormFrom(savedAddress))
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(() => addressKey(savedAddress))
   const [error, setError] = useState<string | null>(null)
   // `loading` starts true: the PaymentIntent is created on mount (below) and the
   // flag flips off in that request's finally — no synchronous setState in the effect.
@@ -71,7 +93,7 @@ function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Pro
     return fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ listingId, ...(offerId ? { offerId } : {}), shippingAddress: address }),
+      body: JSON.stringify({ listingId, ...(offerId ? { offerId } : {}) }),
     })
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
@@ -92,7 +114,7 @@ function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Pro
       })
       .catch(() => setError('Network error — please try again'))
       .finally(() => setLoading(false))
-  }, [listingId, offerId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [listingId, offerId])
 
   useEffect(() => {
     initCheckout()
@@ -105,6 +127,34 @@ function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Pro
     setLoading(true)
     setError(null)
 
+    // The order snapshots profiles.shipping_address when the webhook lands (P0-2, audit
+    // 2026-09-05), so the typed address must be SAVED before the card is charged. Validate
+    // with the same rules as the address book, then write it as the default address (the
+    // DB trigger mirrors the default into profiles.shipping_address). Any failure stops the
+    // payment: never charge a card for an order the seller cannot ship.
+    const cleaned = cleanAddress(address)
+    if ('error' in cleaned) { setError(cleaned.error); setLoading(false); return }
+    if (addressKey(cleaned.address) !== savedSnapshot) {
+      try {
+        const res = await fetch('/api/settings/addresses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: cleaned.address, is_default: true }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setError(data.error ?? 'Could not save your shipping address')
+          setLoading(false)
+          return
+        }
+        setSavedSnapshot(addressKey(cleaned.address))
+      } catch {
+        setError('Network error while saving your address, please try again')
+        setLoading(false)
+        return
+      }
+    }
+
     const cardNumber = elements.getElement(CardNumberElement)
     if (!cardNumber) { setLoading(false); return }
 
@@ -113,7 +163,7 @@ function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Pro
       {
         payment_method: {
           card: cardNumber,
-          billing_details: { name: address.fullName },
+          billing_details: { name: cleaned.address.name },
         },
       },
     )
@@ -130,7 +180,7 @@ function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Pro
     }
   }
 
-  const field = (k: keyof typeof address) => ({
+  const field = (k: keyof AddressForm) => ({
     value: address[k],
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setAddress((a) => ({ ...a, [k]: e.target.value })),
   })
@@ -190,33 +240,36 @@ function PaymentForm({ listingId, offerId, listing, preview, savedAddress }: Pro
   return (
     <form onSubmit={handleSubmit} className="split">
       <div className="split__main">
-        <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">01 — SHIPPING ADDRESS</span><span className="page-note">US ONLY</span></div>
+        <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">01 — SHIPPING ADDRESS</span><span className="page-note">US ONLY · SAVED TO YOUR ADDRESS BOOK</span></div>
         <div className="field-block">
           <label className="field-label" htmlFor="co-name">FULL NAME</label>
-          <input id="co-name" className="input-sans" required placeholder="Name on the label" autoComplete="name" {...field('fullName')} />
+          <input id="co-name" className="input-sans" required placeholder="Name on the label" autoComplete="name" data-testid="co-name" {...field('name')} />
         </div>
         <div className="field-grid field-grid--2-1">
           <div>
             <label className="field-label" htmlFor="co-street">STREET ADDRESS</label>
-            <input id="co-street" className="input-sans" required placeholder="Street and number" autoComplete="address-line1" {...field('street')} />
+            <input id="co-street" className="input-sans" required placeholder="Street and number" autoComplete="address-line1" data-testid="co-street1" {...field('street1')} />
           </div>
           <div>
             <label className="field-label" htmlFor="co-apt">APT / UNIT</label>
-            <input id="co-apt" className="input-sans" placeholder="Optional" autoComplete="address-line2" {...field('apt')} />
+            <input id="co-apt" className="input-sans" placeholder="Optional" autoComplete="address-line2" {...field('street2')} />
           </div>
         </div>
         <div className="field-grid field-grid--2-1-1">
           <div>
             <label className="field-label" htmlFor="co-city">CITY</label>
-            <input id="co-city" className="input-sans" required autoComplete="address-level2" {...field('city')} />
+            <input id="co-city" className="input-sans" required autoComplete="address-level2" data-testid="co-city" {...field('city')} />
           </div>
           <div>
-            <label className="field-label" htmlFor="co-statezip">STATE · ZIP</label>
-            <input id="co-statezip" className="input-mono" required placeholder="NY 10001" {...field('stateZip')} />
+            <label className="field-label" htmlFor="co-state">STATE · ZIP</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input id="co-state" className="input-mono" required placeholder="NY" maxLength={2} autoComplete="address-level1" style={{ width: 64, textTransform: 'uppercase' }} data-testid="co-state" {...field('state')} />
+              <input id="co-zip" aria-label="ZIP" className="input-mono" required placeholder="10001" inputMode="numeric" autoComplete="postal-code" style={{ flex: 1 }} data-testid="co-zip" {...field('zip')} />
+            </div>
           </div>
           <div>
             <div className="field-label">COUNTRY</div>
-            <div className="select-row" style={{ cursor: 'default' }}>{address.country}<span className="select-row__caret">US</span></div>
+            <div className="select-row" style={{ cursor: 'default' }}>United States<span className="select-row__caret">US</span></div>
           </div>
         </div>
 

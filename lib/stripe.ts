@@ -17,14 +17,39 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 export default stripe
 
 /**
+ * Signing secrets the webhook route accepts. Two endpoints post to the same URL:
+ *   STRIPE_WEBHOOK_SECRET          "Events on your account" (payment_intent.*, charge.*,
+ *                                  identity.*).
+ *   STRIPE_CONNECT_WEBHOOK_SECRET  "Events on Connected accounts" (account.updated for the
+ *                                  sellers' Express accounts). Optional: unset means only
+ *                                  the first endpoint exists, exactly the pre-2026-09 setup.
+ * Each endpoint signs with its own secret, so verification tries each configured secret.
+ */
+export function webhookSecrets(env: Record<string, string | undefined> = process.env): string[] {
+  return [env.STRIPE_WEBHOOK_SECRET, env.STRIPE_CONNECT_WEBHOOK_SECRET]
+    .filter((s): s is string => typeof s === 'string' && s.length > 0)
+}
+
+/**
  * Verify a Stripe webhook signature and parse the event.
- * Throws StripeSignatureVerificationError on failure.
+ * Throws StripeSignatureVerificationError on failure (the first error when every configured
+ * secret rejects the signature).
  * Raw body (string) must be passed — do NOT parse with JSON.parse first.
  */
 export function constructWebhookEvent(rawBody: string, signature: string): Stripe.Event {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!secret) throw new Error('STRIPE_WEBHOOK_SECRET is not set')
-  return stripe.webhooks.constructEvent(rawBody, signature, secret)
+  const secrets = webhookSecrets()
+  if (secrets.length === 0) throw new Error('STRIPE_WEBHOOK_SECRET is not set')
+  let firstError: unknown
+  for (const secret of secrets) {
+    try {
+      return stripe.webhooks.constructEvent(rawBody, signature, secret)
+    } catch (err) {
+      // Keep the FIRST failure: a timestamp-tolerance error on the platform secret is more
+      // useful in the logs than the Connect secret's generic "no matching signature".
+      firstError ??= err
+    }
+  }
+  throw firstError
 }
 
 /**

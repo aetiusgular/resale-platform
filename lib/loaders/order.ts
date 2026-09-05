@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { createServiceClientRaw } from '@/lib/supabase/service'
+import type { ShipToAddress } from '@/lib/addresses'
 import { REVIEWS_ENABLED, SHIPPING_LABELS_ENABLED } from '@/lib/flags'
 import { autoReleaseAt, disputeDeadlineAt, isDisputeWindowOpen, STATE_LABELS, type OrderState } from '@/lib/orders'
 import { publicImages } from '@/lib/listings/images'
@@ -32,6 +33,7 @@ export const ORDER_DETAIL_SELECT = `
       tracking_number,
       shipping_label_url,
       shipping_address,
+      ship_to_address,
       stripe_transfer_id,
       paid_at,
       seller_confirmed_at,
@@ -59,7 +61,9 @@ export type OrderRow = {
   carrier: string | null
   tracking_number: string | null
   shipping_label_url: string | null
-  shipping_address: unknown
+  /** Buyer address snapshots taken at payment; rendered to the SELLER only (ShipToPanel). */
+  shipping_address: ShipToAddress | null
+  ship_to_address: ShipToAddress | null
   stripe_transfer_id: string | null
   paid_at: string | null
   seller_confirmed_at: string | null
