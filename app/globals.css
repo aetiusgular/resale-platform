@@ -983,9 +983,10 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   .load-more { margin-top: 28px; }
 
   /* the dock is part of the browse page, fixed at the viewport bottom — not a tab bar */
-  .dock { position: sticky; bottom: 0; margin-top: auto; display: flex; background: var(--bg); border-top: 1px solid var(--line-mid); z-index: 45; }
+  .dock { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--bg); border-top: 1px solid var(--line-mid); z-index: 45; }
   .dock__btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; background: transparent; color: var(--ink); font: 400 10px var(--font-mono); letter-spacing: 0.14em; white-space: nowrap; }
   .dock__btn + .dock__btn { border-left: 1px solid var(--line); }
+  .app-shell:has(.dock) { padding-bottom: 49px; } /* clear the fixed browse dock (48px btn + 1px border) */
 
   /* filter takeover (02): FILTER (n) · CLEAR FILTERS · × / rail / SHOW n RESULTS */
   .filter-sheet { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); }
