@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
+import { ChatIcon } from '@/app/components/icons'
 
 interface Props {
   listingId: string
@@ -10,9 +11,10 @@ interface Props {
   className?: string
   label?: string
   testId?: string
+  icon?: boolean
 }
 
-export default function MessageSellerButton({ listingId, className = 'btn-ghost', label = 'MESSAGE SELLER', testId = 'message-seller-btn' }: Props) {
+export default function MessageSellerButton({ listingId, className = 'btn-ghost', label = 'MESSAGE SELLER', testId = 'message-seller-btn', icon = false }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const { openAuthModal } = useAuthModal()
@@ -45,7 +47,7 @@ export default function MessageSellerButton({ listingId, className = 'btn-ghost'
       disabled={loading}
       data-testid={testId}
     >
-      {loading ? 'OPENING…' : label}
+      {loading ? 'OPENING…' : (<>{icon && <ChatIcon size={16} />}{label}</>)}
     </button>
   )
 }

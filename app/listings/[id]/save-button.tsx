@@ -63,7 +63,7 @@ export default function SaveButton({
       aria-label={saved ? 'Remove from saved' : 'Save item'}
       data-testid="listing-save-btn"
     >
-      <HeartIcon filled={saved} size={12} />
+      <HeartIcon filled={saved} size={18} />
     </button>
   )
 }

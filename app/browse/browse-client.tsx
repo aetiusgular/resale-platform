@@ -103,7 +103,7 @@ function CheckRow({ label, count, on, onClick, md, swatch }: {
   return (
     <button type="button" className={`check-row${md ? ' check-row--md' : ''}${swatch ? ' check-row--color' : ''}`} onClick={onClick} aria-pressed={on}>
       <span className="check-row__left">
-        <span className={`checkbox${md ? ' checkbox--lg' : ''}${on ? ' is-on' : ''}`}>{on && <CheckIcon size={md ? 9 : 8} />}</span>
+        <span className={`dot${on ? ' is-on' : ''}`} />
         {swatch && <span className="swatch" style={{ background: swatch }} />}
         <span className={`check-row__label${on ? ' is-on' : ''}`}>{label}</span>
       </span>

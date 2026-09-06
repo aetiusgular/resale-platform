@@ -18,6 +18,7 @@ import AppShell from '@/app/components/app-shell'
 import GuestAction from '@/app/components/guest-action'
 import PrefetchLink from '@/app/components/prefetch-link'
 import JsonLd from '@/app/components/json-ld'
+import { ChatIcon, ShieldCheckIcon } from '@/app/components/icons'
 import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
 
 interface PageProps {
@@ -231,14 +232,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 )}
                 {canBuy ? (
                   user ? (
-                    <MessageSellerButton listingId={id} />
+                    <MessageSellerButton listingId={id} icon className="btn-ghost btn-ghost--icon" />
                   ) : (
-                    <GuestAction next={`/listings/${id}`} testId="message-guest" className="btn-ghost">
-                      MESSAGE SELLER
+                    <GuestAction next={`/listings/${id}`} testId="message-guest" className="btn-ghost btn-ghost--icon">
+                      <ChatIcon size={16} />MESSAGE SELLER
                     </GuestAction>
                   )
                 ) : (
-                  <button type="button" className="btn-ghost" disabled>MESSAGE SELLER</button>
+                  <button type="button" className="btn-ghost btn-ghost--icon" disabled><ChatIcon size={16} />MESSAGE SELLER</button>
                 )}
               </div>
               {isSeller && isActive && (
@@ -260,7 +261,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
               <p style={{ whiteSpace: 'pre-line' }}>{listing.description}</p>
             </div>
             <div className="pdp__escrow">
-              <span className="lc-chip__dot" />
+              <ShieldCheckIcon size={16} />
               ESCROW{authenticated ? ' · AUTHENTICATED' : ' · LEGIT CHECKED'} · TRACKED
             </div>
             <div className="spacer" />

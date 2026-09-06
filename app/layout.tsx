@@ -4,7 +4,6 @@ import { Archivo, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import { SEO_INDEXING_ENABLED } from '@/lib/flags'
 import { baseUrl, SITE_NAME, SITE_TAGLINE } from '@/lib/seo'
-import SmoothScroll from '@/app/components/smooth-scroll'
 import AuthModalProvider from '@/app/components/auth-modal-provider'
 import { THEME_BOOTSTRAP_SCRIPT } from '@/app/components/theme-bootstrap'
 
@@ -97,7 +96,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        {/* suppressHydrationWarning: React strips the CSP nonce from client hydration
+            for security, so the server's nonce attribute vs the empty client one is an
+            intentional, unavoidable diff, not a real mismatch. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} suppressHydrationWarning />
       </head>
       {/* suppressHydrationWarning: browser extensions (Grammarly et al.) inject
           attributes into <body> before React hydrates — not a real mismatch. */}
@@ -109,7 +111,7 @@ export default async function RootLayout({
           </>
         )}
         <AuthModalProvider>
-          <SmoothScroll>{children}</SmoothScroll>
+          {children}
         </AuthModalProvider>
       </body>
     </html>

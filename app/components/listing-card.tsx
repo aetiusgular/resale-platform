@@ -129,31 +129,33 @@ export default function ListingCard({
         <PrefetchLink href={`/listings/${listing.id}`} className="card__brand" title={listing.brand}>
           {listing.brand.toUpperCase()}
         </PrefetchLink>
-        <span className="card__size">{listing.size}</span>
-        {!own && !onRemove && (
-          <button
-            type="button"
-            className={`card__save${isSaved ? ' is-saved' : ''}`}
-            aria-label={isSaved ? 'Remove from saved' : 'Save item'}
-            aria-pressed={isSaved}
-            onClick={() => onSaveToggle(listing.id, isSaved)}
-            data-testid={`save-btn-${listing.id}`}
-          >
-            <HeartIcon filled={isSaved} />
-          </button>
-        )}
-        {/* Saved page ≤720px (mobile-web 06): the filled bookmark in the caption row unsaves;
-            the × on the image is the desktop control. */}
-        {onRemove && (
-          <button
-            type="button"
-            className="card__save card__save--m is-saved"
-            aria-label={`Unsave ${listing.title}`}
-            onClick={() => onRemove(listing.id)}
-          >
-            <HeartIcon filled />
-          </button>
-        )}
+        <span className="card__meta">
+          <span className="card__size">{listing.size}</span>
+          {!own && !onRemove && (
+            <button
+              type="button"
+              className={`card__save${isSaved ? ' is-saved' : ''}`}
+              aria-label={isSaved ? 'Remove from saved' : 'Save item'}
+              aria-pressed={isSaved}
+              onClick={() => onSaveToggle(listing.id, isSaved)}
+              data-testid={`save-btn-${listing.id}`}
+            >
+              <HeartIcon filled={isSaved} size={18} />
+            </button>
+          )}
+          {/* Saved page ≤720px (mobile-web 06): the filled bookmark in the caption row unsaves;
+              the × on the image is the desktop control. */}
+          {onRemove && (
+            <button
+              type="button"
+              className="card__save card__save--m is-saved"
+              aria-label={`Unsave ${listing.title}`}
+              onClick={() => onRemove(listing.id)}
+            >
+              <HeartIcon filled size={18} />
+            </button>
+          )}
+        </span>
       </div>
       <div className="card__title" title={listing.title} data-testid="card-title">
         {truncateTitle(listing.title)}

@@ -65,10 +65,19 @@ export function BookmarkIcon() {
   );
 }
 
-export function ChatIcon() {
+export function ChatIcon({ size = 15 }: { size?: number }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
       <path d="M4 4.5h16v11h-8.5L7 19.5v-4H4z" />
+    </svg>
+  );
+}
+
+export function ShieldCheckIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 2.5l7.5 3v6c0 4.5-3.2 8-7.5 10-4.3-2-7.5-5.5-7.5-10v-6z" />
+      <path d="M8.5 12l2.5 2.5 4.5-5" />
     </svg>
   );
 }
