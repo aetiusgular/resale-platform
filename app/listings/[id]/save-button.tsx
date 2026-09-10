@@ -16,6 +16,7 @@ export default function SaveButton({
   initialSaved,
   guest = false,
   listing,
+  className = 'btn-square',
 }: {
   listingId: string
   initialSaved: boolean
@@ -23,6 +24,8 @@ export default function SaveButton({
   guest?: boolean
   /** What the guest is saving — names the item in the sign-in popup. */
   listing?: { brand: string; title: string; image?: string | null }
+  /** Button class name; defaults to the square bookmark. */
+  className?: string
 }) {
   const [saved, setSaved] = useState(initialSaved)
   const [loading, setLoading] = useState(false)
@@ -57,7 +60,7 @@ export default function SaveButton({
       type="button"
       onClick={toggle}
       disabled={loading}
-      className={`btn-square${saved ? ' is-on' : ''}`}
+      className={`${className}${saved ? ' is-on' : ''}`}
       title={saved ? 'Unsave' : 'Save'}
       aria-pressed={saved}
       aria-label={saved ? 'Remove from saved' : 'Save item'}

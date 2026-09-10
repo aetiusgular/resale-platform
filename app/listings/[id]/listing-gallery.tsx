@@ -44,32 +44,38 @@ export default function ListingGallery({ images, title, showPossession, saveSlot
 
   return (
     <>
-      <div className="pdp-stage" data-testid="listing-gallery">
-        <div className="pdp-stage__track" ref={trackRef} onScroll={onScroll}>
-          {slots.map((s, i) => (
-            <div key={s.label} className={`pdp-stage__slide${i === slot ? ' is-current' : ''}`} style={{ background: tone(i) }} aria-hidden={i !== slot}>
-              {s.url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={s.url}
-                  alt={`${title} — ${s.label.toLowerCase()}`}
-                  fetchPriority={i === 0 ? 'high' : undefined}
-                  loading={i === 0 ? undefined : 'lazy'}
-                  decoding="async"
-                />
-              ) : (
-                <span className="pdp-stage__label">{s.label}</span>
-              )}
-            </div>
-          ))}
+      <div className="pdp-gallery">
+        <button type="button" className="pdp-arrow pdp-arrow--l" aria-label="Previous photo" onClick={() => go((slot + n - 1) % n)}>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><path d="M14 6l-6 6 6 6" /></svg>
+        </button>
+        <div className="pdp-stage" data-testid="listing-gallery">
+          <div className="pdp-stage__track" ref={trackRef} onScroll={onScroll}>
+            {slots.map((s, i) => (
+              <div key={s.label} className={`pdp-stage__slide${i === slot ? ' is-current' : ''}`} style={{ background: tone(i) }} aria-hidden={i !== slot}>
+                {s.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={s.url}
+                    alt={`${title} — ${s.label.toLowerCase()}`}
+                    fetchPriority={i === 0 ? 'high' : undefined}
+                    loading={i === 0 ? undefined : 'lazy'}
+                    decoding="async"
+                  />
+                ) : (
+                  <span className="pdp-stage__label">{s.label}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          <span className="pdp-stage__count">{slot + 1} / {n}</span>
+          {saveSlot && <span className="pdp-stage__save">{saveSlot}</span>}
+          <span className="pdp-stage__dots" aria-hidden="true">
+            {slots.map((s, i) => <span key={s.label} className={`pdp-stage__dot${i === slot ? ' is-on' : ''}`} />)}
+          </span>
         </div>
-        <button type="button" className="pdp-stage__arrow pdp-stage__arrow--l" aria-label="Previous photo" onClick={() => go((slot + n - 1) % n)}>‹</button>
-        <button type="button" className="pdp-stage__arrow pdp-stage__arrow--r" aria-label="Next photo" onClick={() => go((slot + 1) % n)}>›</button>
-        <span className="pdp-stage__count">{slot + 1} / {n}</span>
-        {saveSlot && <span className="pdp-stage__save">{saveSlot}</span>}
-        <span className="pdp-stage__dots" aria-hidden="true">
-          {slots.map((s, i) => <span key={s.label} className={`pdp-stage__dot${i === slot ? ' is-on' : ''}`} />)}
-        </span>
+        <button type="button" className="pdp-arrow pdp-arrow--r" aria-label="Next photo" onClick={() => go((slot + 1) % n)}>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><path d="M10 6l6 6-6 6" /></svg>
+        </button>
       </div>
       <div className="pdp-thumbs" style={n === 5 ? { gridTemplateColumns: 'repeat(5, 1fr)' } : undefined}>
         {slots.map((s, i) => (

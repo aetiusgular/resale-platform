@@ -18,7 +18,7 @@ import AppShell from '@/app/components/app-shell'
 import GuestAction from '@/app/components/guest-action'
 import PrefetchLink from '@/app/components/prefetch-link'
 import JsonLd from '@/app/components/json-ld'
-import { ChatIcon, ShieldCheckIcon } from '@/app/components/icons'
+import { ChatIcon } from '@/app/components/icons'
 import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
 
 interface PageProps {
@@ -88,7 +88,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
   const sellerHandle = d.seller.username
   const sellerInitials = d.seller.initials
-  const authenticated = d.listing.authenticated
   const shippingCents = d.listing.shipping_cents
   const crumbParts = d.listing.crumb.parts
   const crumbHref = d.listing.crumb.href
@@ -171,14 +170,20 @@ export default async function ListingDetailPage({ params }: PageProps) {
           <div className="pdp__right">
             <div className="pdp__toprow">
               <span className="pdp__listed">{listedLine}</span>
-              <a className="lc-chip" href="#lc-thread" title="Jumps to legit check thread" data-testid="lc-chip">
-                <span className="lc-chip__dot" />
-                LC {initialTally.legit} LEGIT · {initialTally.verdict} ↓
-              </a>
+              <a className="pdp__legit-link" href="#lc-thread" title="Jumps to the legit check thread" data-testid="lc-chip">{initialTally.legit} LEGIT</a>
             </div>
-            <div className="pdp__brand">{listing.brand.toUpperCase()}</div>
-            <h1 className="pdp__title">{listing.title}</h1>
-            <div className="pdp__spec">{spec}</div>
+            <div className="pdp__caption">
+              <div className="pdp__caption-main">
+                <div className="pdp__brand">{listing.brand.toUpperCase()}</div>
+                <h1 className="pdp__title">{listing.title}</h1>
+                <div className="pdp__spec">{spec}</div>
+              </div>
+              {!isSeller && (
+                user
+                  ? <SaveButton listingId={id} initialSaved={isSaved} className="pdp__caption-save" />
+                  : <SaveButton listingId={id} initialSaved={false} guest listing={{ brand: listing.brand, title: listing.title, image: images[0] ?? null }} className="pdp__caption-save" />
+              )}
+            </div>
             <div className="pdp__pricerow">
               <span className="pdp__price" data-testid="listing-price">
                 {listing.is_price_dropped && originalPriceCents && (
@@ -198,6 +203,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
             </div>
 
             <div className="pdp__ctas">
+              <div className="pdp__buyrow">
               {canBuy ? (
                 user ? (
                   <PrefetchLink href={`/checkout/${id}`} className="btn-primary btn-primary--lg" data-testid="buy-now">
@@ -224,24 +230,18 @@ export default async function ListingDetailPage({ params }: PageProps) {
               ) : (
                 <button type="button" className="btn-ink" disabled>MAKE OFFER</button>
               )}
-              <div className="pdp__ctarow">
-                {!isSeller && (
-                  user
-                    ? <SaveButton listingId={id} initialSaved={isSaved} />
-                    : <SaveButton listingId={id} initialSaved={false} guest listing={{ brand: listing.brand, title: listing.title, image: images[0] ?? null }} />
-                )}
-                {canBuy ? (
-                  user ? (
-                    <MessageSellerButton listingId={id} icon className="btn-ghost btn-ghost--icon" />
-                  ) : (
-                    <GuestAction next={`/listings/${id}`} testId="message-guest" className="btn-ghost btn-ghost--icon">
-                      <ChatIcon size={16} />MESSAGE SELLER
-                    </GuestAction>
-                  )
-                ) : (
-                  <button type="button" className="btn-ghost btn-ghost--icon" disabled><ChatIcon size={16} />MESSAGE SELLER</button>
-                )}
               </div>
+              {canBuy ? (
+                user ? (
+                  <MessageSellerButton listingId={id} icon className="btn-ghost btn-ghost--icon" />
+                ) : (
+                  <GuestAction next={`/listings/${id}`} testId="message-guest" className="btn-ghost btn-ghost--icon">
+                    <ChatIcon size={16} />MESSAGE SELLER
+                  </GuestAction>
+                )
+              ) : (
+                <button type="button" className="btn-ghost btn-ghost--icon" disabled><ChatIcon size={16} />MESSAGE SELLER</button>
+              )}
               {isSeller && isActive && (
                 <div className="stack" style={{ gap: 6, paddingTop: 6 }}>
                   {BUMP_ENABLED && <BumpButton listingId={id} />}
@@ -259,10 +259,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 <span>CONDITION {listing.condition_score ?? '—'} / 10</span>
               </div>
               <p style={{ whiteSpace: 'pre-line' }}>{listing.description}</p>
-            </div>
-            <div className="pdp__escrow">
-              <ShieldCheckIcon size={16} />
-              ESCROW{authenticated ? ' · AUTHENTICATED' : ' · LEGIT CHECKED'} · TRACKED
             </div>
             <div className="spacer" />
             <div className="pdp__seller">
@@ -305,9 +301,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
         {canBuy && (
           <div className="pdp-dock">
             {user ? (
-              <PrefetchLink href={`/checkout/${id}`} className="btn-primary">BUY NOW · {formatCents(listing.price_cents)}</PrefetchLink>
+              <PrefetchLink href={`/checkout/${id}`} className="btn-primary">BUY NOW</PrefetchLink>
             ) : (
-              <GuestAction next={`/checkout/${id}`} className="btn-primary">BUY NOW · {formatCents(listing.price_cents)}</GuestAction>
+              <GuestAction next={`/checkout/${id}`} className="btn-primary">BUY NOW</GuestAction>
             )}
             {user ? (
               <a href={`/messages?listing=${id}`} className="btn-ink">MAKE OFFER</a>
