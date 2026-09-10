@@ -951,6 +951,46 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   .msgs__list { width: 300px; }
   .auth-hero { display: none; }
   .auth-side { width: 100%; }
+
+  /* browse (01): count + scope left, SAVE SEARCH + right; MY SIZES moves into the takeover */
+  .results { align-items: flex-end; gap: 16px; padding: 14px 0 12px; }
+  .results__lead { flex-direction: column; align-items: flex-start; gap: 5px; white-space: normal; min-width: 0; }
+  .results__count { font-size: 28px; font-weight: 300; }
+  .results__meta { font-size: 11px; }
+  .results__actions { padding-bottom: 0; }
+  .results__sort, .results__edit, .results .mysizes-toggle { display: none; }
+  .results__save { border: 1px solid var(--line-mid); padding: 8px 10px; font: 400 9px var(--font-mono); letter-spacing: 0.14em; text-decoration: none; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 10px 0; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip, .chip-clear { flex-shrink: 0; }
+  .chip { padding: 5px 8px; font-size: 9px; gap: 7px; }
+  .grid { gap: 18px 14px; padding-top: 16px; }
+  .load-more { margin-top: 28px; }
+
+  /* the dock is part of the browse page, fixed at the viewport bottom — not a tab bar */
+  .dock { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--bg); border-top: 1px solid var(--line-mid); z-index: 45; }
+  .dock__btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; background: transparent; color: var(--ink); font: 400 10px var(--font-mono); letter-spacing: 0.14em; white-space: nowrap; }
+  .dock__btn + .dock__btn { border-left: 1px solid var(--line); }
+  .app-shell:has(.dock) { padding-bottom: 49px; } /* clear the fixed browse dock (48px btn + 1px border) */
+
+  /* filter takeover (02): FILTER (n) · CLEAR FILTERS · × / rail / SHOW n RESULTS */
+  .filter-sheet { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); }
+  .filter-sheet__head { display: flex; justify-content: space-between; align-items: center; height: 50px; padding: 0 16px; border-bottom: 1px solid var(--ink); flex-shrink: 0; }
+  .filter-sheet__tools { display: flex; align-items: center; gap: 16px; }
+  .filter-sheet__clear { font-size: 9px; }
+  .filter-sheet__head .modal__close { padding: 6px 0 6px 6px; }
+  .filter-sheet__body { flex: 1; overflow: auto; overscroll-behavior: contain; padding: 0 16px; }
+  .filter-sheet__body .rail { display: block; width: auto; border-right: none; padding: 0 0 24px; }
+  .filter-sheet__body .rail__top { display: none; }
+  .filter-sheet__body .rail > button.rail-sec:first-of-type { border-top: none; }
+  .filter-sheet__body .rail-sec { padding: 14px 0; }
+  .filter-sheet__body .opt-row { padding: 7px 0; }
+  .filter-sheet__body .check-row { padding: 7px 0; }
+  .sheet-sizes { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .sheet-sizes .mysizes-toggle { gap: 10px; }
+  .filter-sheet__foot { padding: 12px 16px 16px; border-top: 1px solid var(--line); flex-shrink: 0; }
+  .filter-sheet__foot .btn-primary { margin: 0; padding: 15px 0; letter-spacing: 0.18em; }
+
   .pdp-page { display: flex; flex-direction: column; flex: 1 0 auto; }
 
   /* listing (05): both columns unwrap into one stack — back link, swipe gallery,
@@ -1019,45 +1059,6 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   /* page-owned docked bars stick to the viewport bottom while their page is in view and
      scroll away with the footer below them — never fixed over it */
   .browse-page, .pdp-page, .settings-section, .settings-body--dock, .msgs { display: flex; flex-direction: column; flex: 1 0 auto; }
-
-  /* browse (01): count + scope left, SAVE SEARCH + right; MY SIZES moves into the takeover */
-  .results { align-items: flex-end; gap: 16px; padding: 14px 0 12px; }
-  .results__lead { flex-direction: column; align-items: flex-start; gap: 5px; white-space: normal; min-width: 0; }
-  .results__count { font-size: 28px; font-weight: 300; }
-  .results__meta { font-size: 11px; }
-  .results__actions { padding-bottom: 0; }
-  .results__sort, .results__edit, .results .mysizes-toggle { display: none; }
-  .results__save { border: 1px solid var(--line-mid); padding: 8px 10px; font: 400 9px var(--font-mono); letter-spacing: 0.14em; text-decoration: none; }
-  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 10px 0; }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip, .chip-clear { flex-shrink: 0; }
-  .chip { padding: 5px 8px; font-size: 9px; gap: 7px; }
-  .grid { gap: 18px 14px; padding-top: 16px; }
-  .load-more { margin-top: 28px; }
-
-  /* the dock is part of the browse page, fixed at the viewport bottom — not a tab bar */
-  .dock { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--bg); border-top: 1px solid var(--line-mid); z-index: 45; }
-  .dock__btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; background: transparent; color: var(--ink); font: 400 10px var(--font-mono); letter-spacing: 0.14em; white-space: nowrap; }
-  .dock__btn + .dock__btn { border-left: 1px solid var(--line); }
-  .app-shell:has(.dock) { padding-bottom: 49px; } /* clear the fixed browse dock (48px btn + 1px border) */
-
-  /* filter takeover (02): FILTER (n) · CLEAR FILTERS · × / rail / SHOW n RESULTS */
-  .filter-sheet { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); }
-  .filter-sheet__head { display: flex; justify-content: space-between; align-items: center; height: 50px; padding: 0 16px; border-bottom: 1px solid var(--ink); flex-shrink: 0; }
-  .filter-sheet__tools { display: flex; align-items: center; gap: 16px; }
-  .filter-sheet__clear { font-size: 9px; }
-  .filter-sheet__head .modal__close { padding: 6px 0 6px 6px; }
-  .filter-sheet__body { flex: 1; overflow: auto; overscroll-behavior: contain; padding: 0 16px; }
-  .filter-sheet__body .rail { display: block; width: auto; border-right: none; padding: 0 0 24px; }
-  .filter-sheet__body .rail__top { display: none; }
-  .filter-sheet__body .rail > button.rail-sec:first-of-type { border-top: none; }
-  .filter-sheet__body .rail-sec { padding: 14px 0; }
-  .filter-sheet__body .opt-row { padding: 7px 0; }
-  .filter-sheet__body .check-row { padding: 7px 0; }
-  .sheet-sizes { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
-  .sheet-sizes .mysizes-toggle { gap: 10px; }
-  .filter-sheet__foot { padding: 12px 16px 16px; border-top: 1px solid var(--line); flex-shrink: 0; }
-  .filter-sheet__foot .btn-primary { margin: 0; padding: 15px 0; letter-spacing: 0.18em; }
 
   /* modals become bottom sheets over the dimmed page (03 / 04 / 25) */
   .scrim { align-items: flex-end; padding: 0; }
