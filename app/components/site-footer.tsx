@@ -36,10 +36,10 @@ export default function SiteFooter({ active, mobileOnly = false }: { active?: st
         <span className="footer__divider" aria-hidden="true" />
         <span className="footer__social">
           <a href="https://instagram.com" target="_blank" rel="noreferrer" title="Instagram" aria-label="Instagram">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="4" y="4" width="16" height="16" /><circle cx="12" cy="12" r="3.5" /><path d="M16.6 7.4v.01" /></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5" /><circle cx="12" cy="12" r="4.3" /><circle cx="17.3" cy="6.7" r="1.2" fill="currentColor" stroke="none" /></svg>
           </a>
           <a href="https://tiktok.com" target="_blank" rel="noreferrer" title="TikTok" aria-label="TikTok">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M14 4v9.7a3.3 3.3 0 1 1-2.8-3.26" /><path d="M14 4c.4 2.2 1.9 3.8 4 4.1" /></svg>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M16.5 3.2c.5 2.4 2.3 4 4.5 4.2v3.1a7.8 7.8 0 0 1-4.5-1.5v6.1a5.9 5.9 0 1 1-5.9-5.9c.35 0 .7.03 1 .09v3.2a2.85 2.85 0 1 0 2 2.72V3.2h2.9z" /></svg>
           </a>
         </span>
       </div>
