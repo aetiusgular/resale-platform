@@ -555,7 +555,6 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .acct-panel__foot { border-top: 1px solid var(--line); padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .acct-theme { display: flex; align-items: center; justify-content: space-between; width: 100%; }
 .acct-theme__label { font: 300 9px var(--font-mono); letter-spacing: 0.16em; color: var(--sub); }
-.acct-theme .seg__opt { padding: 0 12px; }
 .acct-signout { font: 300 14px var(--font-sans); color: var(--sub); text-align: left; background: transparent; padding: 0; }
 .acct-signout:hover { color: var(--ink); }
 
@@ -695,11 +694,15 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .tier-bar__legend { display: flex; justify-content: space-between; align-items: baseline; padding-top: 8px; font: 400 9px var(--font-mono); letter-spacing: 0.1em; }
 .appearance-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 0; }
 .appearance-row__title { font-size: 13px; font-weight: 400; }
-.seg { display: flex; }
-.seg__opt { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 1px solid var(--line-mid); border-left: none; color: var(--sub); padding: 0 14px; font: 300 9px var(--font-mono); letter-spacing: 0.14em; }
-.seg__opt:first-child { border-left: 1px solid var(--line-mid); }
+/* Theme toggle: each option is an invisible 44x44 target (AAA 2.5.5) with a 32px bordered
+   square drawn inside it, the same footprint as the avatar square in the header. */
+.seg { display: flex; gap: 0; }
+.seg__opt { position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: none; background: transparent; color: var(--sub); }
+.seg__opt::before { content: ''; position: absolute; inset: 6px; border: 1px solid var(--line-mid); z-index: -1; }
 .seg__opt:hover { color: var(--ink); }
-.seg__opt.is-on { background: var(--ink); color: var(--on-ink); border-color: var(--ink); font-weight: 400; }
+.seg__opt:hover::before { border-color: var(--ink); }
+.seg__opt.is-on { color: var(--on-ink); }
+.seg__opt.is-on::before { background: var(--ink); border-color: var(--ink); }
 .danger-row { display: flex; align-items: center; gap: 16px; border-top: 1px solid var(--line); margin-top: 44px; padding-top: 20px; }
 .addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 22px 0 0; }
 .addr-card { border: 1px solid var(--line); padding: 14px 16px; }
@@ -980,6 +983,8 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   .saved-grid { grid-template-columns: repeat(2, 1fr); }
   .layout > .rail { display: none; }
   .nav-icon__label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  /* Icon-only nav from here down: 20px glyphs inside the 44px targets. */
+  .header .nav-icon svg { width: 20px; height: 20px; }
   .msgs__list { width: 300px; }
   .auth-hero { display: none; }
   .auth-side { width: 100%; }
@@ -1079,7 +1084,6 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   .header__logo { font-size: 14px; }
   .header .header__alpha { display: none; }
   .header__actions { order: 2; margin-left: auto; gap: 5px; }
-  .header .nav-icon svg { width: 20px; height: 20px; }
   .search { order: 3; flex-basis: 100%; max-width: none; margin: 0 0 12px; }
   /* the search row belongs to browse + saved only (Mobile Pages 1A / 1C) */
   .search[data-mobile='hide'] { display: none; }

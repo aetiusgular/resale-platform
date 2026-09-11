@@ -84,7 +84,7 @@ import { Sun, Moon, Monitor } from '@phosphor-icons/react/ssr'
 const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const
 
 /** Segmented LIGHT / DARK (/ SYSTEM) control — icon-only, used in the account popout and Settings. */
-export function ThemeSegment({ options, compact }: { options: ThemeSetting[]; compact?: boolean }) {
+export function ThemeSegment({ options }: { options: ThemeSetting[]; compact?: boolean }) {
   const { setting, theme, setSetting } = useTheme()
   // Two-option control (popout) highlights the RESOLVED theme; the three-option
   // control (Settings) highlights the stored setting so SYSTEM is selectable.
@@ -98,7 +98,6 @@ export function ThemeSegment({ options, compact }: { options: ThemeSetting[]; co
           role="radio"
           aria-checked={current === s}
           className={`seg__opt${current === s ? ' is-on' : ''}`}
-          style={compact ? { padding: '0 12px' } : undefined}
           onClick={() => setSetting(s)}
           aria-label={s.toUpperCase()}
           title={s.toUpperCase()}
