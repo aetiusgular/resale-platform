@@ -270,6 +270,13 @@ Canonical rules are `AGENTS.md` section 4. The short version you need while buil
   and tag chips. Nothing below 10px. WCAG sets no minimum; this is the house floor.
 - `/styleguide` is the living reference. When unsure what a control looks like,
   look there before looking anywhere else.
+- Tuning by eye: in `pnpm dev`, every page mounts a DialKit panel (bottom right) whose
+  dials are bound to the colour tokens, the control height and the key header, card and
+  type sizes, with the house floors as slider bounds and a live contrast readout (bottom
+  left). It survives client navigations, so tune on `/browse` or a listing with real
+  content. Tune, press Copy, hand the values to your agent: `app/components/dev-tuner-panel.tsx`
+  maps every dial to its line in `globals.css`. Development-only, never ships, and hidden
+  from automated browsers so the e2e suite never sees it.
 - Contrast is held to WCAG 2.2 AAA for text (7:1) and AA for control edges (3:1), in both themes.
   If you change a token, recheck the ratio in both themes before you open the PR.
 - Icons are one visual system: `currentColor` outlines at a 1.5 stroke with round caps.
@@ -320,6 +327,11 @@ Light + dark at 1280 and 390 for any visual change.
 - **pnpm version drift.** This repo uses pnpm 11 features in `pnpm-workspace.yaml`.
   If `pnpm install` rewrites `pnpm-lock.yaml`, you are on the wrong pnpm. Do not
   commit the rewritten lockfile; it is a protected path and will fail the guard.
+- **`react-doctor` is pinned in `pnpm-workspace.yaml` `overrides`.** `react-scan` depends on
+  `react-doctor@latest`, so any lockfile update pulls the newest release; 0.9.13 added
+  a second `lightningcss` (Tailwind pins its own), which split `vite` into two copies
+  and broke `tsc` on `vitest.config.ts`. Bump the override deliberately, then run
+  `pnpm verify`.
 - **`'use client'`.** Any component using hooks, event handlers, `useSearchParams`,
   or browser APIs needs it at the top. Server Components are the default.
 - **`useSearchParams` in a client component** must sit under a `<Suspense>` boundary

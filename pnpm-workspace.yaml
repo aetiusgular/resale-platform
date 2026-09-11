@@ -22,3 +22,7 @@ overrides:
   postcss: ^8.5.18
   sharp: ^0.35.3
   fast-uri: ^3.1.4
+# react-scan depends on react-doctor@latest; unpinned, every lockfile update pulls the
+# newest release. 0.9.13 added a second lightningcss (Tailwind pins its own), which split
+# vite into two copies and broke tsc on vitest.config.ts. Bump deliberately, then pnpm verify.
+  react-doctor: 0.9.3

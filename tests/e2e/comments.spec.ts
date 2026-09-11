@@ -47,10 +47,14 @@ test('listing page has community section heading', async ({ page }) => {
   await expect(page.locator('text=The community weighs in.')).toBeVisible()
 })
 
-test('community section shows the Legit Check label (general comments removed)', async ({ page }) => {
+test('community section shows the Legit Check strip and input (general comments removed)', async ({ page }) => {
   if (!TEST_LISTING_ID) { test.skip(); return }
   await page.goto(`/listings/${TEST_LISTING_ID}`)
-  await expect(page.locator('text=/Legit check/i').first()).toBeVisible()
+  // Strip reads "[check] n LEGIT  [flag] n FLAGGED"; the "LEGIT CHECK —" prefix is gone.
+  const section = page.locator('#lc-thread')
+  await expect(section).toContainText(/\d+ LEGIT/)
+  await expect(section).toContainText(/\d+ FLAGGED/)
+  await expect(page.getByTestId('lc-input')).toBeVisible()
   // General comments are gone — no "Comments" tab.
   await expect(page.locator('button:has-text("Comments")')).toHaveCount(0)
 })

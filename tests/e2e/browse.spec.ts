@@ -34,7 +34,8 @@ test.describe('Browse — desktop sort dropdown', () => {
     await expect(btn).toHaveAttribute('aria-expanded', 'true')
     await expect(menu).toContainText('LOW TO HIGH')
     await page.getByTestId('sort-option-price_asc').click()
-    await expect(page).toHaveURL(/sort=price_asc/)
+    // The pick navigates (router.push, server render); dev under parallel workers can take a while.
+    await expect(page).toHaveURL(/sort=price_asc/, { timeout: 15_000 })
     await expect(menu).toHaveCount(0)
     await expect(btn).toContainText('PRICE')
   })

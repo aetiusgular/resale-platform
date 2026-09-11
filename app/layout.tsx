@@ -5,6 +5,8 @@ import './globals.css'
 import { SEO_INDEXING_ENABLED } from '@/lib/flags'
 import { baseUrl, SITE_NAME, SITE_TAGLINE } from '@/lib/seo'
 import AuthModalProvider from '@/app/components/auth-modal-provider'
+import DevTuner from '@/app/components/dev-tuner'
+import DevTunerStyles from '@/app/components/dev-tuner-styles'
 import ShellSwitch from '@/app/components/shell-switch'
 import SiteHeader from '@/app/components/site-header'
 import { getViewer } from '@/app/components/viewer'
@@ -121,6 +123,9 @@ export default async function RootLayout({
             {children}
           </ShellSwitch>
         </AuthModalProvider>
+        {/* Development only: the DialKit design tuner on every page. Both render nothing in production. */}
+        <DevTunerStyles />
+        <DevTuner />
       </body>
     </html>
   )

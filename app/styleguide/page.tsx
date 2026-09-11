@@ -3,27 +3,14 @@ import AppShell from '@/app/components/app-shell'
 import { CardGhost } from '@/app/components/skeletons'
 import { ThemeSegment } from '@/app/components/theme'
 import { getViewerUsername } from '@/app/components/viewer'
+import { TOKENS } from './tokens'
 
 export const metadata: Metadata = {
   title: 'Styleguide',
   robots: { index: false, follow: false },
 }
 
-/* ─── Token data (mirrors app/globals.css :root / [data-theme='dark']) ────── */
-
-const COLORS = [
-  { name: '--bg',         light: '#f5f5f3', dark: '#131312', usage: 'Page ground' },
-  { name: '--ink',        light: '#161616', dark: '#e7e7e4', usage: 'Primary text · filled surfaces' },
-  { name: '--on-ink',     light: '#f5f5f3', dark: '#131312', usage: 'Text on top of --ink' },
-  { name: '--sub',        light: '#6c6c68', dark: '#93938e', usage: 'Secondary text' },
-  { name: '--faint',      light: '#9d9d98', dark: '#5c5c58', usage: 'Tertiary text · counts · notes' },
-  { name: '--line',       light: '#dcdcd8', dark: '#262624', usage: 'Hairline dividers' },
-  { name: '--line-row',   light: '#ececea', dark: '#1d1d1c', usage: 'Row separators inside panels' },
-  { name: '--line-mid',   light: '#b4b4b0', dark: '#3e3e3b', usage: 'Input + chip borders' },
-  { name: '--line-hover', light: '#8a8a86', dark: '#5c5c58', usage: 'Border on hover' },
-  { name: '--hover',      light: '#ececea', dark: '#1d1d1c', usage: 'Hover fill · unread rows' },
-  { name: '--alert',      light: '#b3382f', dark: '#d4665b', usage: 'Errors + disputes only' },
-]
+/* ─── Token data lives in ./tokens.ts (mirrors app/globals.css) ─────────── */
 
 const TONES = [1, 2, 3, 4, 5, 6, 7, 8]
 
@@ -49,7 +36,7 @@ const MONO_SCALE: Array<{ px: number; weight: number; tracking: string; label: s
 
 /* ─── Small building blocks ──────────────────────────────────────────────── */
 
-function Swatch({ name, light, dark, usage }: (typeof COLORS)[number]) {
+function Swatch({ name, light, dark, usage }: (typeof TOKENS)[number]) {
   return (
     <div className="row" style={{ gap: 14, padding: '8px 0', borderBottom: '1px solid var(--line-row)' }}>
       <div
@@ -86,9 +73,9 @@ export default async function StyleguidePage() {
         </div>
 
         {/* ── Colour ────────────────────────────────────────────────────── */}
-        <div className="sec-head"><span className="sec-head__label">COLOUR — {COLORS.length} TOKENS</span><span className="page-note">THE ONLY COLOURS COMPONENTS MAY USE</span></div>
+        <div className="sec-head"><span className="sec-head__label">COLOUR — {TOKENS.length} TOKENS</span><span className="page-note">THE ONLY COLOURS COMPONENTS MAY USE</span></div>
         <div className="mt-8">
-          {COLORS.map((c) => <Swatch key={c.name} {...c} />)}
+          {TOKENS.map((c) => <Swatch key={c.name} {...c} />)}
         </div>
         <div className="field-label" style={{ paddingTop: 22 }}>IMAGE PLACEHOLDER TONES — --tone-1 … --tone-8</div>
         <div className="row" style={{ gap: 6 }}>
@@ -227,7 +214,7 @@ export default async function StyleguidePage() {
         <div className="mt-8">
           <div className="kv"><span className="kv__k">COLOUR</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>ONLY THE TOKENS ABOVE — NO LITERAL HEX IN COMPONENTS, NO GRADIENTS, NO SHADOWS</span></div>
           <div className="kv"><span className="kv__k">DATA</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>PRICES, SIZES, COUNTS, TIMESTAMPS, LABELS AND TAGS ARE ALWAYS MONO</span></div>
-          <div className="kv"><span className="kv__k">SHAPE</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>0PX RADIUS EVERYWHERE · 1PX HAIRLINES · 40PX CONTROL HEIGHT</span></div>
+          <div className="kv"><span className="kv__k">SHAPE</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>0PX RADIUS EVERYWHERE · 1PX HAIRLINES · 44PX CONTROL HEIGHT</span></div>
           <div className="kv"><span className="kv__k">THEME</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>LIGHT, DARK AND SYSTEM — COMPONENTS NEVER BRANCH ON THEME, THEY USE TOKENS</span></div>
           <div className="kv"><span className="kv__k">MOTION</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>OPACITY ON HOVER · 0.2S COLOUR TRANSITIONS · NOTHING ELSE MOVES</span></div>
         </div>

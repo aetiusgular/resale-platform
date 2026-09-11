@@ -1,6 +1,6 @@
-# Recent changes (Tony), 2026-09-10 22:00 to 2026-09-11 09:17 UTC
+# Recent changes (Tony), 2026-09-10 22:00 to 2026-09-11 09:45 UTC
 
-Thirteen commits on `main` plus one uncommitted change, all UI, accessibility, performance and
+Fourteen commits on `main` plus one uncommitted change, all UI, accessibility, performance and
 repo guardrails. No `lib/`, `app/api/`, or database changes. Every stylesheet
 change was measured in Chromium at 1440, 960, 720, 390 and 320px before it was
 applied; `tsc` was clean after every step. ESLint and `next build` were not run
@@ -10,7 +10,8 @@ Commits, newest first:
 
 | Hash | Time (UTC) | Subject |
 |---|---|---|
-| uncommitted | 09:17 | perf: navbar pages preload eagerly (full prefetch as soon as the header renders) |
+| uncommitted | 09:45 | dev: DialKit tuning panel on every page in development; token table moved to tokens.ts and corrected |
+| `4f28d10` | 09:17 | perf(nav): preload navbar pages eagerly; wordmark links straight to /browse |
 | `dc28e84` | 08:30 | ui: SYSTEM theme in popout, drop settings appearance section; docs: 24h change log |
 | `5932dde` | 08:22 | ui(settings): theme toggle draws 32px squares inside 44px targets |
 | `ba89024` | 08:01 | ui: product page and legit-check cleanup, persistent header, sort dropdown, settings copy |
@@ -93,7 +94,7 @@ with `aria-label` and `title`, and now offers LIGHT / DARK / SYSTEM.
 filled ink. Options no longer form a joined strip, which keeps the targets from
 overlapping.
 
-**Preloading (uncommitted).** Every navbar page is now full-prefetched (route plus server
+**Preloading (`4f28d10`).** Every navbar page is now full-prefetched (route plus server
 data) as soon as the header renders instead of on hover: SELL, SAVED, MESSAGES and the
 wordmark pass `prefetch` to `PrefetchLink`; the account popout calls `router.prefetch` for
 `/settings`, `/settings/orders` and, at 720px and below, `/notifications` on mount, and its
@@ -163,12 +164,37 @@ caps, matching the flag and Phosphor regular. New icons come from
 - `3e50491`, `ba89024`: rulebooks updated for 44px controls, AAA text contrast, the
   11px type floor, and the icon system.
 
+**Design tuner (uncommitted).** `pnpm dev` mounts a DialKit panel on every page from
+`app/layout.tsx` (`app/components/dev-tuner.tsx` gate, `dev-tuner-panel.tsx` panel): 22
+colour token dials (both themes), the control height, and 19 header, card and type sizes,
+each mapped to one line in `globals.css`, with the 44px and 11px floors as slider bounds
+and a live WCAG contrast readout floating bottom left. Values apply through a `<style>`
+element appended after the app stylesheet and survive client navigations; Copy hands
+`{ "folder.key": value }` pairs to an agent. The import is dropped from production builds
+(verified: no dialkit or motion in the client chunks) and the gate renders nothing when
+`navigator.webdriver` is set, so Playwright never sees the panel. DialKit's stylesheet is
+inlined by the layout (`dev-tuner-styles.tsx`) with its Google Fonts `@import` stripped: as a
+hoisted `<link>` a blocked font import made React leave an unhandled rejection that the dev
+overlay reported as "[object Event]" on every page. The styleguide's
+token table moved to `app/styleguide/tokens.ts` and now matches the stylesheet (it listed
+the pre-AAA palette); the rules line says 44px control height. New dev dependencies:
+`dialkit` 2.0.2 and `motion` 13.2.0. The install re-resolved `react-scan`'s
+`react-doctor@latest` to 0.9.13, whose chain adds a second `lightningcss` and so a second
+`vite`, which broke `tsc` on `vitest.config.ts`; `pnpm-workspace.yaml` now pins `react-doctor`
+to 0.9.3 under `overrides` (see CONTRIBUTING §8).
+
 ## 8. Tests
 
 - `ba89024`: `browse.spec.ts` gained two structural specs for the sort dropdown (pick
   PRICE ↑ sets `?sort=price_asc`; Escape closes without changing the sort).
   `mobile.spec.ts` now asserts `SORT` and `NEWEST` separately, since the dock label no
   longer contains a middot.
+- Uncommitted: `comments.spec.ts` asserts the legit-check strip counts and the `lc-input`
+  field instead of the removed "LEGIT CHECK" label (it only runs with `TEST_LISTING_ID`, so
+  it was missed in `ba89024`). The sort-pick spec waits up to 15s for the navigation; under
+  five parallel workers on a cold dev server the default 5s expired. The full suite's
+  `auth.spec.ts` sign-in-link failure in that run was the same cold-compile timing and passes
+  in isolation unchanged.
 
 ## 9. Open items
 
