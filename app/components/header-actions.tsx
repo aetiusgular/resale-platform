@@ -82,15 +82,17 @@ export default function HeaderActions({ username, displayName, notificationsEnab
 
   return (
     <div className="header__actions">
-      <PrefetchLink className={`nav-icon${active('/sell') ? ' is-active' : ''}`} href="/sell">
+      {/* Navbar pages preload eagerly: `prefetch` = full route + data as soon as the
+          header renders, not on hover (production only; see prefetch-link.tsx). */}
+      <PrefetchLink className={`nav-icon${active('/sell') ? ' is-active' : ''}`} href="/sell" prefetch>
         <SellIcon />
         <span className="nav-icon__label">SELL</span>
       </PrefetchLink>
-      <PrefetchLink className={`nav-icon${active('/saved') ? ' is-active' : ''}`} href="/saved">
+      <PrefetchLink className={`nav-icon${active('/saved') ? ' is-active' : ''}`} href="/saved" prefetch>
         <BookmarkIcon />
         <span className="nav-icon__label">SAVED</span>
       </PrefetchLink>
-      <PrefetchLink className={`nav-icon${active('/messages') ? ' is-active' : ''}`} href="/messages" aria-label={`Messages, ${msgCount} unread`}>
+      <PrefetchLink className={`nav-icon${active('/messages') ? ' is-active' : ''}`} href="/messages" aria-label={`Messages, ${msgCount} unread`} prefetch>
         <span className="nav-icon__glyph">
           <ChatIcon />
           {msgCount > 0 && <span className="nav-icon__count" data-testid="messages-badge">{msgCount > 9 ? '9+' : msgCount}</span>}

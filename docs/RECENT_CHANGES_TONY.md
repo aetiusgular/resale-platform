@@ -1,6 +1,6 @@
-# Recent changes (Tony), 2026-09-10 22:00 to 2026-09-11 08:30 UTC
+# Recent changes (Tony), 2026-09-10 22:00 to 2026-09-11 09:17 UTC
 
-Twelve commits on `main` plus one uncommitted change, all UI, accessibility, and
+Thirteen commits on `main` plus one uncommitted change, all UI, accessibility, performance and
 repo guardrails. No `lib/`, `app/api/`, or database changes. Every stylesheet
 change was measured in Chromium at 1440, 960, 720, 390 and 320px before it was
 applied; `tsc` was clean after every step. ESLint and `next build` were not run
@@ -10,7 +10,8 @@ Commits, newest first:
 
 | Hash | Time (UTC) | Subject |
 |---|---|---|
-| uncommitted | 08:30 | SYSTEM theme option in the account popout; drop the settings appearance section |
+| uncommitted | 09:17 | perf: navbar pages preload eagerly (full prefetch as soon as the header renders) |
+| `dc28e84` | 08:30 | ui: SYSTEM theme in popout, drop settings appearance section; docs: 24h change log |
 | `5932dde` | 08:22 | ui(settings): theme toggle draws 32px squares inside 44px targets |
 | `ba89024` | 08:01 | ui: product page and legit-check cleanup, persistent header, sort dropdown, settings copy |
 | `3e50491` | 06:11 | a11y: WCAG AAA contrast and 44px targets; 11px type floor for nav and product page |
@@ -83,7 +84,7 @@ avatar, SIGN IN and wordmark keep their exact visual size and gain invisible 44p
 areas. Mobile actions gap tightened to 5px so four targets fit at 320px. Glyphs are
 20px wherever the nav is icon-only (960px and below).
 
-**Popout (`ba89024`, uncommitted).** Phosphor `Bell`, `Package`, `GearSix` next to
+**Popout (`ba89024`, `dc28e84`).** Phosphor `Bell`, `Package`, `GearSix` next to
 Notifications, Orders, Settings. Theme toggle is icon-only (`Sun` / `Moon` / `Monitor`)
 with `aria-label` and `title`, and now offers LIGHT / DARK / SYSTEM.
 
@@ -91,6 +92,16 @@ with `aria-label` and `title`, and now offers LIGHT / DARK / SYSTEM.
 32px bordered square drawn inside it, the avatar's footprint; the selected one is
 filled ink. Options no longer form a joined strip, which keeps the targets from
 overlapping.
+
+**Preloading (uncommitted).** Every navbar page is now full-prefetched (route plus server
+data) as soon as the header renders instead of on hover: SELL, SAVED, MESSAGES and the
+wordmark pass `prefetch` to `PrefetchLink`; the account popout calls `router.prefetch` for
+`/settings`, `/settings/orders` and, at 720px and below, `/notifications` on mount, and its
+links pass `prefetch` so they refresh when the menu opens. The wordmark links straight to
+`/browse` (the `/` route only redirects there; a prefetch of a redirect caches the redirect,
+not the page). Production only, as before. Cost: up to seven extra server renders per hard
+load for a member, reusable for `staleTimes.static` (180s), so a navbar page opened inside
+that window shows data from when it was prefetched, not from the click.
 
 **Type (`3e50491`, `ba89024`).** Nav labels 11px, SIGN IN 11px, avatar initials 11px,
 ALPHA badge and count badges 10px, search placeholder and input 14px.
@@ -118,7 +129,7 @@ ALPHA badge and count badges 10px, search placeholder and input 14px.
   second change inside 30 days (`409 username_window`), in the same spot, styled as an
   error. "Applies to this device.", "ARRIVES AT LAUNCH" and the "Shown on your profile"
   placeholder removed.
-- Uncommitted: "04 — APPEARANCE" section removed from the settings hub (theme lives in
+- `dc28e84`: "04 — APPEARANCE" section removed from the settings hub (theme lives in
   the popout).
 
 ## 6. Accessibility

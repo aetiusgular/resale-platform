@@ -12,6 +12,10 @@
  * Pairs with experimental.staleTimes in next.config.ts: full-prefetch entries
  * are reusable for the `static` window, visited pages for the `dynamic` window.
  * Prefetching is production-only (Next disables it in dev).
+ *
+ * Navbar targets (header links, wordmark, account popout) pass `prefetch` so the
+ * full prefetch runs as soon as they render; intent still re-runs it once the
+ * cached entry has expired.
  */
 import Link from 'next/link'
 import { useState, useCallback, type ComponentProps, type MouseEvent, type TouchEvent, type FocusEvent } from 'react'

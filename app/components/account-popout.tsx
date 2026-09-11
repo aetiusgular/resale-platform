@@ -37,6 +37,15 @@ export default function AccountPopout({ open, username, displayName, initials, n
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // Navbar pages preload eagerly: the popout's targets are full-prefetched when the
+  // header mounts, since the links below only exist while the menu is open.
+  // router.prefetch defaults to a full prefetch; Next skips it in dev and for bots.
+  useEffect(() => {
+    router.prefetch('/settings')
+    router.prefetch('/settings/orders')
+    if (compact) router.prefetch('/notifications')
+  }, [router, compact])
+
   if (!open) return null
 
   async function signOut() {
@@ -56,12 +65,12 @@ export default function AccountPopout({ open, username, displayName, initials, n
           <span className="acct-panel__avatar">{initials}</span>
           <span className="acct-panel__id">
             <span className="acct-panel__name">{displayName || `@${username}`}</span>
-            <PrefetchLink className="acct-panel__profile" href="/settings" onClick={onClose}>VIEW PROFILE</PrefetchLink>
+            <PrefetchLink className="acct-panel__profile" href="/settings" onClick={onClose} prefetch>VIEW PROFILE</PrefetchLink>
           </span>
         </div>
         <nav className="acct-panel__nav">
           {compact ? (
-            <PrefetchLink className="acct-row" href="/notifications" onClick={onClose} data-testid="acct-notifications">
+            <PrefetchLink className="acct-row" href="/notifications" onClick={onClose} data-testid="acct-notifications" prefetch>
               <span className="acct-row__label"><Bell size={16} aria-hidden="true" />Notifications</span>
               {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
             </PrefetchLink>
@@ -71,8 +80,8 @@ export default function AccountPopout({ open, username, displayName, initials, n
               {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
             </button>
           )}
-          <PrefetchLink className="acct-row" href="/settings/orders" onClick={onClose}><span className="acct-row__label"><Package size={16} aria-hidden="true" />Orders</span></PrefetchLink>
-          <PrefetchLink className="acct-row" href="/settings" onClick={onClose}><span className="acct-row__label"><GearSix size={16} aria-hidden="true" />Settings</span></PrefetchLink>
+          <PrefetchLink className="acct-row" href="/settings/orders" onClick={onClose} prefetch><span className="acct-row__label"><Package size={16} aria-hidden="true" />Orders</span></PrefetchLink>
+          <PrefetchLink className="acct-row" href="/settings" onClick={onClose} prefetch><span className="acct-row__label"><GearSix size={16} aria-hidden="true" />Settings</span></PrefetchLink>
         </nav>
         <div className="acct-panel__foot">
           <div className="acct-theme">
