@@ -123,3 +123,12 @@ export function UserIcon() {
     </svg>
   );
 }
+
+export function FlagIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 15.5s1-1 4-1 5 2 8 2 4-1 4-1V4.5s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <path d="M5 21v-6" />
+    </svg>
+  );
+}

@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
+import { FlagIcon } from '@/app/components/icons'
 
 type TierBadge = 'bronze' | 'silver' | 'gold'
 type CommentSource = 'human' | 'auto'
@@ -152,7 +153,7 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
       <div className="lc-strip">
         <span className="lc-strip__left">
           <span className="lc-chip__dot" />
-          LEGIT CHECK — {tally.legit} LEGIT · {tally.flagged} FLAGGED
+          LEGIT CHECK — {tally.legit} LEGIT · <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><FlagIcon />{tally.flagged} FLAGGED</span>
         </span>
         <span className="lc-strip__right">AUTO-AUTH: {tally.autoAuth} · MOD VERDICT: {tally.verdict}</span>
       </div>
@@ -218,8 +219,9 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
           disabled={inputDisabled}
           aria-pressed={vote === 'flag'}
           title="Cast a FLAG vote with your comment"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
         >
-          FLAG
+          <FlagIcon />FLAG
         </button>
         <button type="button" className="btn-mini btn-mini--solid" onClick={handlePost} disabled={posting || inputDisabled || (!inputBody.trim() && !vote)} data-testid="lc-post">
           POST
@@ -311,8 +313,8 @@ function CommentRowView({
             AGREE {agrees}
           </button>
           <span className="lc-comment__meta" style={{ marginTop: 0 }}>·</span>
-          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged}>
-            {flagged ? 'FLAGGED' : 'FLAG'}
+          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <FlagIcon size={10} />{flagged ? 'FLAGGED' : 'FLAG'}
           </button>
           {comment.source !== 'auto' && (
             <>
