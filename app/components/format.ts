@@ -12,6 +12,14 @@ export function truncateTitle(t: string): string {
   return t.length > TITLE_MAX_CHARS ? t.slice(0, TITLE_MAX_CHARS - 1).trimEnd() + '…' : t
 }
 
+/** Buyer-facing listed stamp: time / sold / saves only — never a location. */
+export function listedWhen(line: string): string {
+  return line
+    .split(' · ')
+    .filter((part) => /LISTED|SOLD|AGO|SAVED|JUST NOW/i.test(part))
+    .join(' · ')
+}
+
 /** Mono relative timestamp — JUST NOW · 14M AGO · 3H AGO · 2D AGO · 1W AGO · 2MO AGO. */
 export function formatTimeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()

@@ -77,14 +77,7 @@ export default function SignupForm({ next = '/browse', compact = false, onDone }
   return (
     <form onSubmit={handleSignup} data-testid="signup-form">
       {!compact && (
-        <>
-          <div className="auth-form__head">
-            <span className="modal__title">CREATE ACCOUNT</span>
-            <span className="tag">FREE</span>
-          </div>
-          <h1 className="auth-form__title">Join Archive.</h1>
-          <p className="auth-form__sub">Open to everyone. Takes under a minute.</p>
-        </>
+        <h1 className="auth-form__title">Create account</h1>
       )}
       <label className="field-label" htmlFor="signup-email">EMAIL</label>
       <input id="signup-email" className="input-mono" type="email" placeholder="you@email.com" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} />
@@ -104,9 +97,11 @@ export default function SignupForm({ next = '/browse', compact = false, onDone }
       </button>
       <div className="or-rule"><span /><em>OR</em><span /></div>
       <SocialAuthButtons next={next} />
-      <div className="legal-line">
-        BY CONTINUING YOU AGREE TO THE <Link href="/terms" onClick={onDone}>TERMS</Link> &amp; <Link href="/privacy" onClick={onDone}>PRIVACY POLICY</Link>.
-      </div>
+      {compact && (
+        <div className="legal-line">
+          BY CONTINUING YOU AGREE TO THE <Link href="/terms" onClick={onDone}>TERMS</Link> &amp; <Link href="/privacy" onClick={onDone}>PRIVACY POLICY</Link>.
+        </div>
+      )}
       {!compact && (
         <div className="auth-form__swap">
           <span className="page-note">ALREADY A MEMBER?</span>

@@ -1,11 +1,11 @@
 /**
  * SiteHeader — the shared chrome (design nav 16A / 6A): wordmark + stage badge,
- * underline search, SELL · SAVED · MESSAGES, avatar → account / notifications
- * popouts. Sticky. Collapses to a two-row header ≤720px (search drops below).
+ * underline search, SELL · MESSAGES · SIGN IN (guests) or SELL · SAVED ·
+ * MESSAGES · avatar (members). Sticky. Collapses to a two-row header ≤720px.
  *
  * Server component: accepts the preloaded username so callers avoid a second
- * DB round-trip. Empty username ⇒ signed-out visitor (SELL + SIGN IN open the
- * auth popup).
+ * DB round-trip. Empty username ⇒ signed-out visitor (SELL / MESSAGES / SIGN IN
+ * open the auth popup).
  */
 import { Suspense } from 'react'
 import HeaderSearch from './header-search'

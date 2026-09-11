@@ -47,7 +47,7 @@ export default function MessageSellerButton({ listingId, className = 'btn-ghost'
       disabled={loading}
       data-testid={testId}
     >
-      {loading ? 'OPENING…' : (<>{icon && <ChatIcon size={16} />}{label}</>)}
+      {loading ? 'OPENING…' : (<>{icon && <ChatIcon size={20} />}{label}</>)}
     </button>
   )
 }

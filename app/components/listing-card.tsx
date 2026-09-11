@@ -43,6 +43,8 @@ type ListingCardProps = {
   listing: ListingCardData
   isSaved: boolean
   onSaveToggle: (id: string, saved: boolean) => void
+  /** Override the card permalink (proto catalog uses `/proto/[id]`). */
+  href?: string
   /** Override the time label (e.g. "SAVED 2D AGO" instead of "2D AGO") */
   timeLabel?: string
   /** If true, the listing is sold/removed — SOLD veil + dimmed text */
@@ -64,9 +66,11 @@ type ListingCardProps = {
 }
 
 export default function ListingCard({
-  listing, isSaved, onSaveToggle, timeLabel, unavailable, own, onRemove, position, onProductClick, showAuthBadge = true, onBump, bumped,
+  listing, isSaved, onSaveToggle, timeLabel, unavailable, own, onRemove, position, onProductClick, showAuthBadge = true, onBump, bumped, href,
 }: ListingCardProps) {
+  const permalink = href ?? `/listings/${listing.id}`
   const frontImage = listing.images[0] ?? null
+  const showPhoto = !!frontImage && !frontImage.startsWith('data:image/svg')
   const authenticated = showAuthBadge && listing.authentication_status === 'authenticated'
   const tone = ((position ?? listing.id.charCodeAt(0)) % 8) + 1
   const flag = listing.promoted && !unavailable
@@ -87,12 +91,12 @@ export default function ListingCard({
       data-testid="listing-card"
     >
       <PrefetchLink
-        href={`/listings/${listing.id}`}
+        href={permalink}
         onClick={() => { trackEvent('product_clicked', { listing_id: listing.id }); onProductClick?.(listing.id) }}
         aria-label={`${listing.brand} — ${listing.title}`}
       >
         <div className="card__media" style={{ background: `var(--tone-${tone})` }}>
-          {frontImage ? (
+          {showPhoto && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={frontImage}
@@ -102,8 +106,6 @@ export default function ListingCard({
               decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
-          ) : (
-            <span className="card__slot">FRONT</span>
           )}
           {flag && <span className={`flag ${flag.cls}`}>{flag.text}</span>}
           {unavailable && (
@@ -126,7 +128,7 @@ export default function ListingCard({
       )}
 
       <div className="card__row1">
-        <PrefetchLink href={`/listings/${listing.id}`} className="card__brand" title={listing.brand}>
+        <PrefetchLink href={permalink} className="card__brand" title={listing.brand}>
           {listing.brand.toUpperCase()}
         </PrefetchLink>
         <span className="card__meta">
@@ -140,11 +142,10 @@ export default function ListingCard({
               onClick={() => onSaveToggle(listing.id, isSaved)}
               data-testid={`save-btn-${listing.id}`}
             >
-              <HeartIcon filled={isSaved} size={18} />
+              <HeartIcon filled={isSaved} size={20} />
             </button>
           )}
-          {/* Saved page ≤720px (mobile-web 06): the filled bookmark in the caption row unsaves;
-              the × on the image is the desktop control. */}
+          {/* Saved page ≤720px: caption bookmark unsaves; the × on the image is desktop. */}
           {onRemove && (
             <button
               type="button"
@@ -152,20 +153,20 @@ export default function ListingCard({
               aria-label={`Unsave ${listing.title}`}
               onClick={() => onRemove(listing.id)}
             >
-              <HeartIcon filled size={18} />
+              <HeartIcon filled size={20} />
             </button>
           )}
         </span>
       </div>
-      <div className="card__title" title={listing.title} data-testid="card-title">
+      <PrefetchLink href={permalink} className="card__title" title={listing.title} data-testid="card-title">
         {truncateTitle(listing.title)}
-      </div>
+      </PrefetchLink>
       <div className="card__row2">
         <span className="card__prices">
           {listing.is_price_dropped && listing.original_price_cents && !unavailable && (
             <span className="card__old">{formatCents(listing.original_price_cents)}</span>
           )}
-          <span className="card__price" style={unavailable ? { color: 'var(--faint)' } : undefined}>{listing.price_display}</span>
+          <span className={`card__price${listing.is_price_dropped && listing.original_price_cents && !unavailable ? ' is-drop' : ''}`} style={unavailable ? { color: 'var(--faint)' } : undefined}>{listing.price_display}</span>
         </span>
         {own && !unavailable ? (
           onBump ? (

@@ -2,7 +2,7 @@
 
 /**
  * Browse / search — design option 16A: filter rail (left) + results header
- * (count, MY SIZES toggle, EDIT SIZES, SAVE SEARCH +, cycling boxed SORT) +
+ * (count, MY SIZES toggle, EDIT SIZES, SAVE SEARCH +, boxed SORT dropdown) +
  * active filter chips + 4-col listing grid + LOAD MORE.
  *
  * Mobile web (≤720px, mobile-web handoff 01–04): the rail hides; a dock fixed at the
@@ -50,7 +50,7 @@ type Props = {
   recsTelemetryEnabled: boolean
 }
 
-/** Cycling sort — option 16A: NEWEST → PRICE ↑ → PRICE ↓. `hint` is the mobile sheet's right column (03). */
+/** Sort options — desktop dropdown + mobile sheet (03). `hint` is the sheet's right column. */
 const SORTS = [
   { value: 'newest',     label: 'NEWEST',  hint: 'DEFAULT' },
   { value: 'price_asc',  label: 'PRICE ↑', hint: 'LOW TO HIGH' },
@@ -97,13 +97,15 @@ function Section({ label, open, onToggle, children }: { label: string; open: boo
   )
 }
 
-function CheckRow({ label, count, on, onClick, md, swatch }: {
+function CheckRow({ label, count, on, onClick, md, swatch, mark = 'row' }: {
   label: string; count?: string; on: boolean; onClick: () => void; md?: boolean; swatch?: string
+  /** parent = category, child = subcategory — filled square only when selected. */
+  mark?: 'parent' | 'child' | 'row'
 }) {
   return (
-    <button type="button" className={`check-row${md ? ' check-row--md' : ''}${swatch ? ' check-row--color' : ''}`} onClick={onClick} aria-pressed={on}>
+    <button type="button" className={`check-row${md ? ' check-row--md' : ''}${swatch ? ' check-row--color' : ''}${mark === 'child' ? ' check-row--sub' : ''}${on ? ' is-on' : ''}`} onClick={onClick} aria-pressed={on}>
       <span className="check-row__left">
-        <span className={`dot${on ? ' is-on' : ''}`} />
+        <span className={`sq ${mark === 'parent' ? 'sq--lg' : 'sq--sm'}${on ? ' is-on' : ''}`} aria-hidden />
         {swatch && <span className="swatch" style={{ background: swatch }} />}
         <span className={`check-row__label${on ? ' is-on' : ''}`}>{label}</span>
       </span>
@@ -129,7 +131,7 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
     sold: params.get('sold') === '1',
   }
 
-  const [open, setOpen] = useState({ dept: true, cat: true, designer: true, color: true, price: true, show: true })
+  const [open, setOpen] = useState({ dept: true, cat: true, designer: false, color: false, price: false, show: false })
   // Which CATEGORY trees are unfolded — pure disclosure state, never a filter. Active
   // categories start open; with nothing active the reference default (Tops) is open.
   const [tree, setTree] = useState<Record<string, boolean>>(() =>
@@ -153,18 +155,15 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
       </div>
 
       <Section label="DEPARTMENT" open={open.dept} onToggle={sec('dept')}>
-        {DEPARTMENTS.map((d) => {
-          const on = depts.includes(d)
-          return (
-            <button key={d} type="button" className="opt-row" onClick={() => update({ dept: toggleIn(depts, d).join(',') || null })} aria-pressed={on}>
-              <span className="opt-row__left">
-                <span className={`dot${on ? ' is-on' : ''}`} />
-                <span className={`opt-row__label${on ? ' is-on' : ''}`}>{cap(d)}</span>
-              </span>
-              <span className={`opt-row__count${on ? ' is-on' : ''}`}>{fmt(filterCounts.departments[d] ?? 0)}</span>
-            </button>
-          )
-        })}
+        {DEPARTMENTS.map((d) => (
+          <CheckRow
+            key={d}
+            label={cap(d)}
+            count={`(${fmt(filterCounts.departments[d] ?? 0)})`}
+            on={depts.includes(d)}
+            onClick={() => update({ dept: toggleIn(depts, d).join(',') || null })}
+          />
+        ))}
       </Section>
 
       <Section label="CATEGORY" open={open.cat} onToggle={sec('cat')}>
@@ -177,9 +176,7 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
           const subCounts = filterCounts.subcategories[node.label] ?? {}
           return (
             <div key={node.label}>
-              {/* The row only folds / unfolds its tree (+ / −). Its active state (dot, bold
-                  label, bold count) follows what is ticked inside: "All <cat>" or any of its
-                  subcategories. Several categories can be active at once. */}
+              {/* Disclosure only (+ / −). Selection is the filled square on All / children. */}
               <button
                 type="button"
                 className="opt-row"
@@ -188,7 +185,6 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
                 onClick={() => setTree((t) => ({ ...t, [node.label]: !expanded }))}
               >
                 <span className="opt-row__left">
-                  <span className={`dot${on ? ' is-on' : ''}`} />
                   <span className={`opt-row__label${on ? ' is-on' : ''}`}>{node.label}</span>
                 </span>
                 <span className={`opt-row__count${on ? ' is-on' : ''}`}>{fmt(n)}{expanded ? ' −' : ' +'}</span>
@@ -198,6 +194,7 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
                   {/* "All <cat>" = the whole category; ticking it drops that category's subcategory
                       picks, ticking a subcategory drops "All" (the picks narrow the category). */}
                   <CheckRow
+                    mark="parent"
                     label={`All ${node.label.toLowerCase()}`}
                     count={`(${fmt(n)})`}
                     on={whole}
@@ -211,10 +208,10 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
                     return (
                       <CheckRow
                         key={sub}
+                        mark="child"
                         label={sub}
                         count={`(${fmt(subCounts[sub] ?? 0)})`}
-                        // "All <cat>" shows every child ticked + active.
-                        on={whole || subsOn.includes(sub)}
+                        on={subsOn.includes(sub)}
                         onClick={() => {
                           if (whole) {
                             // Unticking one child of "All" keeps every other child ticked.
@@ -378,6 +375,8 @@ export default function BrowseClient({
   const [savedIds, setSavedIds]             = useState(() => new Set(initialSavedIds))
   const [sheetOpen, setSheetOpen]           = useState(false)
   const [sortOpen, setSortOpen]             = useState(false)
+  const [sortMenuOpen, setSortMenuOpen]     = useState(false)
+  const sortWrapRef = useRef<HTMLDivElement>(null)
   const [sizesOpen, setSizesOpen]           = useState(false)
   const [followPending, setFollowPending]   = useState(false)
   const [followedMsg, setFollowedMsg]       = useState('')
@@ -416,13 +415,24 @@ export default function BrowseClient({
     return disconnect
   }, [recsTelemetryEnabled, shownCount])
 
-  // Escape closes the mobile takeover / sort sheet (the × and the scrim do too).
+  // Escape closes the mobile takeover / sort sheet / desktop sort menu.
   useEffect(() => {
-    if (!sheetOpen && !sortOpen) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setSheetOpen(false); setSortOpen(false) } }
+    if (!sheetOpen && !sortOpen && !sortMenuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setSheetOpen(false); setSortOpen(false); setSortMenuOpen(false) }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sheetOpen, sortOpen])
+  }, [sheetOpen, sortOpen, sortMenuOpen])
+
+  useEffect(() => {
+    if (!sortMenuOpen) return
+    const onDoc = (e: MouseEvent) => {
+      if (!sortWrapRef.current?.contains(e.target as Node)) setSortMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [sortMenuOpen])
 
   function buildUrl(updates: Record<string, string | null>) {
     const p = new URLSearchParams(searchParams.toString())
@@ -606,8 +616,11 @@ export default function BrowseClient({
   if (cond)  chips.push({ id: 'cond', label: `CONDITION ${cond}+`, onRemove: () => updateFilter('cond', null) })
 
   const sortIndex = Math.max(0, SORTS.findIndex((o) => o.value === sort))
-  const cycleSort = () => updateFilter('sort', SORTS[(sortIndex + 1) % SORTS.length].value)
-  const pickSort = (value: string) => { setSortOpen(false); if (value !== SORTS[sortIndex].value) updateFilter('sort', value) }
+  const pickSort = (value: string) => {
+    setSortOpen(false)
+    setSortMenuOpen(false)
+    if (value !== SORTS[sortIndex].value) updateFilter('sort', value)
+  }
 
   const scopeDept = departmentScopeLabel(depts)
   const scopeCat = categoryScopeLabel({ cats, picks })
@@ -645,9 +658,37 @@ export default function BrowseClient({
               <button type="button" className="link-btn results__save" onClick={followSearch} disabled={followPending} data-testid="follow-search-btn">
                 {followedMsg || 'SAVE SEARCH +'}
               </button>
-              <button type="button" className="btn-outline results__sort" onClick={cycleSort} data-testid="sort-dropdown-btn">
-                SORT: {SORTS[sortIndex].label}
-              </button>
+              <div className="results__sort-wrap" ref={sortWrapRef}>
+                <button
+                  type="button"
+                  className="btn-outline results__sort"
+                  onClick={() => setSortMenuOpen((o) => !o)}
+                  aria-expanded={sortMenuOpen}
+                  aria-haspopup="listbox"
+                  data-testid="sort-dropdown-btn"
+                >
+                  SORT: {SORTS[sortIndex].label}
+                </button>
+                {sortMenuOpen && (
+                  <div className="results__sort-menu" role="listbox" aria-label="Sort" data-testid="sort-dropdown">
+                    {SORTS.map((o, i) => {
+                      const on = i === sortIndex
+                      return (
+                        <button
+                          key={o.value}
+                          type="button"
+                          role="option"
+                          aria-selected={on}
+                          className={`results__sort-opt${on ? ' is-on' : ''}`}
+                          onClick={() => pickSort(o.value)}
+                        >
+                          {o.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -718,14 +759,14 @@ export default function BrowseClient({
         </main>
       </div>
 
-      {/* Mobile-web dock (≤720px, 01): fixed at the viewport bottom, part of this page. */}
+      {/* Browse dock (≤960px): fixed at the viewport bottom — same FILTERS | SORT UI as phone. */}
       <div className="dock" data-testid="browse-dock">
         <button type="button" className="dock__btn" onClick={() => setSheetOpen(true)} data-testid="mobile-filter-btn">
           <FilterIcon />
-          FILTERS{chips.length > 0 ? ` · ${chips.length}` : ''}
+          FILTERS{chips.length > 0 ? ` ${chips.length}` : ''}
         </button>
         <button type="button" className="dock__btn" onClick={() => setSortOpen(true)} data-testid="mobile-sort-btn">
-          SORT · {SORTS[sortIndex].label}
+          SORT {SORTS[sortIndex].label}
         </button>
       </div>
 

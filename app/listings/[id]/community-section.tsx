@@ -1,18 +1,15 @@
 'use client'
 
 /**
- * Legit Check thread (design 4A "lc-section").
+ * Legit Check thread.
  *
- * Strip: "LEGIT CHECK — n LEGIT · n FLAGGED" / "AUTO-AUTH: TAG PASS · MOD VERDICT: X".
- * Comments carry the author's vote as a tag (LC · LEGIT / LC · FLAG), moderators are
- * tagged LC MOD, system rows AUTO-AUTH; the meta line is "AGREE n · FLAG · REPLY".
- * Any verified member can post a comment and cast ONE vote per listing (the
- * post_comment RPC enforces it); moderators sign the verdict (pinned card).
- * General comments stay removed (G10).
+ * Members vote once per listing; moderators lock the verdict. Comments show
+ * a vote glyph (check / flag) instead of repeating "LC · LEGIT" on every row.
  */
 import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
+import { CheckIcon, FlagIcon } from '@/app/components/icons'
 
 type TierBadge = 'bronze' | 'silver' | 'gold'
 type CommentSource = 'human' | 'auto'
@@ -36,7 +33,7 @@ interface CommentRow {
     is_moderator: boolean
     checker_category?: string | null
   } | null
-  comment_actions: { id: string; action: string }[]
+  comment_actions?: { id: string; action: string }[] | null
 }
 
 type Tally = { legit: number; flagged: number; autoAuth: string; verdict: string }
@@ -54,7 +51,9 @@ interface CommunitySectionProps {
 }
 
 function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t)) return ''
+  const diff = Date.now() - t
   const mins = Math.floor(diff / 60000)
   if (mins < 60) return `${Math.max(mins, 0)}M AGO`
   const hrs = Math.floor(mins / 60)
@@ -62,8 +61,16 @@ function relativeTime(iso: string): string {
   return `${Math.floor(hrs / 24)}D AGO`
 }
 
-function agreeCount(actions: { action: string }[]): number {
-  return actions.filter((a) => a.action === 'agree').length
+function tagCheckLabel(autoAuth: string): string | null {
+  if (!autoAuth || autoAuth === '—') return null
+  const u = autoAuth.toUpperCase()
+  if (u.includes('PASS')) return 'Tag passed'
+  if (u.includes('FAIL')) return 'Tag failed'
+  return autoAuth
+}
+
+function agreeCount(actions: { action: string }[] | null | undefined): number {
+  return (actions ?? []).filter((a) => a.action === 'agree').length
 }
 
 export default function CommunitySection({ listingId, isGuest = false, canPost, closed = false, initialTally }: CommunitySectionProps) {
@@ -79,8 +86,6 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
   const [agreedIds, setAgreedIds] = useState<Set<string>>(new Set())
   const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set())
 
-  // Promise chain rather than async/await so the state update only ever runs
-  // inside the resolved callback (never synchronously in the effect body).
   const fetchComments = useCallback(() => {
     return fetch(`/api/listings/${listingId}/comments?tab=lc`)
       .then((res) => (res.ok ? res.json() : null))
@@ -145,16 +150,28 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
   }
 
   const inputDisabled = closed || (!isGuest && !canPost)
+  const tagCheck = tagCheckLabel(tally.autoAuth)
 
   return (
     <section className="lc-section" id="lc-thread" aria-labelledby="lc-heading">
       <h2 id="lc-heading" className="sr-only">The community weighs in.</h2>
       <div className="lc-strip">
         <span className="lc-strip__left">
-          <span className="lc-chip__dot" />
-          LEGIT CHECK — {tally.legit} LEGIT · {tally.flagged} FLAGGED
+          <span className="lc-tally">
+            <CheckIcon size={12} />
+            {tally.legit} legit
+          </span>
+          <span className="lc-tally">
+            <FlagIcon size={12} />
+            {tally.flagged} flagged
+          </span>
         </span>
-        <span className="lc-strip__right">AUTO-AUTH: {tally.autoAuth} · MOD VERDICT: {tally.verdict}</span>
+        <span className="lc-strip__right">
+          {tally.verdict && tally.verdict !== '—' && (
+            <span className="lc-tally lc-tally--ink">Verdict {tally.verdict}</span>
+          )}
+          {tagCheck && <span className="lc-tally">{tagCheck}</span>}
+        </span>
       </div>
 
       {pinned.map((c) => (
@@ -164,7 +181,7 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
       {comments === null ? (
         <div className="mono-note" style={{ paddingBottom: 14 }}>LOADING…</div>
       ) : threads.length === 0 && pinned.length === 0 ? (
-        <div className="mono-note" style={{ paddingBottom: 14 }}>NO LEGIT CHECKS YET — BE THE FIRST TO WEIGH IN.</div>
+        <div className="mono-note" style={{ paddingBottom: 14 }}>NO CHECKS YET — BE THE FIRST.</div>
       ) : (
         threads.map((c) => (
           <CommentRowView
@@ -182,7 +199,7 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
 
       {replyTo && (
         <div className="mono-note" style={{ paddingBottom: 6 }}>
-          REPLYING TO {(replyTo.profiles?.username ?? 'SYSTEM').toUpperCase()} ·{' '}
+          REPLYING TO {(replyTo.profiles?.username ?? 'SYSTEM').toUpperCase()}{' '}
           <button type="button" className="link-underline" onClick={() => setReplyTo(null)}>CANCEL</button>
         </div>
       )}
@@ -209,7 +226,7 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
           aria-pressed={vote === 'legit'}
           title="Cast a LEGIT vote with your comment"
         >
-          LEGIT
+          <CheckIcon size={10} /> LEGIT
         </button>
         <button
           type="button"
@@ -219,7 +236,7 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
           aria-pressed={vote === 'flag'}
           title="Cast a FLAG vote with your comment"
         >
-          FLAG
+          <FlagIcon size={10} /> FLAG
         </button>
         <button type="button" className="btn-mini btn-mini--solid" onClick={handlePost} disabled={posting || inputDisabled || (!inputBody.trim() && !vote)} data-testid="lc-post">
           POST
@@ -227,10 +244,10 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
       </div>
       <div className="mono-note" style={{ paddingTop: 8 }}>
         {closed
-          ? 'THREAD CLOSED — THIS ITEM HAS SOLD'
+          ? 'Thread closed — this item has sold.'
           : inputDisabled
-            ? 'VERIFIED MEMBERS CAN COMMENT AND CAST ONE VOTE PER LISTING · VERIFY YOUR ID IN SETTINGS'
-            : 'ONE VOTE PER MEMBER PER LISTING · MODERATORS SIGN THE VERDICT'}
+            ? 'Verified members can comment and vote once. Verify your ID in Settings.'
+            : 'One vote per member. Moderators lock the verdict.'}
       </div>
       {postError && <div className="alert-line" role="alert">{postError.toUpperCase()}</div>}
     </section>
@@ -241,7 +258,7 @@ function AuthorLine({ comment }: { comment: CommentRow }) {
   if (comment.source === 'auto') {
     return (
       <>
-        SYSTEM <span className="tag tag--ink">AUTO-AUTH</span>
+        SYSTEM <span className="tag tag--ink">AUTO</span>
       </>
     )
   }
@@ -249,11 +266,17 @@ function AuthorLine({ comment }: { comment: CommentRow }) {
   return (
     <>
       {(author?.username ?? '—').toUpperCase()}
-      {author?.is_moderator || author?.role === 'admin'
-        ? <span className="tag tag--ink">LC MOD</span>
-        : comment.vote
-          ? <span className="tag">LC · {comment.vote === 'legit' ? 'LEGIT' : 'FLAG'}</span>
-          : null}
+      {comment.vote === 'legit' && (
+        <span className="lc-vote" title="Voted legit" aria-label="Voted legit">
+          <CheckIcon size={11} />
+        </span>
+      )}
+      {comment.vote === 'flag' && (
+        <span className="lc-vote" title="Voted flag" aria-label="Voted flag">
+          <FlagIcon size={11} />
+        </span>
+      )}
+      {(author?.is_moderator || author?.role === 'admin') && <span className="tag tag--ink">MOD</span>}
       {author?.checker_category && <span className="tag">{author.checker_category.toUpperCase()}</span>}
     </>
   )
@@ -281,7 +304,10 @@ function PinnedCard({ comment }: { comment: CommentRow }) {
           <AuthorLine comment={comment} />
         </div>
         <Body comment={comment} />
-        <div className="lc-comment__meta">SIGNED {relativeTime(comment.created_at)}{comment.verdict ? ` · ${comment.verdict.toUpperCase()}` : ''}</div>
+        <div className="lc-comment__meta">
+          SIGNED {relativeTime(comment.created_at)}
+          {comment.verdict ? <span>{comment.verdict.toUpperCase()}</span> : null}
+        </div>
       </div>
     </div>
   )
@@ -307,18 +333,15 @@ function CommentRowView({
         {parent && <div className="lc-comment__meta" style={{ marginTop: 4 }}>↳ {(parent.profiles?.username ?? 'SYSTEM').toUpperCase()}</div>}
         <Body comment={comment} />
         <div className="lc-comment__actions">
-          <button type="button" className={agreed ? 'is-on' : ''} onClick={onAgree} data-testid="agree-button" aria-pressed={agreed}>
-            AGREE {agrees}
+          <button type="button" className={agreed ? 'is-on' : ''} onClick={onAgree} data-testid="agree-button" aria-pressed={agreed} aria-label={`Agree, ${agrees}`}>
+            <CheckIcon size={12} />
+            <span>{agrees}</span>
           </button>
-          <span className="lc-comment__meta" style={{ marginTop: 0 }}>·</span>
-          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged}>
-            {flagged ? 'FLAGGED' : 'FLAG'}
+          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged} aria-label={flagged ? 'Flagged' : 'Flag'}>
+            <FlagIcon size={12} />
           </button>
           {comment.source !== 'auto' && (
-            <>
-              <span className="lc-comment__meta" style={{ marginTop: 0 }}>·</span>
-              <button type="button" onClick={onReply} data-testid="reply-button">REPLY</button>
-            </>
+            <button type="button" onClick={onReply} data-testid="reply-button">REPLY</button>
           )}
           <span className="lc-comment__meta" style={{ marginTop: 0, marginLeft: 'auto' }}>{relativeTime(comment.created_at)}</span>
         </div>

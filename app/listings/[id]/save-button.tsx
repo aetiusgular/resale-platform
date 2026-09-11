@@ -16,6 +16,7 @@ export default function SaveButton({
   initialSaved,
   guest = false,
   listing,
+  caption = false,
 }: {
   listingId: string
   initialSaved: boolean
@@ -23,6 +24,8 @@ export default function SaveButton({
   guest?: boolean
   /** What the guest is saving — names the item in the sign-in popup. */
   listing?: { brand: string; title: string; image?: string | null }
+  /** Caption bookmark (same as listing cards), not a boxed control. */
+  caption?: boolean
 }) {
   const [saved, setSaved] = useState(initialSaved)
   const [loading, setLoading] = useState(false)
@@ -57,13 +60,13 @@ export default function SaveButton({
       type="button"
       onClick={toggle}
       disabled={loading}
-      className={`btn-square${saved ? ' is-on' : ''}`}
+      className={caption ? `card__save${saved ? ' is-saved' : ''}` : `btn-square${saved ? ' is-on' : ''}`}
       title={saved ? 'Unsave' : 'Save'}
       aria-pressed={saved}
       aria-label={saved ? 'Remove from saved' : 'Save item'}
       data-testid="listing-save-btn"
     >
-      <HeartIcon filled={saved} size={18} />
+      <HeartIcon filled={saved} size={20} />
     </button>
   )
 }

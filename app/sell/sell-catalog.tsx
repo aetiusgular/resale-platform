@@ -130,7 +130,7 @@ export default function SellCatalog({
               <article key={l.id} className="card" style={{ cursor: 'default' }} data-testid="sell-card">
                 <PrefetchLink href={draft ? `/sell/new?draft=${l.id}` : `/listings/${l.id}`}>
                   <div className="card__media" style={{ background: `var(--tone-${(i % 8) + 1})` }}>
-                    {l.image && (
+                    {l.image && !l.image.startsWith('data:image/svg') && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={l.image} alt={l.title} loading={i < 8 ? 'eager' : 'lazy'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     )}

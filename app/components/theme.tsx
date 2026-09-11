@@ -22,9 +22,9 @@ const listeners = new Set<() => void>()
 function readSetting(): ThemeSetting {
   try {
     const v = localStorage.getItem(THEME_STORAGE_KEY)
-    return v === 'light' || v === 'dark' || v === 'system' ? v : 'system'
+    return v === 'light' || v === 'dark' || v === 'system' ? v : 'light'
   } catch {
-    return 'system'
+    return 'light'
   }
 }
 
@@ -70,7 +70,7 @@ function subscribe(cb: () => void) {
 
 const getSettingSnapshot = () => readSetting()
 const getThemeSnapshot = () => resolve(readSetting())
-const serverSetting = (): ThemeSetting => 'system'
+const serverSetting = (): ThemeSetting => 'light'
 const serverTheme = (): Theme => 'light'
 
 export function useTheme(): { setting: ThemeSetting; theme: Theme; setSetting: (s: ThemeSetting) => void } {
@@ -79,14 +79,14 @@ export function useTheme(): { setting: ThemeSetting; theme: Theme; setSetting: (
   return { setting, theme, setSetting: setThemeSetting }
 }
 
-/** Segmented LIGHT / DARK (/ SYSTEM) control — used in the account popout and Settings. */
+/** Segmented LIGHT / DARK (/ SYSTEM) control — header, account popout, Settings. */
 export function ThemeSegment({ options, compact }: { options: ThemeSetting[]; compact?: boolean }) {
   const { setting, theme, setSetting } = useTheme()
-  // Two-option control (popout) highlights the RESOLVED theme; the three-option
-  // control (Settings) highlights the stored setting so SYSTEM is selectable.
+  // Three-option control highlights the stored setting so SYSTEM is selectable;
+  // two-option (legacy) highlights the resolved theme.
   const current = options.includes('system') ? setting : theme
   return (
-    <span className="seg" role="radiogroup" aria-label="Theme">
+    <span className={`seg${compact ? ' seg--compact' : ''}`} role="radiogroup" aria-label="Theme" data-testid="theme-toggle">
       {options.map((s) => (
         <button
           key={s}
@@ -94,10 +94,9 @@ export function ThemeSegment({ options, compact }: { options: ThemeSetting[]; co
           role="radio"
           aria-checked={current === s}
           className={`seg__opt${current === s ? ' is-on' : ''}`}
-          style={compact ? { padding: '6px 12px' } : undefined}
           onClick={() => setSetting(s)}
         >
-          {s.toUpperCase()}
+          {s === 'system' ? 'SYS' : s.toUpperCase()}
         </button>
       ))}
     </span>

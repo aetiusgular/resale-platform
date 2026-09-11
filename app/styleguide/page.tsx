@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import AppShell from '@/app/components/app-shell'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { CardGhost } from '@/app/components/skeletons'
 import { ThemeSegment } from '@/app/components/theme'
 import { getViewerUsername } from '@/app/components/viewer'
@@ -76,6 +77,10 @@ export default async function StyleguidePage() {
         <div className="page-head page-head--ruled">
           <h1 className="page-title">Styleguide.</h1>
           <span className="page-note">TOKENS · TYPE · CONTROLS · CARDS</span>
+        </div>
+        <div className="row row--wrap" style={{ gap: 16, paddingTop: 10 }}>
+          <PrefetchLink href="/styleguide/proto" className="link-underline">PROTO</PrefetchLink>
+          <PrefetchLink href="/styleguide/changes" className="link-underline">CHANGES</PrefetchLink>
         </div>
 
         {/* ── Theme ─────────────────────────────────────────────────────── */}

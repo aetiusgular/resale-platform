@@ -55,7 +55,7 @@ test.describe('Mobile web — browse chrome (mobile-web handoff 01–03)', () =>
     expect(box).not.toBeNull()
     expect(Math.round(box!.y + box!.height)).toBe(MOBILE.height)
     await expect(page.getByTestId('mobile-filter-btn')).toContainText('FILTERS')
-    await expect(page.getByTestId('mobile-sort-btn')).toContainText('SORT · NEWEST')
+    await expect(page.getByTestId('mobile-sort-btn')).toContainText('SORT NEWEST')
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)
     expect(overflow).toBe(false)
   })

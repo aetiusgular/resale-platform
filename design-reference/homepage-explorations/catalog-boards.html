@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1720" />
+<title>ARCHIVE catalog systems — Cut / Noir / Lot / Vitrine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500&family=Azeret+Mono:wght@400;500&family=Bodoni+Moda:opsz,wght@6..96,500;6..96,600&family=Gloock&family=Host+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Onest:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root { --art-w: 1720px; --art-h: 1080px; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #1a1a1a; }
+  body { padding: 48px 32px 80px; }
+  .file-label {
+    font: 500 11px/1.4 "Host Grotesk", sans-serif;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #8a8a8a;
+    margin: 0 0 28px 8px;
+  }
+  .art-wrap { margin-bottom: 56px; }
+  .art-name {
+    font: 500 12px/1 "Host Grotesk", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #cfcfcf;
+    margin: 0 0 10px 4px;
+  }
+  .artboard {
+    width: var(--art-w);
+    height: var(--art-h);
+    overflow: hidden;
+    position: relative;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  input { font: inherit; color: inherit; background: none; border: 0; outline: none; }
+  img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  /* ── shared browse chrome ── */
+  .hdr {
+    display: flex; align-items: center; gap: 28px;
+    height: var(--hdr-h); padding: 0 var(--gutter);
+    border-bottom: var(--hdr-rule);
+    background: var(--bg);
+  }
+  .mark { flex-shrink: 0; }
+  .search { display: flex; align-items: center; flex: 1; }
+  .utils { display: flex; align-items: center; gap: var(--util-gap); flex-shrink: 0; }
+  .page { display: flex; height: calc(var(--art-h) - var(--hdr-h)); }
+  .rail {
+    width: var(--rail-w); flex-shrink: 0;
+    padding: var(--rail-pad);
+    border-right: var(--rail-rule);
+  }
+  .rail h3 { margin: 0 0 10px; }
+  .rail-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    width: 100%; padding: var(--row-pad); text-align: left;
+  }
+  .rail-row.is-on { }
+  .main { flex: 1; min-width: 0; padding: var(--main-pad); }
+  .results { display: flex; justify-content: space-between; align-items: baseline; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--grid-gap);
+    margin-top: var(--grid-top);
+  }
+  .card__media {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+  }
+  .card__media img { outline: var(--img-outline); outline-offset: -1px; }
+  .heart {
+    width: 18px; height: 18px; flex-shrink: 0;
+    display: grid; place-items: center;
+  }
+  .heart svg { display: block; }
+  .notes {
+    width: var(--notes-w); flex-shrink: 0;
+    padding: var(--notes-pad);
+    border-left: var(--notes-rule);
+    font-family: var(--font-note);
+  }
+  .notes h4 { margin: 0 0 8px; }
+  .notes p { margin: 0 0 10px; }
+  .notes dl { margin: 0; }
+  .notes dt { margin: 8px 0 2px; }
+  .notes dd { margin: 0; }
+
+  /* ════════════════════════════════════════
+     1 · CUT — sharper ARCHIVE
+     ════════════════════════════════════════ */
+  #cut {
+    --bg: #ffffff;
+    --ink: #111111;
+    --sub: #5c5c5c;
+    --faint: #8a8a8a;
+    --line: #e8e8e8;
+    --hdr-h: 58px;
+    --gutter: 28px;
+    --rail-w: 220px;
+    --notes-w: 176px;
+    --hdr-rule: 1px solid #111111;
+    --rail-rule: 1px solid var(--line);
+    --notes-rule: 1px solid var(--line);
+    --rail-pad: 22px 22px 0 28px;
+    --main-pad: 22px 28px 0;
+    --notes-pad: 22px 18px 0 16px;
+    --row-pad: 5px 0;
+    --util-gap: 22px;
+    --grid-gap: 22px 18px;
+    --grid-top: 20px;
+    --img-outline: 1px solid rgba(0,0,0,0.10);
+    --font-ui: "Archivo", sans-serif;
+    --font-data: "IBM Plex Mono", ui-monospace, monospace;
+    --font-note: var(--font-data);
+  }
+  #cut .mark {
+    font: 500 12px/1 var(--font-ui);
+    letter-spacing: 0.34em;
+  }
+  #cut .search {
+    max-width: 420px; margin: 0 auto;
+    border-bottom: 1px solid #111;
+    padding: 6px 0 7px;
+    gap: 8px;
+  }
+  #cut .search svg { color: var(--sub); }
+  #cut .search input {
+    flex: 1; font: 400 13px/1 var(--font-ui); color: var(--ink);
+  }
+  #cut .search input::placeholder { color: var(--faint); }
+  #cut .util {
+    font: 400 11px/1 var(--font-data);
+    letter-spacing: 0.10em;
+  }
+  #cut .rail h3 {
+    font: 400 10px/1 var(--font-data);
+    letter-spacing: 0.16em; color: var(--faint);
+  }
+  #cut .rail-row {
+    font: 400 13px/1.2 var(--font-ui);
+  }
+  #cut .rail-row .n { font: 400 11px/1 var(--font-data); color: var(--faint); }
+  #cut .rail-row.is-on {
+    font-weight: 500;
+    box-shadow: inset 0 -1.5px 0 #111;
+  }
+  #cut .rail-sec { margin-top: 28px; }
+  #cut .plus { color: var(--faint); font: 400 12px var(--font-data); }
+  #cut .count {
+    font: 500 22px/1 var(--font-data);
+    letter-spacing: -0.02em;
+  }
+  #cut .scope { font: 400 12px/1 var(--font-ui); color: var(--sub); margin-left: 10px; }
+  #cut .ctrl {
+    font: 400 11px/1 var(--font-data);
+    letter-spacing: 0.08em; color: var(--sub);
+  }
+  #cut .sort {
+    height: 36px; padding: 0 12px; margin-left: 16px;
+    border: 1px solid #111;
+    font: 400 11px/1 var(--font-data); letter-spacing: 0.08em;
+  }
+  #cut .card__row1 {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 11px; gap: 8px;
+  }
+  #cut .brand { font: 500 11px/1 var(--font-data); letter-spacing: 0.08em; }
+  #cut .meta { display: flex; align-items: center; gap: 8px; color: var(--sub); font: 400 11px/1 var(--font-data); }
+  #cut .title { font: 400 12px/1.25 var(--font-ui); color: var(--sub); padding-top: 5px; }
+  #cut .card__row2 {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-top: 8px;
+  }
+  #cut .price { font: 500 15px/1 var(--font-data); font-variant-numeric: tabular-nums; }
+  #cut .ago { font: 400 11px/1 var(--font-data); color: var(--faint); letter-spacing: 0.04em; }
+  #cut .heart.is-on svg { fill: #111; }
+  #cut .notes { color: var(--sub); font-size: 10px; line-height: 1.45; letter-spacing: 0.01em; }
+  #cut .notes h4 { font: 500 10px/1 var(--font-data); letter-spacing: 0.12em; color: var(--ink); text-transform: uppercase; }
+  #cut .notes dt { font: 500 10px/1 var(--font-data); letter-spacing: 0.08em; color: var(--ink); text-transform: uppercase; }
+
+  /* ════════════════════════════════════════
+     2 · NOIR — cold luxury black
+     ════════════════════════════════════════ */
+  #noir {
+    --bg: #0b0b0b;
+    --ink: #f3f3f1;
+    --sub: #9a9a96;
+    --faint: #6e6e6a;
+    --line: #242424;
+    --hdr-h: 64px;
+    --gutter: 32px;
+    --rail-w: 228px;
+    --notes-w: 176px;
+    --hdr-rule: 1px solid #242424;
+    --rail-rule: 1px solid #242424;
+    --notes-rule: 1px solid #242424;
+    --rail-pad: 26px 24px 0 32px;
+    --main-pad: 26px 32px 0;
+    --notes-pad: 26px 18px 0 16px;
+    --row-pad: 7px 8px;
+    --util-gap: 24px;
+    --grid-gap: 28px 22px;
+    --grid-top: 24px;
+    --img-outline: 1px solid rgba(255,255,255,0.10);
+    --font-ui: "Host Grotesk", sans-serif;
+    --font-display: "Bodoni Moda", "Times New Roman", serif;
+    --font-note: var(--font-ui);
+  }
+  #noir .mark {
+    font: 600 22px/1 var(--font-display);
+    letter-spacing: 0.14em;
+    font-optical-sizing: auto;
+  }
+  #noir .search {
+    max-width: 380px; margin: 0 auto;
+    background: #161616; height: 36px; padding: 0 12px; gap: 8px;
+  }
+  #noir .search svg { color: var(--faint); }
+  #noir .search input { flex: 1; font: 400 13px/1 var(--font-ui); }
+  #noir .search input::placeholder { color: #5a5a58; }
+  #noir .util {
+    font: 500 11px/1 var(--font-ui);
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  #noir .rail h3 {
+    font: 500 10px/1 var(--font-ui);
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--faint);
+  }
+  #noir .rail-row { font: 400 13px/1.2 var(--font-ui); }
+  #noir .rail-row .n { font: 400 11px/1 var(--font-ui); color: var(--faint); font-variant-numeric: tabular-nums; }
+  #noir .rail-row.is-on {
+    background: #f3f3f1; color: #0b0b0b;
+  }
+  #noir .rail-row.is-on .n { color: #3a3a38; }
+  #noir .rail-sec { margin-top: 30px; }
+  #noir .plus { color: var(--faint); }
+  #noir .count {
+    font: 600 28px/0.95 var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  #noir .scope { font: 400 12px/1 var(--font-ui); color: var(--sub); margin-left: 12px; letter-spacing: 0.04em; }
+  #noir .ctrl { font: 400 11px/1 var(--font-ui); letter-spacing: 0.10em; text-transform: uppercase; color: var(--sub); }
+  #noir .sort {
+    height: 34px; padding: 0 14px; margin-left: 16px;
+    border: 1px solid #f3f3f1;
+    font: 500 11px/1 var(--font-ui); letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  #noir .card__media { background: #141414; }
+  #noir .card__row1 {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-top: 12px; gap: 8px;
+  }
+  #noir .brand { font: 500 12px/1.1 var(--font-ui); letter-spacing: 0.02em; }
+  #noir .meta { display: flex; align-items: center; gap: 8px; color: var(--sub); font: 400 12px/1 var(--font-ui); font-variant-numeric: tabular-nums; }
+  #noir .title { font: 400 12px/1.3 var(--font-ui); color: var(--sub); padding-top: 4px; }
+  #noir .card__row2 {
+    display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px;
+  }
+  #noir .price { font: 500 14px/1 var(--font-ui); font-variant-numeric: tabular-nums; }
+  #noir .ago { font: 400 11px/1 var(--font-ui); color: var(--faint); letter-spacing: 0.06em; }
+  #noir .heart svg { stroke: #f3f3f1; }
+  #noir .heart.is-on svg { fill: #f3f3f1; }
+  #noir .notes { color: var(--sub); font-size: 10px; line-height: 1.45; }
+  #noir .notes h4 { font: 500 10px/1 var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
+  #noir .notes dt { font: 500 10px/1 var(--font-ui); letter-spacing: 0.10em; text-transform: uppercase; color: var(--ink); margin-top: 10px; }
+
+  /* ════════════════════════════════════════
+     3 · LOT — street-archive clarity
+     ════════════════════════════════════════ */
+  #lot {
+    --bg: #ffffff;
+    --ink: #111111;
+    --sub: #4a4a4a;
+    --faint: #7a7a7a;
+    --line: #ececec;
+    --accent: #1557ff;
+    --hdr-h: 52px;
+    --gutter: 24px;
+    --rail-w: 200px;
+    --notes-w: 168px;
+    --hdr-rule: 1px solid #111111;
+    --rail-rule: 1px solid var(--line);
+    --notes-rule: 1px solid var(--line);
+    --rail-pad: 16px 16px 0 24px;
+    --main-pad: 16px 22px 0;
+    --notes-pad: 16px 14px 0 14px;
+    --row-pad: 4px 0;
+    --util-gap: 16px;
+    --grid-gap: 14px 12px;
+    --grid-top: 14px;
+    --img-outline: 1px solid rgba(0,0,0,0.08);
+    --font-ui: "Schibsted Grotesk", sans-serif;
+    --font-data: "Azeret Mono", ui-monospace, monospace;
+    --font-note: var(--font-data);
+  }
+  #lot .hdr { gap: 18px; }
+  #lot .mark {
+    font: 600 15px/1 var(--font-ui);
+    letter-spacing: 0.02em;
+  }
+  #lot .depts {
+    display: flex; gap: 16px; flex-shrink: 0;
+  }
+  #lot .depts a {
+    font: 500 11px/1 var(--font-ui);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    text-decoration: none; color: var(--ink);
+    padding-bottom: 3px;
+  }
+  #lot .depts a.is-on { box-shadow: inset 0 -2px 0 var(--accent); color: var(--accent); }
+  #lot .search {
+    max-width: 460px; height: 32px; margin-left: auto;
+    border: 1px solid #111; padding: 0 0 0 10px;
+  }
+  #lot .search input { flex: 1; font: 400 13px/1 var(--font-ui); }
+  #lot .search input::placeholder { color: var(--faint); }
+  #lot .go {
+    height: 32px; padding: 0 12px; margin-left: 0;
+    background: #111; color: #fff;
+    font: 500 10px/1 var(--font-ui); letter-spacing: 0.10em;
+  }
+  #lot .util { font: 500 11px/1 var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; }
+  #lot .rail h3 {
+    font: 500 10px/1 var(--font-data);
+    letter-spacing: 0.12em; color: var(--faint);
+  }
+  #lot .rail-row { font: 400 12px/1.2 var(--font-ui); }
+  #lot .rail-row .n { font: 400 10px/1 var(--font-data); color: var(--faint); }
+  #lot .rail-row.is-on { color: var(--accent); font-weight: 600; }
+  #lot .rail-sec { margin-top: 22px; }
+  #lot .plus { color: var(--faint); font-size: 11px; }
+  #lot .count { font: 500 13px/1 var(--font-data); }
+  #lot .scope { font: 400 12px/1 var(--font-ui); color: var(--sub); margin-left: 8px; }
+  #lot .ctrl { font: 400 10px/1 var(--font-data); letter-spacing: 0.04em; color: var(--sub); }
+  #lot .sort {
+    height: 32px; padding: 0 10px; margin-left: 12px;
+    border: 1px solid #111;
+    font: 500 10px/1 var(--font-data); letter-spacing: 0.04em;
+  }
+  #lot .card__row1 {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 7px; gap: 6px;
+  }
+  #lot .brand { font: 600 10px/1 var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; }
+  #lot .meta { display: flex; align-items: center; gap: 6px; font: 400 10px/1 var(--font-data); color: var(--sub); }
+  #lot .title { font: 400 12px/1.2 var(--font-ui); padding-top: 2px; }
+  #lot .card__row2 {
+    display: flex; justify-content: space-between; align-items: baseline; padding-top: 4px;
+  }
+  #lot .price { font: 500 13px/1 var(--font-data); font-variant-numeric: tabular-nums; }
+  #lot .ago { font: 400 10px/1 var(--font-data); color: var(--faint); }
+  #lot .ago.is-fresh { color: var(--accent); }
+  #lot .heart svg { stroke: #111; }
+  #lot .heart.is-on svg { fill: var(--accent); stroke: var(--accent); }
+  #lot .notes { color: var(--sub); font-size: 9px; line-height: 1.45; }
+  #lot .notes h4 { font: 500 9px/1 var(--font-data); letter-spacing: 0.10em; text-transform: uppercase; color: var(--ink); }
+  #lot .notes dt { font: 500 9px/1 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-top: 8px; }
+
+  /* ════════════════════════════════════════
+     4 · VITRINE — ice museum
+     ════════════════════════════════════════ */
+  #vitrine {
+    --bg: #c5d0dc;
+    --ink: #0c1218;
+    --sub: #2a3540;
+    --faint: #4a5866;
+    --line: #a8b4c0;
+    --accent: #002fa7;
+    --surface: #eef2f6;
+    --hdr-h: 60px;
+    --gutter: 30px;
+    --rail-w: 216px;
+    --notes-w: 176px;
+    --hdr-rule: 1px solid #002fa7;
+    --rail-rule: 1px solid var(--line);
+    --notes-rule: 1px solid var(--line);
+    --rail-pad: 24px 20px 0 30px;
+    --main-pad: 24px 28px 0;
+    --notes-pad: 24px 16px 0 16px;
+    --row-pad: 6px 8px;
+    --util-gap: 20px;
+    --grid-gap: 26px 20px;
+    --grid-top: 22px;
+    --img-outline: 1px solid rgba(12,18,24,0.12);
+    --font-ui: "Onest", sans-serif;
+    --font-display: "Gloock", "Times New Roman", serif;
+    --font-data: "Azeret Mono", ui-monospace, monospace;
+    --font-note: var(--font-data);
+  }
+  #vitrine .mark {
+    font: 400 26px/0.9 var(--font-display);
+    letter-spacing: 0.01em;
+  }
+  #vitrine .search {
+    max-width: 360px; margin: 0 auto;
+    background: var(--surface); height: 36px; padding: 0 12px; gap: 8px;
+  }
+  #vitrine .search svg { color: var(--faint); }
+  #vitrine .search input { flex: 1; font: 400 13px/1 var(--font-ui); }
+  #vitrine .search input::placeholder { color: #6a7682; }
+  #vitrine .util {
+    font: 500 10px/1 var(--font-data);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  #vitrine .rail h3 {
+    font: 400 10px/1 var(--font-data);
+    letter-spacing: 0.16em; color: var(--faint);
+  }
+  #vitrine .rail-row { font: 400 13px/1.2 var(--font-ui); }
+  #vitrine .rail-row .n { font: 400 10px/1 var(--font-data); color: var(--faint); }
+  #vitrine .rail-row.is-on {
+    background: var(--accent); color: #eef2f6;
+  }
+  #vitrine .rail-row.is-on .n { color: #c5d4f0; }
+  #vitrine .rail-sec { margin-top: 26px; }
+  #vitrine .plus { color: var(--faint); }
+  #vitrine .count { font: 400 26px/0.95 var(--font-display); }
+  #vitrine .scope { font: 400 11px/1 var(--font-data); color: var(--sub); margin-left: 12px; letter-spacing: 0.06em; }
+  #vitrine .ctrl { font: 400 10px/1 var(--font-data); letter-spacing: 0.08em; color: var(--sub); }
+  #vitrine .sort {
+    height: 36px; padding: 0 12px; margin-left: 14px;
+    background: var(--surface);
+    font: 400 10px/1 var(--font-data); letter-spacing: 0.08em;
+  }
+  #vitrine .card__media { background: var(--surface); }
+  #vitrine .card__row1 {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-top: 10px; gap: 8px;
+  }
+  #vitrine .brand { font: 400 14px/1.05 var(--font-display); }
+  #vitrine .meta { display: flex; align-items: center; gap: 8px; font: 400 10px/1 var(--font-data); color: var(--sub); }
+  #vitrine .title { font: 400 12px/1.3 var(--font-ui); color: var(--sub); padding-top: 3px; }
+  #vitrine .card__row2 {
+    display: flex; justify-content: space-between; align-items: baseline; padding-top: 8px;
+  }
+  #vitrine .price { font: 500 13px/1 var(--font-data); font-variant-numeric: tabular-nums; }
+  #vitrine .ago { font: 400 10px/1 var(--font-data); color: var(--faint); }
+  #vitrine .heart svg { stroke: var(--ink); }
+  #vitrine .heart.is-on svg { fill: var(--accent); stroke: var(--accent); }
+  #vitrine .notes { color: var(--sub); font-size: 10px; line-height: 1.45; }
+  #vitrine .notes h4 { font: 400 14px/1 var(--font-display); color: var(--ink); }
+  #vitrine .notes dt { font: 500 9px/1 var(--font-data); letter-spacing: 0.10em; text-transform: uppercase; color: var(--ink); margin-top: 10px; }
+</style>
+</head>
+<body>
+<p class="file-label">ARCHIVE · catalog identity · four systems · same eight lots</p>
+
+<!-- ════════════ CUT ════════════ -->
+<section class="art-wrap">
+  <p class="art-name">Catalog · Cut</p>
+  <div class="artboard" id="cut">
+    <header class="hdr">
+      <div class="mark">ARCHIVE</div>
+      <form class="search" action="#" onsubmit="return false">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input placeholder="Search designers, items, sellers" />
+      </form>
+      <nav class="utils">
+        <span class="util">SELL</span>
+        <span class="util">SAVED</span>
+        <span class="util">MESSAGES</span>
+      </nav>
+    </header>
+    <div class="page">
+      <aside class="rail">
+        <h3>DEPARTMENT</h3>
+        <button class="rail-row is-on"><span>Menswear</span><span class="n">248</span></button>
+        <button class="rail-row"><span>Womenswear</span><span class="n">412</span></button>
+        <button class="rail-row"><span>Objects</span><span class="n">96</span></button>
+        <div class="rail-sec">
+          <h3>CATEGORY</h3>
+          <button class="rail-row"><span>Outerwear</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Tops</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Bottoms</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Footwear</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Accessories</span><span class="plus">+</span></button>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="results">
+          <div><span class="count">248</span><span class="scope">lots in Menswear</span></div>
+          <div>
+            <span class="ctrl">MY SIZES · OFF</span>
+            <button class="sort">SORT · NEWEST</button>
+          </div>
+        </div>
+        <div class="grid" data-board="cut"></div>
+      </main>
+      <aside class="notes">
+        <h4>Cut</h4>
+        <p>ARCHIVE, sharpened. True white, ink as the only accent, photography does the selling.</p>
+        <dl>
+          <dt>Type</dt><dd>Archivo chrome. Plex Mono data. Tighter mark, larger count.</dd>
+          <dt>Color</dt><dd>bg #FFF · ink #111 · line #E8E8E8 · no rust</dd>
+          <dt>Controls</dt><dd>36px. Radius 0. Hairline search. Black sort box.</dd>
+          <dt>Accent may</dt><dd>Header rule. Selected underline. Nothing else.</dd>
+          <dt>May not</dt><dd>Sell, price, Buy / Offer. No stickers.</dd>
+        </dl>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ NOIR ════════════ -->
+<section class="art-wrap">
+  <p class="art-name">Catalog · Noir</p>
+  <div class="artboard" id="noir">
+    <header class="hdr">
+      <div class="mark">ARCHIVE</div>
+      <form class="search" action="#" onsubmit="return false">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input placeholder="Search the racks" />
+      </form>
+      <nav class="utils">
+        <span class="util">Sell</span>
+        <span class="util">Saved</span>
+        <span class="util">Messages</span>
+      </nav>
+    </header>
+    <div class="page">
+      <aside class="rail">
+        <h3>Department</h3>
+        <button class="rail-row is-on"><span>Menswear</span><span class="n">248</span></button>
+        <button class="rail-row"><span>Womenswear</span><span class="n">412</span></button>
+        <button class="rail-row"><span>Objects</span><span class="n">96</span></button>
+        <div class="rail-sec">
+          <h3>Category</h3>
+          <button class="rail-row"><span>Outerwear</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Tops</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Bottoms</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Footwear</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Accessories</span><span class="plus">+</span></button>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="results">
+          <div><span class="count">248</span><span class="scope">Menswear</span></div>
+          <div>
+            <span class="ctrl">My sizes off</span>
+            <button class="sort">Newest</button>
+          </div>
+        </div>
+        <div class="grid" data-board="noir"></div>
+      </main>
+      <aside class="notes">
+        <h4>Noir</h4>
+        <p>Cold luxury. Black ground, Didone mark, grotesque facts. No accent hue — white is the signal.</p>
+        <dl>
+          <dt>Type</dt><dd>Bodoni Moda wordmark + count. Host Grotesk everything else, including price.</dd>
+          <dt>Color</dt><dd>bg #0B0B0B · ink #F3F3F1 · line #242424</dd>
+          <dt>Controls</dt><dd>34px. Recessed search. Inverted selected row.</dd>
+          <dt>Accent may</dt><dd>Inverted rail. White sort box. That’s it.</dd>
+          <dt>May not</dt><dd>Teal, gilt, rust. Mono prices. Stickers.</dd>
+        </dl>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ LOT ════════════ -->
+<section class="art-wrap">
+  <p class="art-name">Catalog · Lot</p>
+  <div class="artboard" id="lot">
+    <header class="hdr">
+      <div class="mark">ARCHIVE</div>
+      <nav class="depts">
+        <a class="is-on" href="#">Menswear</a>
+        <a href="#">Womenswear</a>
+        <a href="#">Objects</a>
+      </nav>
+      <form class="search" action="#" onsubmit="return false">
+        <input placeholder="Designer, item, seller" />
+        <button class="go" type="button">SEARCH</button>
+      </form>
+      <nav class="utils">
+        <span class="util">Sell</span>
+        <span class="util">Saved</span>
+        <span class="util">Inbox</span>
+      </nav>
+    </header>
+    <div class="page">
+      <aside class="rail">
+        <h3>CATEGORY</h3>
+        <button class="rail-row is-on"><span>All</span><span class="n">248</span></button>
+        <button class="rail-row"><span>Outerwear</span><span class="n">64</span></button>
+        <button class="rail-row"><span>Tops</span><span class="n">81</span></button>
+        <button class="rail-row"><span>Bottoms</span><span class="n">44</span></button>
+        <button class="rail-row"><span>Footwear</span><span class="n">31</span></button>
+        <button class="rail-row"><span>Bags</span><span class="n">28</span></button>
+        <div class="rail-sec">
+          <h3>SIZE</h3>
+          <button class="rail-row"><span>My sizes</span><span class="n">off</span></button>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="results">
+          <div><span class="count">248 LOTS</span><span class="scope">Menswear · All</span></div>
+          <div>
+            <span class="ctrl">NEWEST</span>
+            <button class="sort">SORT</button>
+          </div>
+        </div>
+        <div class="grid" data-board="lot"></div>
+      </main>
+      <aside class="notes">
+        <h4>Lot</h4>
+        <p>Street-archive clarity. Search is a tool. Density without Grailed teal.</p>
+        <dl>
+          <dt>Type</dt><dd>Schibsted Grotesk UI. Azeret Mono price / size / time.</dd>
+          <dt>Color</dt><dd>bg #FFF · ink #111 · accent #1557FF</dd>
+          <dt>Controls</dt><dd>32px. Boxed search + SEARCH. Tight 12px gutters.</dd>
+          <dt>Accent may</dt><dd>Selected dept. Saved mark. Times under 24h.</dd>
+          <dt>May not</dt><dd>Promo strip. Hearts as decoration. Yellow stickers.</dd>
+        </dl>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ VITRINE ════════════ -->
+<section class="art-wrap">
+  <p class="art-name">Catalog · Vitrine</p>
+  <div class="artboard" id="vitrine">
+    <header class="hdr">
+      <div class="mark">Archive</div>
+      <form class="search" action="#" onsubmit="return false">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input placeholder="Find a piece" />
+      </form>
+      <nav class="utils">
+        <span class="util">Sell</span>
+        <span class="util">Saved</span>
+        <span class="util">Messages</span>
+      </nav>
+    </header>
+    <div class="page">
+      <aside class="rail">
+        <h3>DEPARTMENT</h3>
+        <button class="rail-row is-on"><span>Menswear</span><span class="n">248</span></button>
+        <button class="rail-row"><span>Womenswear</span><span class="n">412</span></button>
+        <button class="rail-row"><span>Objects</span><span class="n">96</span></button>
+        <div class="rail-sec">
+          <h3>CATEGORY</h3>
+          <button class="rail-row"><span>Outerwear</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Tops</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Bottoms</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Footwear</span><span class="plus">+</span></button>
+          <button class="rail-row"><span>Accessories</span><span class="plus">+</span></button>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="results">
+          <div><span class="count">248</span><span class="scope">MENSWEAR</span></div>
+          <div>
+            <span class="ctrl">SIZES OFF</span>
+            <button class="sort">NEWEST</button>
+          </div>
+        </div>
+        <div class="grid" data-board="vitrine"></div>
+      </main>
+      <aside class="notes">
+        <h4>Vitrine</h4>
+        <p>Museum wall, not paper. Ice ground, Klein as a filled fact, brands as labels.</p>
+        <dl>
+          <dt>Type</dt><dd>Gloock mark + brand. Onest chrome. Azeret Mono data.</dd>
+          <dt>Color</dt><dd>bg #C5D0DC · surface #EEF2F6 · Klein #002FA7</dd>
+          <dt>Controls</dt><dd>36px. Recessed ice search. Filled selected row.</dd>
+          <dt>Accent may</dt><dd>Header rule. Selected rail. Saved heart.</dd>
+          <dt>May not</dt><dd>Buttons, prices, cream, ochre, oxblood.</dd>
+        </dl>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<script>
+const LOTS = [
+  { img: "coat.jpg", brand: "ACNE STUDIOS", title: "Technical hooded parka", size: "48", price: "$1,280", time: "4D", saved: false },
+  { img: "leather.jpg", brand: "MAISON MARGIELA", title: "Painted leather jacket", size: "48", price: "$2,400", time: "2H", saved: true, fresh: true },
+  { img: "trousers.jpg", brand: "A.P.C.", title: "Tapered cotton chino", size: "32", price: "$240", time: "1D", saved: false },
+  { img: "tote.jpg", brand: "FERRAGAMO", title: "Woven studio tote", size: "OS", price: "$1,890", time: "6H", saved: false, fresh: true },
+  { img: "knit.jpg", brand: "AURALEE", title: "Open-knit wool", size: "3", price: "$420", time: "3D", saved: false },
+  { img: "derby.jpg", brand: "CROCKETT & JONES", title: "Perforated derby", size: "42", price: "$680", time: "12H", saved: true },
+  { img: "field.jpg", brand: "OUR LEGACY", title: "Nylon bomber", size: "50", price: "$380", time: "5D", saved: false },
+  { img: "belt.jpg", brand: "PORTER", title: "Tanker backpack", size: "OS", price: "$310", time: "8H", saved: false }
+];
+
+const HEART = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.6-7 10-7 10z"/></svg>`;
+
+function card(lot) {
+  const fresh = lot.fresh ? " is-fresh" : "";
+  const saved = lot.saved ? " is-on" : "";
+  return `<article class="card">
+    <div class="card__media"><img src="assets/${lot.img}" alt="${lot.brand} — ${lot.title}" /></div>
+    <div class="card__row1">
+      <span class="brand">${lot.brand}</span>
+      <span class="meta"><span>${lot.size}</span><span class="heart${saved}">${HEART}</span></span>
+    </div>
+    <div class="title">${lot.title}</div>
+    <div class="card__row2">
+      <span class="price">${lot.price}</span>
+      <span class="ago${fresh}">${lot.time}</span>
+    </div>
+  </article>`;
+}
+
+document.querySelectorAll(".grid").forEach((g) => {
+  g.innerHTML = LOTS.map(card).join("");
+});
+</script>
+</body>
+</html>

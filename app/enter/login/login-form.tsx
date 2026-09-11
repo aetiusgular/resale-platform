@@ -39,8 +39,7 @@ export default function LoginForm({ initialError = null }: { initialError?: stri
 
   return (
     <form onSubmit={handleLogin}>
-      <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>SIGN IN</div>
-      <h1 className="auth-form__title" style={{ paddingBottom: 26 }}>Welcome back.</h1>
+      <h1 className="auth-form__title" style={{ paddingBottom: 26 }}>Sign in</h1>
       <label className="field-label" htmlFor="login-email">EMAIL</label>
       <input id="login-email" className="input-mono" type="email" placeholder="you@email.com" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} />
       <div className="field-label field-label--row" style={{ paddingTop: 16 }}>

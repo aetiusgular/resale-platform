@@ -1,125 +1,210 @@
-export function SearchIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <circle cx="11" cy="11" r="7" />
-      <path d="M16.8 16.8L22 22" />
-    </svg>
-  );
+/**
+ * Local Phosphor Regular icons (official 256 viewBox paths, 24px optical).
+ * Same React export names as before so call sites stay stable.
+ *
+ * Founder: add `@phosphor-icons/react` in package.json when convenient; this
+ * file is the stand-in because that path is protected for collaborators.
+ */
+import type { SVGProps } from 'react'
+
+type IconProps = {
+  size?: number
+  className?: string
 }
 
-export function BellIcon({ size = 15 }: { size?: number }) {
+function PhosphorIcon({
+  size = 24,
+  className,
+  d,
+}: IconProps & { d: string }) {
+  const svgProps: SVGProps<SVGSVGElement> = {
+    width: size,
+    height: size,
+    viewBox: '0 0 256 256',
+    fill: 'currentColor',
+    xmlns: 'http://www.w3.org/2000/svg',
+    className,
+    'aria-hidden': true,
+  }
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    <svg {...svgProps}>
+      <path d={d} />
     </svg>
-  );
+  )
 }
 
-export function XIcon({ size = 8, strokeWidth = 1.1 }: { size?: number; strokeWidth?: number }) {
+/** Phosphor Regular — MagnifyingGlass */
+export function SearchIcon({ size = 16 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth={strokeWidth}>
-      <path d="M1 1l6 6M7 1L1 7" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+    />
+  )
 }
 
-export function CheckIcon({ size = 8 }: { size?: number }) {
+/** Phosphor Regular — Bell */
+export function BellIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M221.8,175.94C216.25,166.59,208,139.37,208,104a80,80,0,1,0-160,0c0,35.37-8.26,62.59-13.81,71.94A16,16,0,0,0,48,200H88.31a40,40,0,0,0,79.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z"
+    />
+  )
+}
+
+/** Phosphor Regular — X */
+export function XIcon({ size = 12, strokeWidth: _strokeWidth = 1.5 }: { size?: number; strokeWidth?: number }) {
+  return (
+    <PhosphorIcon
+      size={size}
+      d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"
+    />
+  )
+}
+
+/** Phosphor Regular — Check */
+export function CheckIcon({ size = 12 }: { size?: number }) {
+  return (
+    <PhosphorIcon
+      size={size}
+      d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"
+    />
+  )
 }
 
 export function CheckThinIcon({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  );
+  return <CheckIcon size={size} />
 }
 
-export function HeartIcon({ filled, size = 13 }: { filled: boolean; size?: number }) {
+/** Phosphor Regular — Bookmark (save control; filled when saved) */
+export function HeartIcon({ filled, size = 16 }: { filled: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4">
-      <path d="M6.5 3.5h11v17L12 16.3l-5.5 4.2z" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d={
+        filled
+          ? 'M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.77l59.76,36.91A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Z'
+          : 'M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.77l59.76,36.91A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Zm0,177.57-51.76-32a8,8,0,0,0-8.48,0L72,209.57V48H184Z'
+      }
+    />
+  )
 }
 
-export function SellIcon() {
+/** Phosphor Regular — PlusSquare */
+export function SellIcon({ size = 20 }: IconProps) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <rect x="4" y="4" width="16" height="16" />
-      <path d="M12 8.5v7M8.5 12h7" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,176H48V48H208V208Zm-32-80a8,8,0,0,1-8,8H136v40a8,8,0,0,1-16,0V136H80a8,8,0,0,1,0-16h40V80a8,8,0,0,1,16,0v40h40A8,8,0,0,1,176,128Z"
+    />
+  )
 }
 
-export function BookmarkIcon() {
+/** Phosphor Regular — Bookmark */
+export function BookmarkIcon({ size = 20 }: IconProps) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <path d="M6.5 3.5h11v17L12 16.3l-5.5 4.2z" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M184,32H72A16,16,0,0,0,56,48V224a8,8,0,0,0,12.24,6.78L128,193.77l59.76,36.91A8,8,0,0,0,200,224V48A16,16,0,0,0,184,32Zm0,177.57-51.76-32a8,8,0,0,0-8.48,0L72,209.57V48H184Z"
+    />
+  )
 }
 
-export function ChatIcon({ size = 15 }: { size?: number }) {
+/** Phosphor Regular — Chat */
+export function ChatIcon({ size = 20 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <path d="M4 4.5h16v11h-8.5L7 19.5v-4H4z" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M216,48H40A16,16,0,0,0,24,64V224a15.84,15.84,0,0,0,9.25,14.5A16.05,16.05,0,0,0,40,240a15.89,15.89,0,0,0,10.25-3.78.69.69,0,0,0,.13-.11L82.5,208H216a16,16,0,0,0,16-16V64A16,16,0,0,0,216,48ZM216,192H82.5a16,16,0,0,0-10.3,3.75l-.12.11L40,224V64H216Z"
+    />
+  )
 }
 
+/** Phosphor Regular — ShieldCheck */
 export function ShieldCheckIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M12 2.5l7.5 3v6c0 4.5-3.2 8-7.5 10-4.3-2-7.5-5.5-7.5-10v-6z" />
-      <path d="M8.5 12l2.5 2.5 4.5-5" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.14,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,44.07-20.14,72.59-38.09,87.24A129.34,129.34,0,0,1,128,223.62a128.37,128.37,0,0,1-41.91-24.38C68.14,184.59,48,156.07,48,112V56H208ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"
+    />
+  )
 }
 
-export function PlusIcon({ size = 14 }: { size?: number }) {
+/** Phosphor Regular — Plus */
+export function PlusIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"
+    />
+  )
 }
 
-export function ArrowLeftIcon({ size = 14 }: { size?: number }) {
+/** Phosphor Regular — ArrowLeft */
+export function ArrowLeftIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <path d="M19 12H5M11 6l-6 6 6 6" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"
+    />
+  )
 }
 
-/** Three shrinking bars — the FILTERS cell of the mobile browse dock (mobile-web 01). */
-export function FilterIcon({ size = 13 }: { size?: number }) {
+/** Phosphor Regular — Flag */
+export function FlagIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <path d="M4 6h16M7 12h10M10 18h4" />
-    </svg>
-  );
+    <PhosphorIcon
+      size={size}
+      d="M42.76,50A8,8,0,0,0,40,56V224a8,8,0,0,0,16,0V179.77c26.79-21.16,49.87-9.75,76.45,3.41,16.4,8.11,34.06,16.85,53,16.85,13.93,0,27.36-4.18,39.41-14.83A8,8,0,0,0,232,176V56a8,8,0,0,0-13.24-6.07c-28.26,24.23-51.34,12.49-79.2-1.6C111.07,34.76,78.78,18.79,42.76,50ZM216,172.25c-26.79,21.16-49.87,9.74-76.45-3.41-25-12.35-52.81-26.13-83.55-8.4V59.79c26.79-21.16,49.87-9.75,76.45,3.4,25,12.35,52.82,26.13,83.55,8.4Z"
+    />
+  )
 }
 
-export function GridIcon() {
+/** Official Simple Icons Instagram glyph (viewBox 0 0 24 24). */
+export function InstagramIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <rect x="4" y="4" width="6.5" height="6.5" /><rect x="13.5" y="4" width="6.5" height="6.5" />
-      <rect x="4" y="13.5" width="6.5" height="6.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path d="M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077" />
     </svg>
-  );
+  )
 }
 
-export function UserIcon() {
+/** Official Simple Icons TikTok glyph (viewBox 0 0 24 24). */
+export function TikTokIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-      <circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
     </svg>
-  );
+  )
+}
+
+/** Phosphor Regular — Funnel (FILTERS dock) */
+export function FilterIcon({ size = 16 }: { size?: number }) {
+  return (
+    <PhosphorIcon
+      size={size}
+      d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM146.06,126.45A15.9,15.9,0,0,0,144,139.17v55.49L112,216V139.17a15.9,15.9,0,0,0-4.06-10.81L40,56H216Z"
+    />
+  )
+}
+
+/** Phosphor Regular — SquaresFour */
+export function GridIcon({ size = 16 }: IconProps) {
+  return (
+    <PhosphorIcon
+      size={size}
+      d="M104,40H56A16,16,0,0,0,40,56v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,104,40Zm0,64H56V56h48v48Zm96-64H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,200,40Zm0,64H152V56h48v48Zm-96,32H56a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,104,136Zm0,64H56V152h48v48Zm96-64H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,200,136Zm0,64H152V152h48v48Z"
+    />
+  )
+}
+
+/** Phosphor Regular — User */
+export function UserIcon({ size = 16 }: IconProps) {
+  return (
+    <PhosphorIcon
+      size={size}
+      d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"
+    />
+  )
 }

@@ -18,7 +18,9 @@ import AppShell from '@/app/components/app-shell'
 import GuestAction from '@/app/components/guest-action'
 import PrefetchLink from '@/app/components/prefetch-link'
 import JsonLd from '@/app/components/json-ld'
-import { ChatIcon, ShieldCheckIcon } from '@/app/components/icons'
+import { ChatIcon } from '@/app/components/icons'
+import ListingBack from './listing-back'
+import { listedWhen } from '@/app/components/format'
 import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
 
 interface PageProps {
@@ -88,15 +90,12 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
   const sellerHandle = d.seller.username
   const sellerInitials = d.seller.initials
-  const authenticated = d.listing.authenticated
   const shippingCents = d.listing.shipping_cents
-  const crumbParts = d.listing.crumb.parts
   const crumbHref = d.listing.crumb.href
   const statusWord = d.listing.status_word
   const listedLine = d.listing.listed_line
   const measurements = d.listing.measurements
   const measLabels = d.listing.measurement_labels
-  const spec = d.listing.spec
   const trustLine = d.seller.trust_line
 
   return (
@@ -140,7 +139,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
       )}
       {isAdmin && !isActive && !isSold && (
         <div className="status-strip">
-          ADMIN VIEW · STATUS: {listing.status.toUpperCase()}
+          ADMIN VIEW — {listing.status.toUpperCase()}
           <Link href="/admin/queue" className="link-underline link-underline--ink" style={{ marginLeft: 16 }}>← QUEUE</Link>
         </div>
       )}
@@ -150,10 +149,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
           {/* LEFT: gallery + measurements (4A). ≤720px both columns unwrap into one
               stack ordered like the mobile-web 05 mock (globals.css `.pdp` rules). */}
           <div className="pdp__left">
-            <PrefetchLink className="pdp__crumb" href={crumbHref}>
-              <span className="pdp__crumb-full">← SEARCH · {crumbParts.map((p) => p.toUpperCase()).join(' / ')}</span>
-              <span className="pdp__crumb-short">← BACK TO RESULTS</span>
-            </PrefetchLink>
+            <ListingBack href={crumbHref} />
             <ListingGallery
               images={images}
               title={listing.title}
@@ -170,31 +166,48 @@ export default async function ListingDetailPage({ params }: PageProps) {
           {/* RIGHT: purchase placard */}
           <div className="pdp__right">
             <div className="pdp__toprow">
-              <span className="pdp__listed">{listedLine}</span>
-              <a className="lc-chip" href="#lc-thread" title="Jumps to legit check thread" data-testid="lc-chip">
-                <span className="lc-chip__dot" />
-                LC {initialTally.legit} LEGIT · {initialTally.verdict} ↓
+              <span className="pdp__listed">{listedWhen(listedLine)}</span>
+              <a className="lc-chip" href="#lc-thread" title="Open the legit check thread" data-testid="lc-chip">
+                {initialTally.legit} legit
               </a>
             </div>
-            <div className="pdp__brand">{listing.brand.toUpperCase()}</div>
-            <h1 className="pdp__title">{listing.title}</h1>
-            <div className="pdp__spec">{spec}</div>
-            <div className="pdp__pricerow">
-              <span className="pdp__price" data-testid="listing-price">
-                {listing.is_price_dropped && originalPriceCents && (
-                  <span className="pdp__old">{formatCents(originalPriceCents)}</span>
+            <div className="pdp__caption">
+              <span className="pdp__brand">{listing.brand.toUpperCase()}</span>
+              <span className="pdp__caption-meta">
+                {listing.size && <span className="pdp__size">{listing.size.toUpperCase()}</span>}
+                {!isSeller && (
+                  user
+                    ? <SaveButton listingId={id} initialSaved={isSaved} caption />
+                    : <SaveButton listingId={id} initialSaved={false} guest caption listing={{ brand: listing.brand, title: listing.title, image: images[0] ?? null }} />
                 )}
-                {formatCents(listing.price_cents)}
               </span>
-              <span className="pdp__ship">+ {formatCents(shippingCents)} SHIPPING · US</span>
-              <span className="pdp__listed pdp__listed--m">{listedLine.split(' · ')[0]}</span>
+            </div>
+            <h1 className="pdp__title">{listing.title}</h1>
+            <div className="pdp-facts">
+              {listing.color && <span className="fact">{listing.color.toUpperCase()}</span>}
+              <span className="fact">{listing.condition_score ?? '—'} / 10</span>
+            </div>
+            <div className="pdp__pricerow">
+              <div className="pdp__priceblock">
+                <span className={`pdp__price${listing.is_price_dropped && originalPriceCents ? ' is-drop' : ''}`} data-testid="listing-price">
+                  {listing.is_price_dropped && originalPriceCents && (
+                    <span className="pdp__old">{formatCents(originalPriceCents)}</span>
+                  )}
+                  {formatCents(listing.price_cents)}
+                </span>
+                <span className="pdp__ship">
+                  <span>Shipping {formatCents(shippingCents)}</span>
+                  <span>US only</span>
+                </span>
+              </div>
+              <span className="pdp__listed pdp__listed--m">{listedWhen(listedLine).split(' · ')[0]}</span>
             </div>
             {/* Mobile spec rows (05): SIZE / CONDITION / SHIPPING */}
             <div className="pdp-specs">
               {listing.size && <div className="pdp-specs__row"><span className="pdp-specs__k">SIZE</span><span className="pdp-specs__v">{listing.size.toUpperCase()}</span></div>}
               {listing.color && <div className="pdp-specs__row"><span className="pdp-specs__k">COLOR</span><span className="pdp-specs__v">{listing.color.toUpperCase()}</span></div>}
               <div className="pdp-specs__row"><span className="pdp-specs__k">CONDITION</span><span className="pdp-specs__v">{listing.condition_score ?? '—'} / 10</span></div>
-              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{formatCents(shippingCents)} · US ONLY</span></div>
+              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{formatCents(shippingCents)} US</span></div>
             </div>
 
             <div className="pdp__ctas">
@@ -225,21 +238,16 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 <button type="button" className="btn-ink" disabled>MAKE OFFER</button>
               )}
               <div className="pdp__ctarow">
-                {!isSeller && (
-                  user
-                    ? <SaveButton listingId={id} initialSaved={isSaved} />
-                    : <SaveButton listingId={id} initialSaved={false} guest listing={{ brand: listing.brand, title: listing.title, image: images[0] ?? null }} />
-                )}
                 {canBuy ? (
                   user ? (
                     <MessageSellerButton listingId={id} icon className="btn-ghost btn-ghost--icon" />
                   ) : (
                     <GuestAction next={`/listings/${id}`} testId="message-guest" className="btn-ghost btn-ghost--icon">
-                      <ChatIcon size={16} />MESSAGE SELLER
+                      <ChatIcon size={20} />MESSAGE SELLER
                     </GuestAction>
                   )
                 ) : (
-                  <button type="button" className="btn-ghost btn-ghost--icon" disabled><ChatIcon size={16} />MESSAGE SELLER</button>
+                  <button type="button" className="btn-ghost btn-ghost--icon" disabled><ChatIcon size={20} />MESSAGE SELLER</button>
                 )}
               </div>
               {isSeller && isActive && (
@@ -254,31 +262,27 @@ export default async function ListingDetailPage({ params }: PageProps) {
             </div>
 
             <div className="pdp__desc">
-              <div className="field-label field-label--row">
-                <span>DESCRIPTION</span>
-                <span>CONDITION {listing.condition_score ?? '—'} / 10</span>
-              </div>
+              <div className="field-label">DESCRIPTION</div>
               <p style={{ whiteSpace: 'pre-line' }}>{listing.description}</p>
             </div>
-            <div className="pdp__escrow">
-              <ShieldCheckIcon size={16} />
-              ESCROW{authenticated ? ' · AUTHENTICATED' : ' · LEGIT CHECKED'} · TRACKED
-            </div>
-            <div className="spacer" />
             <div className="pdp__seller">
               <span className="pdp__seller-left">
                 <span className="seller-init seller-init--sm">{sellerInitials}</span>
                 <span>
                   <PrefetchLink className="pdp__seller-handle" href={seller?.username ? `/sellers/${seller.username}` : '#'}>@{sellerHandle.toUpperCase()}</PrefetchLink>
-                  <span className="pdp__seller-meta">{trustLine}</span>
+                  <span className="pdp__seller-meta">
+                    {trustLine.split(' · ').map((part) => (
+                      <span key={part}>{part}</span>
+                    ))}
+                  </span>
                 </span>
               </span>
               <span className="pdp__seller-right">
                 {/* Mobile (05): MESSAGE sits in the seller row; the placard's MESSAGE SELLER hides ≤720px. */}
                 {canBuy && (
                   user
-                    ? <MessageSellerButton listingId={id} className="link-underline link-underline--ink pdp__seller-msg" label="MESSAGE" testId="message-seller-m" />
-                    : <GuestAction next={`/listings/${id}`} className="link-underline link-underline--ink pdp__seller-msg">MESSAGE</GuestAction>
+                    ? <MessageSellerButton listingId={id} icon className="link-underline link-underline--ink pdp__seller-msg" label="MESSAGE" testId="message-seller-m" />
+                    : <GuestAction next={`/listings/${id}`} className="link-underline link-underline--ink pdp__seller-msg"><ChatIcon size={18} />MESSAGE</GuestAction>
                 )}
                 {FOLLOWS_ENABLED && !isSeller ? (
                   <FollowButton sellerId={listing.seller_id} initialFollowing={isFollowing} small guest={!user} />
@@ -305,9 +309,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
         {canBuy && (
           <div className="pdp-dock">
             {user ? (
-              <PrefetchLink href={`/checkout/${id}`} className="btn-primary">BUY NOW · {formatCents(listing.price_cents)}</PrefetchLink>
+              <PrefetchLink href={`/checkout/${id}`} className="btn-primary">BUY NOW</PrefetchLink>
             ) : (
-              <GuestAction next={`/checkout/${id}`} className="btn-primary">BUY NOW · {formatCents(listing.price_cents)}</GuestAction>
+              <GuestAction next={`/checkout/${id}`} className="btn-primary">BUY NOW</GuestAction>
             )}
             {user ? (
               <a href={`/messages?listing=${id}`} className="btn-ink">MAKE OFFER</a>

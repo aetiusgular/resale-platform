@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * Messages sidebar (design 1A): title + "n UNREAD" / "ALL READ", ALL / BUYING /
- * SELLING filters + conversation rows with unread badges. Rows are real links
- * (/messages/[id]); the active one is highlighted with the ink rail.
+ * Messages sidebar: title + unread note, ALL / BUYING / SELLING, conversation
+ * rows. Rows are real links (`hrefBase/[id]`, default `/messages`). Digest
+ * alignment (layout vs catalog) is a later design pass — keep this functional.
  */
 import { useState } from 'react'
 import PrefetchLink from '@/app/components/prefetch-link'
@@ -22,7 +22,7 @@ export function inboxTime(iso: string): string {
   return `${Math.floor(days / 7)}W`
 }
 
-export default function InboxList({ rows, activeId }: { rows: InboxRow[]; activeId?: string }) {
+export default function InboxList({ rows, activeId, hrefBase = '/messages' }: { rows: InboxRow[]; activeId?: string; hrefBase?: string }) {
   const [filter, setFilter] = useState<RoleFilter>('ALL')
   const list = rows.filter((c) => filter === 'ALL' || c.role === filter)
   // The open thread is read by definition (the page marks it on render).
@@ -45,13 +45,13 @@ export default function InboxList({ rows, activeId }: { rows: InboxRow[]; active
         {list.length === 0 && (
           <div className="empty" style={{ padding: '40px 24px' }}>
             <div className="empty__title">No conversations yet.</div>
-            <div className="empty__sub">START ONE FROM A LISTING — MESSAGE SELLER OR MAKE OFFER</div>
+            <div className="empty__sub">Start one from a listing.</div>
           </div>
         )}
         {list.map((c, i) => {
           const unread = c.id === activeId ? 0 : c.unread
           return (
-            <PrefetchLink key={c.id} className={`conv${activeId === c.id ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} href={`/messages/${c.id}`} data-testid="inbox-row">
+            <PrefetchLink key={c.id} className={`conv${activeId === c.id ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} href={`${hrefBase}/${c.id}`} data-testid="inbox-row">
               {/* ≤720px (mobile-web 07): initials left, the listing thumb moves to the right */}
               <span className={`conv__avatar${unread ? ' is-unread' : ''}`} aria-hidden="true">{c.handle.slice(0, 2).toUpperCase()}</span>
               <span className="conv__thumb" style={{ background: `var(--tone-${(i % 8) + 1})`, overflow: 'hidden' }}>

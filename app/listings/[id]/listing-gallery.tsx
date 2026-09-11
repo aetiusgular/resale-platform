@@ -1,19 +1,15 @@
 'use client'
 
 /**
- * Listing gallery (design option 4A): 3:4 stage with prev/next arrows and a
- * counter, slot thumbnails below (FRONT / BACK / TAG / DETAIL / FLAW / POSSN).
- * Slot 5 (POSSESSION) is proof-of-possession — shown to the seller/admin only;
- * public viewers get the five listing photos.
+ * Listing gallery: compact 3:4 stage with a left thumb rail (same DOM at every
+ * width). Slot 5 (POSSESSION) is proof-of-possession — seller/admin only.
  *
- * Mobile web (≤720px, handoff 05): one swipeable image (scroll-snap track), a
- * "1 / 6" pill top-left, the save bookmark top-right (`saveSlot`), dots at the
- * bottom; arrows and thumbnails hide. Same DOM at both widths — the stage always
- * holds every slide, desktop shows only the current one.
+ * ≤720px: swipeable track, count pill, save slot, dots. Thumbs and arrows hide.
  */
 import { useRef, useState, type ReactNode } from 'react'
 
 const SLOT_LABELS = ['FRONT', 'BACK', 'TAG', 'DETAIL', 'FLAW', 'POSSN']
+const isPhoto = (url: string | null) => !!url && !url.startsWith('data:image/svg')
 
 export default function ListingGallery({ images, title, showPossession, saveSlot }: {
   images: string[]
@@ -43,22 +39,32 @@ export default function ListingGallery({ images, title, showPossession, saveSlot
   }
 
   return (
-    <>
+    <div className="pdp-gallery">
+      <div className="pdp-thumbs">
+        {slots.map((s, i) => (
+          <button key={s.label} type="button" className={`pdp-thumb${i === slot ? ' is-active' : ''}`} onClick={() => go(i)} aria-label={`${s.label} photo`}>
+            <span className="pdp-thumb__img" style={{ background: tone(i), overflow: 'hidden' }}>
+              {isPhoto(s.url) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.url!} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
       <div className="pdp-stage" data-testid="listing-gallery">
         <div className="pdp-stage__track" ref={trackRef} onScroll={onScroll}>
           {slots.map((s, i) => (
             <div key={s.label} className={`pdp-stage__slide${i === slot ? ' is-current' : ''}`} style={{ background: tone(i) }} aria-hidden={i !== slot}>
-              {s.url ? (
+              {isPhoto(s.url) && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={s.url}
+                  src={s.url!}
                   alt={`${title} — ${s.label.toLowerCase()}`}
                   fetchPriority={i === 0 ? 'high' : undefined}
                   loading={i === 0 ? undefined : 'lazy'}
                   decoding="async"
                 />
-              ) : (
-                <span className="pdp-stage__label">{s.label}</span>
               )}
             </div>
           ))}
@@ -71,19 +77,6 @@ export default function ListingGallery({ images, title, showPossession, saveSlot
           {slots.map((s, i) => <span key={s.label} className={`pdp-stage__dot${i === slot ? ' is-on' : ''}`} />)}
         </span>
       </div>
-      <div className="pdp-thumbs" style={n === 5 ? { gridTemplateColumns: 'repeat(5, 1fr)' } : undefined}>
-        {slots.map((s, i) => (
-          <button key={s.label} type="button" className={`pdp-thumb${i === slot ? ' is-active' : ''}`} onClick={() => go(i)} aria-label={`${s.label} photo`}>
-            <span className="pdp-thumb__img" style={{ background: tone(i), overflow: 'hidden' }}>
-              {s.url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={s.url} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              )}
-            </span>
-            <span className="pdp-thumb__label">{s.label}</span>
-          </button>
-        ))}
-      </div>
-    </>
+    </div>
   )
 }

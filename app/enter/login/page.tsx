@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       ? (typeof reason === 'string' && reason ? `Google sign-in failed: ${reason}` : 'Google sign-in failed — please try again.')
       : null
   return (
-    <AuthPage cta={{ href: '/enter', label: 'NEW HERE? CREATE ACCOUNT →' }}>
+    <AuthPage>
       <LoginForm initialError={oauthError} />
     </AuthPage>
   )

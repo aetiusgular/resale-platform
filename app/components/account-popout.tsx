@@ -70,13 +70,14 @@ export default function AccountPopout({ open, username, displayName, initials, n
               {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
             </button>
           )}
+          <PrefetchLink className="acct-row" href="/messages" onClick={onClose}>Messages</PrefetchLink>
           <PrefetchLink className="acct-row" href="/settings/orders" onClick={onClose}>Orders</PrefetchLink>
           <PrefetchLink className="acct-row" href="/settings" onClick={onClose}>Settings</PrefetchLink>
         </nav>
         <div className="acct-panel__foot">
           <div className="acct-theme">
             <span className="acct-theme__label">THEME</span>
-            <ThemeSegment options={['light', 'dark']} compact />
+            <ThemeSegment options={['light', 'dark', 'system']} compact />
           </div>
           <button type="button" className="acct-signout" onClick={signOut} disabled={signingOut} data-testid="logout-btn">
             {signingOut ? 'Signing out…' : 'Sign out'}

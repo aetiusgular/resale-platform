@@ -5,6 +5,7 @@ import './globals.css'
 import { SEO_INDEXING_ENABLED } from '@/lib/flags'
 import { baseUrl, SITE_NAME, SITE_TAGLINE } from '@/lib/seo'
 import AuthModalProvider from '@/app/components/auth-modal-provider'
+import { DialkitRoot } from '@/app/components/dialkit-root'
 import { THEME_BOOTSTRAP_SCRIPT } from '@/app/components/theme-bootstrap'
 
 // Two families (design review): Archivo for chrome + copy, IBM Plex Mono for
@@ -112,6 +113,7 @@ export default async function RootLayout({
         )}
         <AuthModalProvider>
           {children}
+          <DialkitRoot />
         </AuthModalProvider>
       </body>
     </html>

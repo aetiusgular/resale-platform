@@ -7,13 +7,13 @@
  * Server components; forms passed as children may be client components.
  */
 import Link from 'next/link'
-import { BRAND_STAGE, BRAND_WORDMARK } from './brand'
+import { BRAND_WORDMARK } from './brand'
 import SiteFooter from './site-footer'
 
 export const ENTRY_TAGLINE = 'A quieter market for the things worth keeping.'
 export const ENTRY_POINTS: [string, string][] = [
-  ['01', 'FREE TO JOIN — OPEN ALPHA'],
-  ['02', 'EVERY SALE IN ESCROW'],
+  ['01', 'FREE TO JOIN'],
+  ['02', 'TRACKED US SHIPPING'],
   ['03', 'CONDITION GRADED 1–10'],
 ]
 
@@ -21,7 +21,6 @@ function Brand() {
   return (
     <span className="header__brand">
       <span className="header__logo">{BRAND_WORDMARK}</span>
-      <span className="header__alpha">{BRAND_STAGE}</span>
     </span>
   )
 }
@@ -34,12 +33,7 @@ export function AuthSplit({ children }: { children: React.ReactNode }) {
         <Link href="/browse" title="Browse"><Brand /></Link>
         <div>
           <div className="auth-hero__word">{BRAND_WORDMARK}</div>
-          <p className="auth-hero__sub">{ENTRY_TAGLINE} The peer-to-peer market for archive fashion. Every sale held in escrow, every piece condition-graded.</p>
-          <div className="auth-hero__points">
-            {ENTRY_POINTS.map(([n, t]) => (
-              <div key={n} className="auth-hero__point"><span>{n}</span><span>{t}</span></div>
-            ))}
-          </div>
+          <p className="auth-hero__sub">{ENTRY_TAGLINE}</p>
         </div>
         <div className="auth-hero__foot">
           <Link href="/terms">TERMS</Link>

@@ -1,12 +1,10 @@
 'use client'
 
 /**
- * Right cluster of the site header: SELL · SAVED · MESSAGES · avatar.
- * Guests get SELL (auth-gated) + a SIGN IN button; members get the nav icons and
- * the avatar, which opens the account popout (and from there the notifications
- * popout). The unread notification count (avatar badge) is fetched once on mount
- * when NOTIFICATIONS_ENABLED; the unread MESSAGES count comes from
- * /api/conversations/unread (conversation_reads cursors).
+ * Right cluster of the site header. Two spatial groups (nav / account) —
+ * no middots or rules between SELL and SIGN IN. Theme lives here so guests
+ * can reach it without an account. Proto routes keep MESSAGES on the
+ * fixture inbox — digest layout is a later design pass.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -15,6 +13,7 @@ import GuestAction from './guest-action'
 import { SellIcon, BookmarkIcon, ChatIcon } from './icons'
 import AccountPopout from './account-popout'
 import NotificationsPopout, { type NotificationItem } from './notifications-popout'
+import { ThemeSegment } from './theme'
 
 interface Props {
   username: string
@@ -65,50 +64,77 @@ export default function HeaderActions({ username, displayName, notificationsEnab
   const unread = notifs.filter((n) => !n.read_at).length
   const active = (prefix: string) => pathname === prefix || pathname.startsWith(prefix + '/')
 
+  const protoBase = pathname.startsWith('/styleguide/proto')
+    ? '/styleguide/proto'
+    : pathname.startsWith('/proto')
+      ? '/proto'
+      : null
+  const messagesHref = protoBase ? `${protoBase}/messages` : '/messages'
+
   if (isGuest) {
     return (
       <div className="header__actions">
-        <GuestAction next="/sell" className="nav-icon" testId="header-sell-guest">
-          <SellIcon />
-          <span className="nav-icon__label">SELL</span>
-        </GuestAction>
-        <span className="header__divider" aria-hidden="true" />
-        <GuestAction testId="browse-signin" className="btn-mini btn-mini--solid" style={{ letterSpacing: '0.16em', padding: '8px 12px' }}>
-          SIGN IN
-        </GuestAction>
+        <div className="header__cluster">
+          <GuestAction next="/sell" className="nav-icon nav-icon--sell" testId="header-sell-guest">
+            <SellIcon />
+            <span className="nav-icon__label">SELL</span>
+          </GuestAction>
+          {protoBase ? (
+            <PrefetchLink className={`nav-icon${active(messagesHref) ? ' is-active' : ''}`} href={messagesHref} data-testid="header-messages">
+              <ChatIcon />
+              <span className="nav-icon__label">MESSAGES</span>
+            </PrefetchLink>
+          ) : (
+            <GuestAction next="/messages" className="nav-icon" testId="header-messages-guest">
+              <ChatIcon />
+              <span className="nav-icon__label">MESSAGES</span>
+            </GuestAction>
+          )}
+        </div>
+        <div className="header__cluster">
+          <GuestAction className="nav-icon nav-icon--signin" testId="header-signin">
+            <span className="nav-icon__label">SIGN IN</span>
+          </GuestAction>
+          <ThemeSegment options={['light', 'dark', 'system']} compact />
+        </div>
       </div>
     )
   }
 
   return (
     <div className="header__actions">
-      <PrefetchLink className={`nav-icon${active('/sell') ? ' is-active' : ''}`} href="/sell">
-        <SellIcon />
-        <span className="nav-icon__label">SELL</span>
-      </PrefetchLink>
-      <PrefetchLink className={`nav-icon${active('/saved') ? ' is-active' : ''}`} href="/saved">
-        <BookmarkIcon />
-        <span className="nav-icon__label">SAVED</span>
-      </PrefetchLink>
-      <PrefetchLink className={`nav-icon${active('/messages') ? ' is-active' : ''}`} href="/messages" aria-label={`Messages, ${msgCount} unread`}>
-        <span className="nav-icon__glyph">
-          <ChatIcon />
-          {msgCount > 0 && <span className="nav-icon__count" data-testid="messages-badge">{msgCount > 9 ? '9+' : msgCount}</span>}
-        </span>
-        <span className="nav-icon__label">MESSAGES</span>
-      </PrefetchLink>
-      <span className="header__divider" aria-hidden="true" />
-      <button
-        type="button"
-        className={`avatar${active('/settings') || active('/orders') ? ' is-active' : ''}`}
-        onClick={() => setAcctOpen(!acctOpen)}
-        aria-label={`Account, ${unread} notifications`}
-        aria-expanded={acctOpen}
-        data-testid="avatar-btn"
-      >
-        <span className="avatar__box">{initials}</span>
-        {unread > 0 && <span className="avatar__count">{unread > 9 ? '9+' : unread}</span>}
-      </button>
+      <div className="header__cluster">
+        <PrefetchLink className={`nav-icon nav-icon--sell${active('/sell') ? ' is-active' : ''}`} href="/sell">
+          <SellIcon />
+          <span className="nav-icon__label">SELL</span>
+        </PrefetchLink>
+        <PrefetchLink className={`nav-icon${active('/saved') ? ' is-active' : ''}`} href="/saved">
+          <BookmarkIcon />
+          <span className="nav-icon__label">SAVED</span>
+        </PrefetchLink>
+        <PrefetchLink className={`nav-icon${active('/messages') ? ' is-active' : ''}`} href="/messages" aria-label={`Messages, ${msgCount} unread`} data-testid="header-messages">
+          <span className="nav-icon__glyph">
+            <ChatIcon />
+            {msgCount > 0 && <span className="nav-icon__count" data-testid="messages-badge">{msgCount > 9 ? '9+' : msgCount}</span>}
+          </span>
+          <span className="nav-icon__label">MESSAGES</span>
+        </PrefetchLink>
+      </div>
+      <div className="header__cluster">
+        <ThemeSegment options={['light', 'dark', 'system']} compact />
+        <span className="header__divider" aria-hidden="true" />
+        <button
+          type="button"
+          className={`avatar${active('/settings') || active('/orders') ? ' is-active' : ''}`}
+          onClick={() => setAcctOpen(!acctOpen)}
+          aria-label={`Account, ${unread} notifications`}
+          aria-expanded={acctOpen}
+          data-testid="avatar-btn"
+        >
+          <span className="avatar__box">{initials}</span>
+          {unread > 0 && <span className="avatar__count">{unread > 9 ? '9+' : unread}</span>}
+        </button>
+      </div>
 
       <AccountPopout
         open={acctOpen}

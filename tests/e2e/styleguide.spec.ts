@@ -54,4 +54,27 @@ test.describe('Styleguide smoke', () => {
     const cards = page.locator('[aria-label="Listing card skeleton"]')
     await expect(cards).toHaveCount(3)
   })
+
+  test('index links to proto and changes', async ({ page }) => {
+    await page.goto('/styleguide')
+    await expect(page.getByRole('link', { name: 'PROTO' })).toHaveAttribute('href', '/styleguide/proto')
+    await expect(page.getByRole('link', { name: 'CHANGES' })).toHaveAttribute('href', '/styleguide/changes')
+  })
+
+  test('changes page maps the 2nd1 delta', async ({ page }) => {
+    await page.goto('/styleguide/changes')
+    await expect(page).toHaveTitle(/Since 2nd1 browse/)
+    await expect(page.locator('h1')).toHaveText('Since 2nd1 browse.')
+    await expect(page.getByRole('link', { name: '2nd1 /browse' })).toHaveAttribute(
+      'href',
+      'https://resale-platform-4mhuvf581-2nd1.vercel.app/browse',
+    )
+    await expect(page.locator('.delta')).toHaveCount(19)
+  })
+
+  test('proto chrome links to changes', async ({ page }) => {
+    await page.goto('/styleguide/proto')
+    await expect(page.getByTestId('proto-changes')).toHaveAttribute('href', '/styleguide/changes')
+    await expect(page.getByText('Diff vs 2nd1 browse.')).toBeVisible()
+  })
 })

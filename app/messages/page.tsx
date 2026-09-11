@@ -75,7 +75,7 @@ export default async function MessagesPage({ searchParams }: PageProps) {
           <div className="empty" style={{ margin: 'auto', color: 'var(--faint)' }}>
             <ChatIcon />
             <div className="empty__title" style={{ paddingTop: 12 }}>Select a conversation</div>
-            <div className="empty__sub">OFFERS, QUESTIONS AND ORDER CHAT LIVE HERE</div>
+            <div className="empty__sub">Offers and questions live here.</div>
           </div>
         </div>
       </div>

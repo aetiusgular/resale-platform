@@ -14,7 +14,6 @@ import { PHONE_VERIFICATION_ENABLED, TIER_DASHBOARD_ENABLED } from '@/lib/flags'
 import { loadSettings } from '@/lib/loaders/settings'
 import SettingsSections, { SettingsMenu, type SettingsSection } from './settings-sections'
 import SignOutLink from './sign-out-link'
-import { BRAND_STAGE } from '@/app/components/brand'
 
 const LEGACY_SECTIONS: Record<string, SettingsSection> = {
   'my-sizes': 'sizes', addresses: 'address', payments: 'payouts', power: 'tiers',
@@ -82,7 +81,7 @@ export default async function SettingsShell({
         <main className="main main--settings">
           {/* ≤720px (mobile-web 09): the hub is a menu into the sections; each section carries
               a "← SETTINGS" back link (Crumb). The desktop hub body hides there. */}
-          {section === 'hub' && <SettingsMenu data={data} activeOrders={activeOrders} stage={BRAND_STAGE} />}
+          {section === 'hub' && <SettingsMenu data={data} activeOrders={activeOrders} />}
           <div className={`settings-section${section === 'hub' ? ' settings-desk' : ''}`}>
             <SettingsSections section={section} data={data} />
           </div>

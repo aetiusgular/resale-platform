@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthPage cta={{ href: '/enter/login', label: 'BACK TO SIGN IN →' }}>
+    <AuthPage>
       <div className="modal__title" style={{ paddingBottom: 10, display: 'block' }}>RESET PASSWORD</div>
       {sent ? (
         <>
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
       ) : (
         <form onSubmit={handleSubmit}>
           <h1 className="auth-form__title">Set a new password.</h1>
-          <p className="auth-form__sub">Enter your email and we&rsquo;ll send a link to set a new password. Signed up with Google? Use this to add a password to your account.</p>
+          <p className="auth-form__sub">We’ll email a reset link if an account exists.</p>
           <label className="field-label" htmlFor="forgot-email">EMAIL</label>
           <input id="forgot-email" className="input-mono" type="email" placeholder="you@email.com" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null) }} />
           {error && <div className="alert-line" role="alert">{error.toUpperCase()}</div>}

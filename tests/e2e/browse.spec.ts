@@ -9,8 +9,10 @@ test.describe('Browse — public for guests', () => {
   test('/browse renders for an unauthenticated user (no redirect to /enter)', async ({ page }) => {
     await page.goto('/browse')
     await expect(page).toHaveURL(/\/browse/)
-    // Guest header shows a Sign in button (also proves the auth-modal provider mounted).
-    await expect(page.getByTestId('browse-signin')).toBeVisible()
+    // Guest header: SELL + MESSAGES + SIGN IN (auth-gated).
+    await expect(page.getByTestId('header-sell-guest')).toBeVisible()
+    await expect(page.getByTestId('header-messages-guest')).toBeVisible()
+    await expect(page.getByTestId('header-signin')).toBeVisible()
   })
 
   test('/ routes an unauthenticated user to /browse', async ({ page }) => {

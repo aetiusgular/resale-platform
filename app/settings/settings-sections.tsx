@@ -923,7 +923,7 @@ function MenuRow({ href, label, meta }: { href: string; label: string; meta?: st
   )
 }
 
-export function SettingsMenu({ data, activeOrders, stage }: { data: SettingsData; activeOrders: number; stage: string }) {
+export function SettingsMenu({ data, activeOrders }: { data: SettingsData; activeOrders: number }) {
   const initials = (data.displayName || data.username).slice(0, 2).toUpperCase()
   const sizesChip = sizesChipLabel(data.sizes)
   const anyPush = PREF_ROWS.some((r) => data.prefs[`push_${r.id}` as keyof NotificationPrefs])
@@ -937,7 +937,10 @@ export function SettingsMenu({ data, activeOrders, stage }: { data: SettingsData
         <span className="menu-profile__avatar" style={data.avatarUrl ? { backgroundImage: `url(${data.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : undefined}>{initials}</span>
         <span className="menu-profile__main">
           <span className="menu-profile__name">{data.displayName || data.username}</span>
-          <span className="menu-profile__meta">@{data.username}{memberYear ? ` · MEMBER SINCE ${memberYear}` : ''}</span>
+          <span className="menu-profile__meta">
+            @{data.username}
+            {memberYear ? <span className="menu-profile__since">Member since {memberYear}</span> : null}
+          </span>
         </span>
         <PrefetchLink href="/settings/profile" className="link-underline link-underline--ink menu-profile__edit">EDIT</PrefetchLink>
       </div>
@@ -952,7 +955,7 @@ export function SettingsMenu({ data, activeOrders, stage }: { data: SettingsData
       <MenuRow href="/settings/notifications" label="Notifications" meta={notifMeta} />
       <div className="menu-row menu-row--static">
         Theme
-        <ThemeSegment options={['light', 'dark']} />
+        <ThemeSegment options={['light', 'dark', 'system']} />
       </div>
       {data.tierDashboardEnabled && (
         <>
@@ -962,7 +965,6 @@ export function SettingsMenu({ data, activeOrders, stage }: { data: SettingsData
       )}
       <div className="menu-foot">
         <SignOutLink className="menu-foot__signout" label="Sign out" />
-        <span className="menu-foot__stage">{stage}</span>
       </div>
     </div>
   )
