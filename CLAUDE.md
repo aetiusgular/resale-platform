@@ -64,7 +64,7 @@ founder explicitly reinstates a routing policy. Quality is the only bar.
   resolve to the new palette so nothing old breaks; don't use them in new code.
 - Two fonts: `--font-sans` (Archivo 300/400/500 — chrome and copy) and `--font-mono` (IBM Plex Mono
   300/400 — ALL data: prices, sizes, counts, labels, timestamps, tags). Loaded via next/font/google.
-- Radius 0 everywhere. 1px hairlines. Control height 40px. No gradients, no shadows.
+- Radius 0 everywhere. 1px hairlines. Control height 44px. No gradients, no shadows.
 - Light, dark and system themes are all supported (`archive-theme` in localStorage, applied before
   first paint by the inline script in `app/layout.tsx`; `app/components/theme.tsx` owns the store).
   Components never branch on theme — tokens only.

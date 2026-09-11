@@ -74,9 +74,10 @@ money/auth logic is the exact failure this file exists to prevent).
 
 ## 4. Design system rules
 
-- Tokens are plain CSS custom properties at the top of `app/globals.css` (`:root` = light, `[data-theme='dark']` = dark; no Tailwind `@theme`). Colour vocabulary: `--bg --ink --on-ink --sub --faint --line --line-row --line-mid --line-hover --hover --scrim --sold-scrim --badge-* --tone-1…8 --alert`. Two fonts: `--font-sans` (Archivo 300/400/500) for chrome and copy, `--font-mono` (IBM Plex Mono 300/400) for every piece of data. Radius 0, 1px hairlines, 40px controls. No gradients, no shadows.
+- Tokens are plain CSS custom properties at the top of `app/globals.css` (`:root` = light, `[data-theme='dark']` = dark; no Tailwind `@theme`). Colour vocabulary: `--bg --ink --on-ink --sub --faint --line --line-row --line-mid --line-hover --hover --scrim --sold-scrim --badge-* --tone-1…8 --alert`. Two fonts: `--font-sans` (Archivo 300/400/500) for chrome and copy, `--font-mono` (IBM Plex Mono 300/400) for every piece of data. Radius 0, 1px hairlines, 44px controls. No gradients, no shadows.
 - Light, dark and system themes are all supported. Components never branch on theme — they use tokens, and the `data-theme` flip (app/components/theme.tsx) does the rest. `/styleguide` is the living reference.
 - **All listing data renders in `--font-mono` (IBM Plex Mono).** No exceptions.
+- **Type floor: 11px** for anything a person reads or operates (labels, buttons, nav, meta). Count badges and tag chips may go to 10px. Nothing below 10px anywhere.
 - No hardcoded colours/fonts/sizes in components — tokens only. A new visual value must become a token first.
 - Token changes ARE allowed (the design system is evolving) — but every token added, changed, or removed must be listed explicitly in the PR description.
 - `design-reference/` is never imported by app code. It's visual reference only.

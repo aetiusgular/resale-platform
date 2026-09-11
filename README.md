@@ -88,7 +88,7 @@ does the rest.
 
 - **Colours:** `--bg` · `--ink` · `--on-ink` · `--sub` · `--faint` · `--emphasis` · `--line` · `--line-row` · `--line-mid` · `--line-hover` · `--hover` · `--scrim` · `--sold-scrim` · `--badge-*` · `--tone-1…8` · `--alert`. Legacy `--color-*` aliases still resolve but are not for new code.
 - **Fonts:** `--font-sans` (Archivo 300/400/500) for chrome and copy · `--font-mono` (IBM Plex Mono 300/400) for **all data, always**
-- **Radius:** 0 · **Hairlines:** 1px · **Controls:** 40px · No gradients. No shadows.
+- **Radius:** 0 · **Hairlines:** 1px · **Controls:** 44px · No gradients. No shadows.
 - No hardcoded hex values, fonts or sizes in components: tokens only. `/styleguide` is the living reference.
 
 The design system itself is evolving and you're welcome to evolve it: change tokens
