@@ -144,7 +144,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      <div className="pdp-page">
+      <main className="pdp-page">
         <div className="pdp">
           {/* LEFT: gallery + measurements (4A). ≤720px both columns unwrap into one
               stack ordered like the mobile-web 05 mock (globals.css `.pdp` rules). */}
@@ -312,7 +312,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
             )}
           </div>
         )}
-      </div>
+      </main>
     </AppShell>
   )
 }
