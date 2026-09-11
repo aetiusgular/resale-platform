@@ -306,6 +306,8 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .results__meta strong { font-weight: 400; color: var(--ink); }
 .results__actions { display: flex; align-items: center; gap: 20px; padding-bottom: 4px; flex-wrap: wrap; }
 .mysizes-toggle { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+/* Fixed width so cycling the SORT label (NEWEST / PRICE) never reflows the actions row. 125px clears the widest label; overridden to display:none <=960. */
+.results__sort { min-width: 125px; text-align: center; }
 .mysizes-toggle__label { font: 400 10px var(--font-mono); letter-spacing: 0.15em; color: var(--ink); }
 .pill-on { background: var(--ink); color: var(--on-ink); padding: 3px 7px; font: 400 9px var(--font-mono); letter-spacing: 0.12em; }
 .pill-off { border: 1px solid var(--line-mid); color: var(--faint); padding: 2px 6px; font: 300 9px var(--font-mono); letter-spacing: 0.12em; }
