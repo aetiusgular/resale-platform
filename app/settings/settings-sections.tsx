@@ -250,14 +250,6 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
         </>
       )}
 
-      <SectionHead label="04 — APPEARANCE" />
-      <div className="appearance-row">
-        <div>
-          <div className="appearance-row__title">Theme</div>
-        </div>
-        <ThemeSegment options={['light', 'dark', 'system']} />
-      </div>
-
       <div className="danger-row">
         <SignOutLink className="btn-ghost btn-ghost--inline" label="SIGN OUT" />
         <span className="settings-note">Signed in as @{data.username}.</span>

@@ -77,7 +77,7 @@ export default function AccountPopout({ open, username, displayName, initials, n
         <div className="acct-panel__foot">
           <div className="acct-theme">
             <span className="acct-theme__label">THEME</span>
-            <ThemeSegment options={['light', 'dark']} compact />
+            <ThemeSegment options={['light', 'dark', 'system']} compact />
           </div>
           <button type="button" className="acct-signout" onClick={signOut} disabled={signingOut} data-testid="logout-btn">
             {signingOut ? 'Signing out…' : 'Sign out'}
