@@ -3,12 +3,11 @@
  * bar / scroll / composer structure of thread-client.tsx.
  */
 import Link from 'next/link'
-import { SiteHeaderGhost, Ghost } from '@/app/components/skeletons'
+import { Ghost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <div className="msgs msgs--thread">
         <aside className="msgs__list desktop-only" aria-hidden="true">
           <div className="msgs__head"><Ghost style={{ height: 22, width: 110 }} /></div>

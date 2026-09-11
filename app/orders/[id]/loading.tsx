@@ -2,12 +2,11 @@
  * /orders/[id] loading skeleton — header + two-column order layout
  * (mirrors order-buyer/order-seller: timeline main + summary side).
  */
-import { SiteHeaderGhost, Ghost, PageHeadGhost } from '@/app/components/skeletons'
+import { Ghost, PageHeadGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <main className="page-main">
         <Ghost style={{ height: 9, width: 140, marginBottom: 12 }} />
         <PageHeadGhost ruled />

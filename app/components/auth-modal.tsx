@@ -80,7 +80,7 @@ export default function AuthModal({ next, onClose, gate }: { next: string; onClo
   }
 
   const create = tab === 'create'
-  const heading = gate?.title ?? (next.startsWith('/sell') ? 'SELLING NEEDS AN ACCOUNT' : '')
+  const heading = gate?.title ?? ''
   const listing = gate?.listing
 
   return (

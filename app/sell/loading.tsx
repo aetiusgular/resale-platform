@@ -1,12 +1,11 @@
 /**
  * /sell loading skeleton — catalog head + stats + listing grid.
  */
-import { SiteHeaderGhost, CardGhosts, Ghost } from '@/app/components/skeletons'
+import { CardGhosts, Ghost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <main className="saved-main">
         <div className="sell-head" aria-hidden="true">
           <div>

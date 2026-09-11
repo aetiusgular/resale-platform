@@ -19,6 +19,8 @@ import GuestAction from '@/app/components/guest-action'
 import PrefetchLink from '@/app/components/prefetch-link'
 import JsonLd from '@/app/components/json-ld'
 import { ChatIcon } from '@/app/components/icons'
+import { ArrowLeft } from '@phosphor-icons/react/ssr'
+import { Fragment } from 'react'
 import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
 
 interface PageProps {
@@ -150,8 +152,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
               stack ordered like the mobile-web 05 mock (globals.css `.pdp` rules). */}
           <div className="pdp__left">
             <PrefetchLink className="pdp__crumb" href={crumbHref}>
-              <span className="pdp__crumb-full">← SEARCH · {crumbParts.map((p) => p.toUpperCase()).join(' / ')}</span>
-              <span className="pdp__crumb-short">← BACK TO RESULTS</span>
+              <span className="pdp__crumb-full"><ArrowLeft size={12} aria-hidden="true" />SEARCH<span className="sep" aria-hidden="true" />{crumbParts.map((p) => p.toUpperCase()).join(' / ')}</span>
+              <span className="pdp__crumb-short"><ArrowLeft size={12} aria-hidden="true" />BACK TO RESULTS</span>
             </PrefetchLink>
             <ListingGallery
               images={images}
@@ -169,7 +171,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
           {/* RIGHT: purchase placard */}
           <div className="pdp__right">
             <div className="pdp__toprow">
-              <span className="pdp__listed">{listedLine}</span>
+              <span className="pdp__listed">{listedLine.split(' · ')[0]}</span>
               <a className="pdp__legit-link" href="#lc-thread" title="Jumps to the legit check thread" data-testid="lc-chip">{initialTally.legit} LEGIT</a>
             </div>
             <div className="pdp__caption">
@@ -191,15 +193,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 )}
                 {formatCents(listing.price_cents)}
               </span>
-              <span className="pdp__ship">+ {formatCents(shippingCents)} SHIPPING · US</span>
+              <span className="pdp__ship">+ {formatCents(shippingCents)} SHIPPING<span className="sep" aria-hidden="true" />US</span>
               <span className="pdp__listed pdp__listed--m">{listedLine.split(' · ')[0]}</span>
             </div>
-            {/* Mobile spec rows (05): SIZE / CONDITION / SHIPPING */}
+            {/* Mobile spec rows (05): SIZE / COLOR / SHIPPING */}
             <div className="pdp-specs">
               {listing.size && <div className="pdp-specs__row"><span className="pdp-specs__k">SIZE</span><span className="pdp-specs__v">{listing.size.toUpperCase()}</span></div>}
               {listing.color && <div className="pdp-specs__row"><span className="pdp-specs__k">COLOR</span><span className="pdp-specs__v">{listing.color.toUpperCase()}</span></div>}
-              <div className="pdp-specs__row"><span className="pdp-specs__k">CONDITION</span><span className="pdp-specs__v">{listing.condition_score ?? '—'} / 10</span></div>
-              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{formatCents(shippingCents)} · US ONLY</span></div>
+              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{formatCents(shippingCents)}<span className="sep" aria-hidden="true" />US ONLY</span></div>
             </div>
 
             <div className="pdp__ctas">
@@ -256,7 +257,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
             <div className="pdp__desc">
               <div className="field-label field-label--row">
                 <span>DESCRIPTION</span>
-                <span>CONDITION {listing.condition_score ?? '—'} / 10</span>
               </div>
               <p style={{ whiteSpace: 'pre-line' }}>{listing.description}</p>
             </div>
@@ -266,7 +266,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 <span className="seller-init seller-init--sm">{sellerInitials}</span>
                 <span>
                   <PrefetchLink className="pdp__seller-handle" href={seller?.username ? `/sellers/${seller.username}` : '#'}>@{sellerHandle.toUpperCase()}</PrefetchLink>
-                  <span className="pdp__seller-meta">{trustLine}</span>
+                  <span className="pdp__seller-meta">{trustLine.split(' · ').map((part, i) => <Fragment key={i}>{i > 0 && <span className="sep" aria-hidden="true" />}{part}</Fragment>)}</span>
                 </span>
               </span>
               <span className="pdp__seller-right">

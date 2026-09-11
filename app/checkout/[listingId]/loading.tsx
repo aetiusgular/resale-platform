@@ -2,12 +2,11 @@
  * /checkout/[listingId] loading skeleton — header + two-column address/card
  * form with the order panel on the side. Pure UI: no money logic here.
  */
-import { SiteHeaderGhost, Ghost, PageHeadGhost } from '@/app/components/skeletons'
+import { Ghost, PageHeadGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <main className="page-main">
         <Ghost style={{ height: 9, width: 120, marginBottom: 12 }} />
         <PageHeadGhost ruled />

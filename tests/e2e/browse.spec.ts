@@ -19,6 +19,37 @@ test.describe('Browse — public for guests', () => {
   })
 })
 
+test.describe('Browse — desktop sort dropdown', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+
+  test('SORT opens a listbox and picking PRICE ↑ sets ?sort=price_asc', async ({ page }) => {
+    await page.goto('/browse')
+    await page.waitForLoadState('networkidle')
+    const btn = page.getByTestId('sort-dropdown-btn')
+    await expect(btn).toContainText('SORT: NEWEST')
+    await expect(btn).toHaveAttribute('aria-expanded', 'false')
+    await btn.click()
+    const menu = page.getByTestId('sort-menu')
+    await expect(menu).toBeVisible()
+    await expect(btn).toHaveAttribute('aria-expanded', 'true')
+    await expect(menu).toContainText('LOW TO HIGH')
+    await page.getByTestId('sort-option-price_asc').click()
+    await expect(page).toHaveURL(/sort=price_asc/)
+    await expect(menu).toHaveCount(0)
+    await expect(btn).toContainText('PRICE')
+  })
+
+  test('Escape closes the sort listbox without changing the sort', async ({ page }) => {
+    await page.goto('/browse')
+    await page.waitForLoadState('networkidle')
+    await page.getByTestId('sort-dropdown-btn').click()
+    await expect(page.getByTestId('sort-menu')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('sort-menu')).toHaveCount(0)
+    await expect(page).not.toHaveURL(/sort=/)
+  })
+})
+
 test.describe('API /api/saves — unauthenticated', () => {
   test('POST without session returns 401', async ({ request }) => {
     const res = await request.post('/api/saves', {

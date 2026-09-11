@@ -9,7 +9,6 @@
  */
 import PrefetchLink from './prefetch-link'
 import { Wordmark } from './wordmark'
-import { BRAND_FOOTER_LINE, BRAND_REGION_LINE } from './brand'
 
 // Reference order: ABOUT · PRIVACY · HELP & FAQ · TERMS · TRUST (the fee schedule
 // is reachable from Settings → VIEW FEE SCHEDULE → and the auth hero).
@@ -42,10 +41,6 @@ export default function SiteFooter({ active, mobileOnly = false }: { active?: st
             <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M16.5 3.2c.5 2.4 2.3 4 4.5 4.2v3.1a7.8 7.8 0 0 1-4.5-1.5v6.1a5.9 5.9 0 1 1-5.9-5.9c.35 0 .7.03 1 .09v3.2a2.85 2.85 0 1 0 2 2.72V3.2h2.9z" /></svg>
           </a>
         </span>
-      </div>
-      <div className="footer__sub">
-        <span>{BRAND_FOOTER_LINE}</span>
-        <span>{BRAND_REGION_LINE}</span>
       </div>
     </footer>
   )

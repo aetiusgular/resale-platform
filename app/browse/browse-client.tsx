@@ -33,6 +33,7 @@ import ListingCard from '@/app/components/listing-card'
 import SizesModal from '@/app/components/sizes-modal'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
 import { CheckIcon, FilterIcon, XIcon } from '@/app/components/icons'
+import { CaretDown } from '@phosphor-icons/react/ssr'
 
 type Props = {
   initialListings: BrowseListing[]
@@ -378,6 +379,7 @@ export default function BrowseClient({
   const [savedIds, setSavedIds]             = useState(() => new Set(initialSavedIds))
   const [sheetOpen, setSheetOpen]           = useState(false)
   const [sortOpen, setSortOpen]             = useState(false)
+  const [sortMenuOpen, setSortMenuOpen]     = useState(false)  // desktop dropdown
   const [sizesOpen, setSizesOpen]           = useState(false)
   const [followPending, setFollowPending]   = useState(false)
   const [followedMsg, setFollowedMsg]       = useState('')
@@ -418,11 +420,11 @@ export default function BrowseClient({
 
   // Escape closes the mobile takeover / sort sheet (the × and the scrim do too).
   useEffect(() => {
-    if (!sheetOpen && !sortOpen) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setSheetOpen(false); setSortOpen(false) } }
+    if (!sheetOpen && !sortOpen && !sortMenuOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setSheetOpen(false); setSortOpen(false); setSortMenuOpen(false) } }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sheetOpen, sortOpen])
+  }, [sheetOpen, sortOpen, sortMenuOpen])
 
   function buildUrl(updates: Record<string, string | null>) {
     const p = new URLSearchParams(searchParams.toString())
@@ -590,7 +592,7 @@ export default function BrowseClient({
     const p = parseSubcatKey(k)
     if (!p) continue
     // A label that lives under two categories (Denim) is prefixed so the chip is unambiguous.
-    const label = categoriesWithSubcategory(p.sub).length > 1 ? `${p.category} · ${p.sub}` : p.sub
+    const label = categoriesWithSubcategory(p.sub).length > 1 ? `${p.category} / ${p.sub}` : p.sub
     chips.push({ id: `sub:${k}`, label: label.toUpperCase(), onRemove: () => updateFilters(categoryParams(cats, without(picks, k))) })
   }
   if (mySizesOn) chips.push({ id: 'sizes', label: `MY SIZES — ${sizeChip}`, solid: true, onClick: () => setSizesOpen(true) })
@@ -606,7 +608,6 @@ export default function BrowseClient({
   if (cond)  chips.push({ id: 'cond', label: `CONDITION ${cond}+`, onRemove: () => updateFilter('cond', null) })
 
   const sortIndex = Math.max(0, SORTS.findIndex((o) => o.value === sort))
-  const cycleSort = () => updateFilter('sort', SORTS[(sortIndex + 1) % SORTS.length].value)
   const pickSort = (value: string) => { setSortOpen(false); if (value !== SORTS[sortIndex].value) updateFilter('sort', value) }
 
   const scopeDept = departmentScopeLabel(depts)
@@ -645,9 +646,28 @@ export default function BrowseClient({
               <button type="button" className="link-btn results__save" onClick={followSearch} disabled={followPending} data-testid="follow-search-btn">
                 {followedMsg || 'SAVE SEARCH +'}
               </button>
-              <button type="button" className="btn-outline results__sort" onClick={cycleSort} data-testid="sort-dropdown-btn">
-                SORT: {SORTS[sortIndex].label}
-              </button>
+              <span className="sort-dd">
+                <button type="button" className="btn-outline results__sort" onClick={() => setSortMenuOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={sortMenuOpen} data-testid="sort-dropdown-btn">
+                  SORT: {SORTS[sortIndex].label}<CaretDown size={10} aria-hidden="true" />
+                </button>
+                {sortMenuOpen && (
+                  <>
+                    <div className="notif-overlay" onClick={() => setSortMenuOpen(false)} />
+                    <div className="sort-menu" role="listbox" aria-label="Sort" data-testid="sort-menu">
+                      {SORTS.map((o, i) => {
+                        const on = i === sortIndex
+                        return (
+                          <button key={o.value} type="button" role="option" aria-selected={on} className={`sort-menu__opt${on ? ' is-on' : ''}`} onClick={() => { setSortMenuOpen(false); if (!on) updateFilter('sort', o.value) }} data-testid={`sort-option-${o.value}`}>
+                            <span className={`checkbox${on ? ' is-on' : ''}`}>{on && <CheckIcon size={9} />}</span>
+                            <span className="sort-menu__label">{o.label}</span>
+                            <span className="sort-menu__hint">{o.hint}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </span>
             </div>
           </div>
 
@@ -710,7 +730,7 @@ export default function BrowseClient({
                 </button>
               ) : (
                 <div className="rows-note" style={{ textAlign: 'center', paddingTop: 44 }} data-testid="end-of-archive">
-                  END OF THE ARCHIVE · {shownLabel}
+                  END OF THE ARCHIVE<span className="sep" aria-hidden="true" />{shownLabel}
                 </div>
               )}
             </>
@@ -722,10 +742,10 @@ export default function BrowseClient({
       <div className="dock" data-testid="browse-dock">
         <button type="button" className="dock__btn" onClick={() => setSheetOpen(true)} data-testid="mobile-filter-btn">
           <FilterIcon />
-          FILTERS{chips.length > 0 ? ` · ${chips.length}` : ''}
+          FILTERS{chips.length > 0 && <><span className="sep" aria-hidden="true" />{chips.length}</>}
         </button>
         <button type="button" className="dock__btn" onClick={() => setSortOpen(true)} data-testid="mobile-sort-btn">
-          SORT · {SORTS[sortIndex].label}
+          SORT<span className="sep" aria-hidden="true" />{SORTS[sortIndex].label}
         </button>
       </div>
 

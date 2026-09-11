@@ -1,6 +1,6 @@
 /**
- * AppShell — header + page + footer, the frame every consumer page renders
- * inside. Server component; pages pass the username they already loaded.
+ * AppShell — page + footer. The site header is mounted once by app/layout.tsx
+ * (ShellSwitch) so it persists across navigations; only the page below it reloads.
  * `footer={false}` for full-height panes (messages) — desktop only: mobile web ends
  * every page with the footer in the scroll (handoff 17), so it still renders there.
  *
@@ -10,7 +10,6 @@
  * + NEW LISTING …) and bottom sheets / takeovers for overlays. No bottom tab bar —
  * that is native-app chrome and never ships in the web build.
  */
-import SiteHeader from './site-header'
 import SiteFooter from './site-footer'
 
 interface Props {
@@ -22,12 +21,13 @@ interface Props {
   footerActive?: string
 }
 
-export default function AppShell({ username, displayName, children, searchValue, footer = true, footerActive }: Props) {
+// username / displayName / searchValue are accepted for compatibility with existing pages;
+// the header now renders once in app/layout.tsx (ShellSwitch) and reads the viewer itself.
+export default function AppShell({ children, footer = true, footerActive }: Props) {
   return (
-    <div className="app-shell">
-      <SiteHeader username={username} displayName={displayName} searchValue={searchValue} />
+    <>
       {children}
       <SiteFooter active={footerActive} mobileOnly={!footer} />
-    </div>
+    </>
   )
 }

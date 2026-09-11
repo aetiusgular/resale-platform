@@ -1,12 +1,11 @@
 /**
  * /settings loading skeleton — header + account rail + section ghosts.
  */
-import { SiteHeaderGhost, Ghost, PageHeadGhost } from '@/app/components/skeletons'
+import { Ghost, PageHeadGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <div className="layout">
         <aside className="rail" aria-hidden="true">
           <div className="rail__top"><span className="rail__title">ACCOUNT</span><Ghost style={{ height: 9, width: 80 }} /></div>

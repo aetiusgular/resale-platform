@@ -96,6 +96,7 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
   const [username, setUsername] = useState(`@${data.username}`)
   const [displayName, setDisplayName] = useState(data.displayName ?? '')
   const [avatarUrl, setAvatarUrl] = useState(data.avatarUrl)
+  const [windowError, setWindowError] = useState(false)  // username changed twice inside 30 days (API 409 username_window)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [savedFlash, flash] = useFlash()
@@ -105,11 +106,10 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
   const fileRef = useRef<HTMLInputElement>(null)
   const initials = (data.displayName || data.username).slice(0, 2).toUpperCase()
   const dirty = username.replace(/^@/, '') !== data.username || displayName !== (data.displayName ?? '')
-  const windowOpen = data.usernameWindowOpen
 
   async function save() {
     if (!dirty || saving) return
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setWindowError(false)
     const body: Record<string, string> = {}
     if (username.replace(/^@/, '') !== data.username) body.username = username
     if (displayName !== (data.displayName ?? '')) body.display_name = displayName
@@ -118,7 +118,8 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
     if (res.ok) { flash(); router.refresh() }
     else {
       const d = await res.json().catch(() => ({}))
-      setError((d.error ?? 'Could not save.').toUpperCase())
+      if (d.code === 'username_window') setWindowError(true)
+      else setError((d.error ?? 'Could not save.').toUpperCase())
     }
   }
 
@@ -176,11 +177,11 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
       <div className="field-grid">
         <div>
           <div className="field-label">USERNAME</div>
-          <input className="input-sans" value={username} onChange={(e) => setUsername(e.target.value)} aria-label="Username" data-testid="username-input" />
+          <input className="input-sans" value={username} onChange={(e) => { setUsername(e.target.value); setWindowError(false) }} aria-label="Username" data-testid="username-input" />
         </div>
         <div>
           <div className="field-label">DISPLAY NAME</div>
-          <input className="input-sans" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} placeholder="Shown on your profile" aria-label="Display name" />
+          <input className="input-sans" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} aria-label="Display name" />
         </div>
       </div>
       <div className="field-block">
@@ -195,10 +196,10 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
         <button type="button" className="btn-primary btn-primary--inline" onClick={save} disabled={!dirty || saving} data-testid="profile-save">
           {saving ? 'SAVING…' : savedFlash ? 'SAVED ✓' : 'SAVE CHANGES'}
         </button>
-        <span className="page-note">{windowOpen ? 'USERNAME CAN CHANGE 1× / 30 DAYS' : `USERNAME CHANGES AGAIN ${shortDate(data.usernameNextChangeAt as number)}`}</span>
+        {windowError && <span className="page-note page-note--alert" role="alert" data-testid="username-window-error">USERNAME CAN CHANGE 1× / 30 DAYS</span>}
       </div>
 
-      <SectionHead label="02 — PHONE" right={<span className="page-note">{data.phoneVerificationEnabled ? 'REQUIRED TO SELL' : 'ARRIVES AT LAUNCH'}</span>} />
+      <SectionHead label="02 — PHONE" right={data.phoneVerificationEnabled ? <span className="page-note">REQUIRED TO SELL</span> : undefined} />
       {data.phoneVerificationEnabled ? (
         <PhoneVerify verified={data.phoneVerified} initialPhone={data.phone} compact />
       ) : (
@@ -253,7 +254,6 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
       <div className="appearance-row">
         <div>
           <div className="appearance-row__title">Theme</div>
-          <div className="settings-note">Applies to this device.</div>
         </div>
         <ThemeSegment options={['light', 'dark', 'system']} />
       </div>

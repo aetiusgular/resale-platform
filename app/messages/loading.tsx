@@ -1,7 +1,7 @@
 /**
  * /messages loading skeleton — inbox list + desktop empty pane.
  */
-import { SiteHeaderGhost, Ghost } from '@/app/components/skeletons'
+import { Ghost } from '@/app/components/skeletons'
 
 function ConversationRowGhost() {
   return (
@@ -21,8 +21,7 @@ function ConversationRowGhost() {
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <div className="msgs">
         <aside className="msgs__list" aria-hidden="true">
           <div className="msgs__head"><Ghost style={{ height: 22, width: 110 }} /></div>

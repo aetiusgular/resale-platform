@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
 import PrefetchLink from './prefetch-link'
 import { ThemeSegment } from './theme'
+import { Bell, Package, GearSix } from '@phosphor-icons/react/ssr'
 import { useCompact } from './use-compact'
 
 interface Props {
@@ -61,17 +62,17 @@ export default function AccountPopout({ open, username, displayName, initials, n
         <nav className="acct-panel__nav">
           {compact ? (
             <PrefetchLink className="acct-row" href="/notifications" onClick={onClose} data-testid="acct-notifications">
-              Notifications
+              <span className="acct-row__label"><Bell size={16} aria-hidden="true" />Notifications</span>
               {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
             </PrefetchLink>
           ) : (
             <button type="button" className="acct-row" onClick={onNotifications} data-testid="acct-notifications">
-              Notifications
+              <span className="acct-row__label"><Bell size={16} aria-hidden="true" />Notifications</span>
               {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
             </button>
           )}
-          <PrefetchLink className="acct-row" href="/settings/orders" onClick={onClose}>Orders</PrefetchLink>
-          <PrefetchLink className="acct-row" href="/settings" onClick={onClose}>Settings</PrefetchLink>
+          <PrefetchLink className="acct-row" href="/settings/orders" onClick={onClose}><span className="acct-row__label"><Package size={16} aria-hidden="true" />Orders</span></PrefetchLink>
+          <PrefetchLink className="acct-row" href="/settings" onClick={onClose}><span className="acct-row__label"><GearSix size={16} aria-hidden="true" />Settings</span></PrefetchLink>
         </nav>
         <div className="acct-panel__foot">
           <div className="acct-theme">

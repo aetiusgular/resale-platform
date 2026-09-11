@@ -3,12 +3,11 @@
  * paints the browse chrome (header, filter rail, results head, card grid)
  * instantly on navigation. Mirrors browse-client.tsx's .layout / .rail / .main.
  */
-import { SiteHeaderGhost, CardGhosts, Ghost } from '@/app/components/skeletons'
+import { CardGhosts, Ghost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <div className="layout">
         <aside className="rail" aria-hidden="true">
           <div className="rail__top"><span className="rail__title">FILTER</span></div>

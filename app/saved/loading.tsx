@@ -1,12 +1,11 @@
 /**
  * /saved loading skeleton — page head + tab line + saved grid.
  */
-import { SiteHeaderGhost, CardGhosts, Ghost, PageHeadGhost } from '@/app/components/skeletons'
+import { CardGhosts, Ghost, PageHeadGhost } from '@/app/components/skeletons'
 
 export default function Loading() {
   return (
-    <div className="app-shell">
-      <SiteHeaderGhost />
+    <div>
       <main className="saved-main">
         <PageHeadGhost />
         <div className="tabs-line" aria-hidden="true">

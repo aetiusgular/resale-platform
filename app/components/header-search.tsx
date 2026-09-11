@@ -22,6 +22,13 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
   // keeps the single 52px header row.
   const compact = useCompact()
   const mobileRow = pathname === '/browse' || pathname === '/saved' ? 'show' : 'hide'
+  // The header persists across navigations (app/layout.tsx), so the field mirrors the
+  // URL: the active query on /browse, empty elsewhere. Never clobber a field being typed in.
+  const urlValue = pathname === '/browse' ? (searchParams.get('q') ?? '') : ''
+  useEffect(() => {
+    const el = ref.current
+    if (el && document.activeElement !== el) el.value = urlValue
+  }, [urlValue])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,7 +73,7 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
         ref={ref}
         name="q"
         type="search"
-        defaultValue={defaultValue}
+        defaultValue={defaultValue || urlValue}
         placeholder={compact ? 'Search' : 'Search designers, items, sellers'}
         aria-label="Search"
         autoComplete="off"

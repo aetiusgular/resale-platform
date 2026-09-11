@@ -272,8 +272,10 @@ Canonical rules are `AGENTS.md` section 4. The short version you need while buil
   look there before looking anywhere else.
 - Contrast is held to WCAG 2.2 AAA for text (7:1) and AA for control edges (3:1), in both themes.
   If you change a token, recheck the ratio in both themes before you open the PR.
-- Shared icons live in `app/components/icons.tsx` as `currentColor` outline SVGs on a
-  `0 0 24 24` viewBox. Add new icons there; do not inline one-off SVGs in pages.
+- Icons are one visual system: `currentColor` outlines at a 1.5 stroke with round caps.
+  Shared custom icons live in `app/components/icons.tsx` (`0 0 24 24` viewBox); new icons
+  come from `@phosphor-icons/react/ssr` at the default regular weight, which matches.
+  Do not inline one-off SVGs in pages. Text separators use `.sep` (a hairline), not middots.
 
 ---
 

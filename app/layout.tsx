@@ -5,6 +5,9 @@ import './globals.css'
 import { SEO_INDEXING_ENABLED } from '@/lib/flags'
 import { baseUrl, SITE_NAME, SITE_TAGLINE } from '@/lib/seo'
 import AuthModalProvider from '@/app/components/auth-modal-provider'
+import ShellSwitch from '@/app/components/shell-switch'
+import SiteHeader from '@/app/components/site-header'
+import { getViewer } from '@/app/components/viewer'
 import { THEME_BOOTSTRAP_SCRIPT } from '@/app/components/theme-bootstrap'
 
 // Two families (design review): Archivo for chrome + copy, IBM Plex Mono for
@@ -86,6 +89,9 @@ export default async function RootLayout({
   // Per-request CSP nonce (middleware.ts) so the theme bootstrap inline script
   // is allowed to run before first paint.
   const nonce = (await headers()).get('x-nonce') ?? undefined
+  // The header is rendered once here and persists across client navigations
+  // (ShellSwitch); getViewer() is request-memoised, so pages that also call it pay nothing.
+  const viewer = await getViewer()
 
   return (
     // suppressHydrationWarning on <html>: the theme bootstrap sets data-theme
@@ -111,7 +117,9 @@ export default async function RootLayout({
           </>
         )}
         <AuthModalProvider>
-          {children}
+          <ShellSwitch header={<SiteHeader username={viewer.username} displayName={viewer.displayName ?? undefined} />}>
+            {children}
+          </ShellSwitch>
         </AuthModalProvider>
       </body>
     </html>
