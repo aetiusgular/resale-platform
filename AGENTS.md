@@ -6,6 +6,10 @@ UI/frontend work can move fast without ever touching money, auth, or data
 integrity. CI enforces the perimeter (`.github/workflows/protected-paths.yml`);
 this file tells you where it is before you hit it.
 
+Before starting any task, read `CONTRIBUTING.md`: setup, the verification gate, the
+feature loop, and the spec template. This file is the rules; that file is how to
+satisfy them.
+
 Context: this is a live-money marketplace (Stripe Connect escrow, Supabase
 Postgres with RLS). A wrong edit here doesn't break a demo — it moves money or
 leaks data. When in doubt, stop and ask.
@@ -34,7 +38,7 @@ Canonical machine-readable list: `.github/protected-paths.txt`. In human terms:
 - `.github/**`, `.claude/**`, `.mcp.json`, `.env.example`, `.gitignore`
 - `prompts/**`, `scripts/**`, `audit.mjs` — founder build tooling
 - `docs/HANDOFF.md`, `docs/ROADMAP.md` — founder state files
-- `CLAUDE.md`, `AGENTS.md` — this rulebook
+- `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` — this rulebook
 
 If your task genuinely requires a protected change (a new API field, a helper in
 `lib/`, a dependency): **stop, do the UI part, and write exactly what you need in

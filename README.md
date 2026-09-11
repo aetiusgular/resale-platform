@@ -6,7 +6,8 @@ Curated secondhand luxury & streetwear marketplace. Alpha build, private repo, w
 
 1. This file — setup, repo map, and the editing rules.
 2. [`AGENTS.md`](AGENTS.md) — **binding** rules for anyone (and any coding agent) changing code here.
-3. [`docs/HANDOFF.md`](docs/HANDOFF.md) — current state of the build: what's done, what's in flight.
+3. [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to work here: setup, the verification gate, the feature loop, the spec template.
+4. [`docs/HANDOFF.md`](docs/HANDOFF.md) — current state of the build: what's done, what's in flight.
 
 ---
 
@@ -15,7 +16,7 @@ Curated secondhand luxury & streetwear marketplace. Alpha build, private repo, w
 | Layer | Choice |
 |---|---|
 | Framework | Next.js 15 (App Router, RSC-first) · React 19 · TypeScript strict |
-| Styling | Tailwind CSS 4 — config lives in CSS (`@theme` in `app/globals.css`), not a JS file |
+| Styling | Plain CSS with custom-property tokens in `app/globals.css` (`:root` light, `[data-theme='dark']` dark). Tailwind 4 is installed but not imported. |
 | Data & auth | Supabase (Postgres + Auth), RLS on every table, via `@supabase/ssr` |
 | Payments | Stripe Connect — separate charges & transfers, escrow, **webhook-driven** |
 | Observability | PostHog (product analytics) · Sentry (errors) |
@@ -27,6 +28,7 @@ Curated secondhand luxury & streetwear marketplace. Alpha build, private repo, w
 ```bash
 corepack enable                 # provides pnpm 11
 pnpm install
+pnpm exec playwright install chromium   # once per machine; verify:ui needs it
 cp .env.example .env.local      # then ask Tony for dev/sandbox keys
 pnpm dev                        # http://localhost:3000
 ```
@@ -55,7 +57,7 @@ label. The full machine-readable list is `.github/protected-paths.txt`.
 app/                      Next.js App Router — UI LIVES HERE
   components/             Shared UI components ······················· green
   browse/ listings/ sell/ …  Route segments: pages, layouts, UI ······ green
-  globals.css             Design tokens (@theme) + base styles ······· AMBER — token changes listed in PR
+  globals.css             Design tokens (:root / dark) + sheet ······· AMBER — token changes listed in PR
   layout.tsx              Root shell + font loading ·················· AMBER
   api/                    Route handlers: checkout, webhooks, admin … 🔒 RED
 lib/                      Server & business logic: fees, orders,
@@ -70,7 +72,7 @@ docs/                     Founder planning docs — add, don't edit
                           (HANDOFF.md / ROADMAP.md are 🔒 RED)
 public/                   Static assets ······························ green
 prompts/  scripts/  audit.mjs   Founder build tooling ················ 🔒 RED
-.github/  .claude/  CLAUDE.md  AGENTS.md  *config* files ············ 🔒 RED
+.github/  .claude/  CLAUDE.md  AGENTS.md  CONTRIBUTING.md  *config* files ·· 🔒 RED
 ```
 
 Rule of thumb: **UI work happens in `app/` (everything except `app/api/`) plus
@@ -79,18 +81,22 @@ need in the PR — don't reach into it. `AGENTS.md` has the full invariants.
 
 ## Design system (the short version)
 
-Tokens are the law and they live in one place: `@theme` in `app/globals.css`
-(source exports in `design-reference/tokens/`).
+Tokens are plain CSS custom properties at the top of `app/globals.css`: `:root` is the
+light palette, `[data-theme='dark']` the dark one. Light, dark and system themes are all
+supported; components never branch on theme, they use tokens and the `data-theme` flip
+does the rest.
 
-- **Six colours only:** `--color-bg` · `--color-ink` · `--color-ink-soft` · `--color-line` · `--color-accent` · `--color-alert`
-- **Three fonts:** `--font-ui` (Inter) · `--font-serif` (EB Garamond) · `--font-mono` (Space Mono — **all listing data, always**)
-- **Type scale:** 12 / 14 / 16 / 20 / 28 / 40 · **Radius:** 2px everywhere · **Grid:** 8px · **Controls:** 44px height
-- No gradients. No dark-mode variants. No hardcoded hex values in components — tokens only.
+- **Colours:** `--bg` · `--ink` · `--on-ink` · `--sub` · `--faint` · `--emphasis` · `--line` · `--line-row` · `--line-mid` · `--line-hover` · `--hover` · `--scrim` · `--sold-scrim` · `--badge-*` · `--tone-1…8` · `--alert`. Legacy `--color-*` aliases still resolve but are not for new code.
+- **Fonts:** `--font-sans` (Archivo 300/400/500) for chrome and copy · `--font-mono` (IBM Plex Mono 300/400) for **all data, always**
+- **Radius:** 0 · **Hairlines:** 1px · **Controls:** 40px · No gradients. No shadows.
+- No hardcoded hex values, fonts or sizes in components: tokens only. `/styleguide` is the living reference.
 
 The design system itself is evolving and you're welcome to evolve it: change tokens
 via PR, with every token addition/change/removal listed in the PR description. New
 one-off colours or fonts inside components are not a thing — if it's worth adding,
 it's worth being a token.
+
+Full rules: `AGENTS.md` §4. How to work with them day to day: `CONTRIBUTING.md` §6.
 
 ## Contributing workflow
 

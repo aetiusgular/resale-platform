@@ -30,3 +30,4 @@
 ^docs/ROADMAP\.md$
 ^CLAUDE\.md$
 ^AGENTS\.md$
+^CONTRIBUTING\.md$
