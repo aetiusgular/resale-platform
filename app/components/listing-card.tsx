@@ -8,6 +8,7 @@
  * listing). The whole card is a real <a href> to /listings/[id] (SEO crawl graph).
  */
 import PrefetchLink from './prefetch-link'
+import { Check } from '@phosphor-icons/react/ssr'
 import { HeartIcon, XIcon } from './icons'
 import { trackEvent } from '@/lib/analytics'
 import { formatCents } from '@/lib/fees'
@@ -57,16 +58,19 @@ type ListingCardProps = {
   onProductClick?: (id: string) => void
   /** Show AUTHENTICATED flag when the item passed authentication (flag-gated by caller) */
   showAuthBadge?: boolean
-  /** Own listing: BUMP ↗ action (reference 16A). Without it the row links to /sell. */
+  /** Own listing: BUMP ↑ action (reference 16A). Without it the row links to /sell. */
   onBump?: (id: string) => void
-  /** Own listing already bumped this session → "BUMPED ✓" */
+  /** Own listing already bumped this session → "BUMPED" */
   bumped?: boolean
+  /** Proto rails may point at /styleguide/proto/[id] instead of /listings/[id]. */
+  href?: string
 }
 
 export default function ListingCard({
-  listing, isSaved, onSaveToggle, timeLabel, unavailable, own, onRemove, position, onProductClick, showAuthBadge = true, onBump, bumped,
+  listing, isSaved, onSaveToggle, timeLabel, unavailable, own, onRemove, position, onProductClick, showAuthBadge = true, onBump, bumped, href,
 }: ListingCardProps) {
   const frontImage = listing.images[0] ?? null
+  const listingHref = href ?? `/listings/${listing.id}`
   const authenticated = showAuthBadge && listing.authentication_status === 'authenticated'
   const tone = ((position ?? listing.id.charCodeAt(0)) % 8) + 1
   const flag = listing.promoted && !unavailable
@@ -74,7 +78,7 @@ export default function ListingCard({
     : own
       ? { cls: 'flag--tag', text: 'YOURS' }
       : authenticated
-        ? { cls: 'flag--tag', text: '✓ AUTH' }
+        ? { cls: 'flag--tag', text: <><Check size={9} weight="bold" aria-hidden="true" />AUTH</> }
         : listing.is_price_dropped && listing.original_price_cents && !unavailable
           ? { cls: 'flag--tag', text: 'PRICE DROP' }
           : null
@@ -87,7 +91,7 @@ export default function ListingCard({
       data-testid="listing-card"
     >
       <PrefetchLink
-        href={`/listings/${listing.id}`}
+        href={listingHref}
         onClick={() => { trackEvent('product_clicked', { listing_id: listing.id }); onProductClick?.(listing.id) }}
         aria-label={`${listing.brand} — ${listing.title}`}
       >
@@ -126,7 +130,7 @@ export default function ListingCard({
       )}
 
       <div className="card__row1">
-        <PrefetchLink href={`/listings/${listing.id}`} className="card__brand" title={listing.brand}>
+        <PrefetchLink href={listingHref} className="card__brand" title={listing.brand}>
           {listing.brand.toUpperCase()}
         </PrefetchLink>
         <span className="card__meta">
@@ -170,10 +174,10 @@ export default function ListingCard({
         {own && !unavailable ? (
           onBump ? (
             <button type="button" className="card__bump" onClick={() => onBump(listing.id)} disabled={bumped} aria-label={`Bump ${listing.title}`}>
-              {bumped ? 'BUMPED ✓' : 'BUMP ↗'}
+              {bumped ? 'BUMPED' : 'BUMP ↑'}
             </button>
           ) : (
-            <PrefetchLink href="/sell" className="card__bump">BUMP ↗</PrefetchLink>
+            <PrefetchLink href="/sell" className="card__bump">BUMP ↑</PrefetchLink>
           )
         ) : (
           <span className="card__time">{timeLabel ?? formatTimeAgo(listing.created_at)}</span>

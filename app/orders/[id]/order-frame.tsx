@@ -4,6 +4,7 @@
  * Shared pieces of the order detail page (buyer + seller views): escrow
  * timeline, order summary panel, counterparty panel, protection panel.
  */
+import { Check } from '@phosphor-icons/react/ssr'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
 import { addressLines, normalizeShipTo, isShippable, type ShipToAddress } from '@/lib/addresses'
@@ -155,7 +156,7 @@ export function ProtectedPanel({ lines }: { lines: string[] }) {
     <div className="panel">
       <div className="panel__title">PROTECTED</div>
       {lines.map((t, i) => (
-        <div key={i} className="kv"><span className="kv__k" style={{ color: 'var(--ink)' }}>✓</span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>{t}</span></div>
+        <div key={i} className="kv"><span className="kv__k kv__k--mark"><Check size={11} /></span><span className="kv__v kv__v--dim" style={{ textAlign: 'left', flex: 1 }}>{t}</span></div>
       ))}
     </div>
   )

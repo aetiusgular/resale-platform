@@ -9,6 +9,8 @@
 import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
+import { ArrowRightIcon } from '@/app/components/icons'
+import MetaLine from '@/app/components/meta-line'
 import { formatTimeAgo } from '@/app/components/listing-card'
 
 export type { SellerListing } from '@/lib/loaders/sell'
@@ -31,15 +33,22 @@ const monthDay = (iso: string) => new Date(iso).toLocaleDateString('en-US', { mo
 const weekday = (iso: string) => new Date(iso).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }).toUpperCase()
 
 export default function SellCatalog({
-  listings, feeLine, bumpEnabled, boostEnabled, newListing,
+  listings, feeLine, bumpEnabled, boostEnabled, newListing, protoBase,
 }: {
   listings: SellerListing[]
   feeLine: string
   bumpEnabled: boolean
   boostEnabled: boolean
   newListing: ReactNode
+  /**
+   * Proto tour only (/styleguide/proto): prefix every destination and keep BUMP /
+   * RELIST / DELETE in local state. Undefined on the real /sell page.
+   */
+  protoBase?: string
 }) {
   const router = useRouter()
+  const demo = protoBase !== undefined
+  const base = protoBase ?? ''
   const [tab, setTab] = useState<Tab>('active')
   const [bumping, setBumping] = useState<string | null>(null)
   const [bumpMsg, setBumpMsg] = useState<Record<string, string>>({})
@@ -55,6 +64,7 @@ export default function SellCatalog({
   ]
 
   async function bump(id: string) {
+    if (demo) { setBumpMsg((m) => ({ ...m, [id]: 'BUMPED JUST NOW' })); return }
     setBumping(id)
     const res = await fetch(`/api/listings/${id}/bump`, { method: 'POST' })
     setBumping(null)
@@ -68,6 +78,7 @@ export default function SellCatalog({
   }
 
   async function relist(id: string) {
+    if (demo) { router.push(`${base}/sell/new`); return }
     setRelisting(id)
     const res = await fetch(`/api/listings/${id}/relist`, { method: 'POST' })
     setRelisting(null)
@@ -78,6 +89,7 @@ export default function SellCatalog({
   }
 
   async function deleteDraft(id: string) {
+    if (demo) return
     setDeleting(id)
     const res = await fetch(`/api/listings/${id}`, { method: 'DELETE' })
     setDeleting(null)
@@ -89,7 +101,9 @@ export default function SellCatalog({
       <div className="sell-head">
         <div>
           <h1 className="page-title">Sell</h1>
-          <div className="sell-head__stats">{count('active')} ACTIVE · {count('draft')} DRAFTS · {count('sold')} SOLD · {feeLine}</div>
+          <div className="sell-head__stats">
+            <MetaLine parts={[`${count('active')} ACTIVE`, `${count('draft')} DRAFTS`, `${count('sold')} SOLD`, feeLine]} />
+          </div>
         </div>
         {newListing}
       </div>
@@ -119,22 +133,24 @@ export default function SellCatalog({
             const pendingEscrow = l.status === 'pending_escrow'
             const inReview = l.status === 'pending_review'
             const removed = l.status === 'removed'
-            const meta = sold
-              ? `SOLD ${monthDay(l.sold_at)}${l.payout_display ? ` · PAID OUT ${l.payout_display}` : ''}`
+            const meta: string[] = sold
+              ? [`SOLD ${monthDay(l.sold_at)}`, l.payout_display ? `PAID OUT ${l.payout_display}` : '']
               : draft
-                ? `${l.photo_count} OF 6 PHOTOS · ${l.price_cents ? `PRICE ${l.price_display}` : 'NO PRICE SET'}`
+                ? [`${l.photo_count} OF 6 PHOTOS`, l.price_cents ? `PRICE ${l.price_display}` : 'NO PRICE SET']
                 : removed
-                  ? (l.rejection_reason ? `REJECTED — ${l.rejection_reason.toUpperCase()}` : 'REJECTED')
-                  : `${l.view_count} VIEWS · ${l.saves_count} SAVES${l.open_offers > 0 ? ` · ${l.open_offers} ${l.open_offers === 1 ? 'OFFER' : 'OFFERS'}` : ''} · LISTED ${short(l.created_at)}`
+                  ? [l.rejection_reason ? `REJECTED — ${l.rejection_reason.toUpperCase()}` : 'REJECTED']
+                  : [`${l.view_count} VIEWS`, `${l.saves_count} SAVES`, l.open_offers > 0 ? `${l.open_offers} ${l.open_offers === 1 ? 'OFFER' : 'OFFERS'}` : '', `LISTED ${short(l.created_at)}`]
+            const listingHref = demo ? `${base}/${l.id}` : `/listings/${l.id}`
+            const draftHref = `${base}/sell/new?draft=${l.id}`
             return (
               <article key={l.id} className="card" style={{ cursor: 'default' }} data-testid="sell-card">
-                <PrefetchLink href={draft ? `/sell/new?draft=${l.id}` : `/listings/${l.id}`}>
+                <PrefetchLink href={draft ? draftHref : listingHref}>
                   <div className="card__media" style={{ background: `var(--tone-${(i % 8) + 1})` }}>
                     {l.image && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={l.image} alt={l.title} loading={i < 8 ? 'eager' : 'lazy'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     )}
-                    {l.boosted && l.boosted_until && <span className="flag flag--boost">BOOSTED · {daysLeft(l.boosted_until)}D LEFT</span>}
+                    {l.boosted && l.boosted_until && <span className="flag flag--boost">BOOSTED<span className="sep" aria-hidden="true" />{daysLeft(l.boosted_until)}D LEFT</span>}
                     {draft && <span className="flag flag--tag">DRAFT</span>}
                     {!l.boosted && inReview && <span className="flag flag--tag">IN REVIEW</span>}
                     {!l.boosted && removed && <span className="flag flag--tag" style={{ color: 'var(--alert)', borderColor: 'var(--alert)' }}>REJECTED</span>}
@@ -147,51 +163,59 @@ export default function SellCatalog({
                   <span className="card__price">{l.price_display}</span>
                 </div>
                 <div className="card__title">{l.title || 'Untitled draft'}</div>
-                <div className="sell-meta">{meta}</div>
+                <div className="sell-meta"><MetaLine parts={meta} /></div>
                 <div className="sell-actions">
                   {tab === 'active' && !pendingEscrow && !removed && (
                     <>
-                      <PrefetchLink className="link-underline link-underline--ink" href={`/sell/new?edit=${l.id}`}>EDIT</PrefetchLink>
+                      <PrefetchLink className="link-underline link-underline--ink" href={`${base}/sell/new?edit=${l.id}`}>EDIT</PrefetchLink>
                       {bumpEnabled && !inReview && (
                         <button type="button" className="link-underline link-underline--ink" onClick={() => bump(l.id)} disabled={bumping === l.id}>
                           {bumping === l.id ? 'BUMPING…' : 'BUMP ↑'}
                         </button>
                       )}
                       {boostEnabled && !l.boosted && !inReview && (
-                        <PrefetchLink className="link-underline" href={`/boost/${l.id}`}>BOOST</PrefetchLink>
+                        <PrefetchLink className="link-underline" href={demo ? `${base}/sell` : `/boost/${l.id}`}>BOOST</PrefetchLink>
                       )}
                       {l.open_offers > 0 && l.top_offer_display ? (
-                        <PrefetchLink href="/messages" className="sell-actions__offer">OFFER {l.top_offer_display}</PrefetchLink>
+                        <PrefetchLink href={`${base}/messages`} className="sell-actions__offer">OFFER {l.top_offer_display}</PrefetchLink>
                       ) : (
                         <span className="sell-actions__meta">
-                          {inReview ? 'IN REVIEW · USUALLY UNDER 24H' : bumpMsg[l.id] ?? (l.bumped_at ? `BUMPED ${formatTimeAgo(l.bumped_at)}` : '')}
+                          {inReview
+                            ? <MetaLine parts={['IN REVIEW', 'USUALLY UNDER 24H']} />
+                            : bumpMsg[l.id] ?? (l.bumped_at ? `BUMPED ${formatTimeAgo(l.bumped_at)}` : '')}
                         </span>
                       )}
                     </>
                   )}
                   {tab === 'active' && pendingEscrow && (
                     <>
-                      <PrefetchLink className="link-underline link-underline--ink" href={`/listings/${l.id}`}>VIEW</PrefetchLink>
+                      <PrefetchLink className="link-underline link-underline--ink" href={listingHref}>VIEW</PrefetchLink>
                       <span className="sell-actions__meta">A BUYER IS CHECKING OUT</span>
                     </>
                   )}
                   {tab === 'active' && removed && (
                     <>
-                      <button type="button" className="link-underline link-underline--ink" onClick={() => relist(l.id)} disabled={relisting === l.id}>{relisting === l.id ? 'RELISTING…' : 'RELIST →'}</button>
-                      <PrefetchLink className="link-underline" href={`/listings/${l.id}`}>VIEW</PrefetchLink>
+                      <button type="button" className="link-arrow link-arrow--ink" onClick={() => relist(l.id)} disabled={relisting === l.id}>
+                        <span className="link-arrow__label">{relisting === l.id ? 'RELISTING…' : 'RELIST'}</span><ArrowRightIcon size={12} />
+                      </button>
+                      <PrefetchLink className="link-underline" href={listingHref}>VIEW</PrefetchLink>
                     </>
                   )}
                   {tab === 'draft' && (
                     <>
-                      <PrefetchLink className="link-underline link-underline--ink" href={`/sell/new?draft=${l.id}`}>CONTINUE →</PrefetchLink>
+                      <PrefetchLink className="link-arrow link-arrow--ink" href={draftHref}>
+                        <span className="link-arrow__label">CONTINUE</span><ArrowRightIcon size={12} />
+                      </PrefetchLink>
                       <button type="button" className="link-underline" onClick={() => deleteDraft(l.id)} disabled={deleting === l.id}>{deleting === l.id ? 'DELETING…' : 'DELETE'}</button>
                       <span className="sell-actions__meta">SAVED {weekday(l.updated_at)}</span>
                     </>
                   )}
                   {tab === 'sold' && (
                     <>
-                      <button type="button" className="link-underline link-underline--ink" onClick={() => relist(l.id)} disabled={relisting === l.id}>{relisting === l.id ? 'RELISTING…' : 'RELIST'}</button>
-                      <PrefetchLink className="link-underline" href={l.order_id ? `/orders/${l.order_id}` : '/settings/orders'}>VIEW ORDER</PrefetchLink>
+                      <button type="button" className="link-arrow link-arrow--ink" onClick={() => relist(l.id)} disabled={relisting === l.id}>
+                        <span className="link-arrow__label">{relisting === l.id ? 'RELISTING…' : 'RELIST'}</span><ArrowRightIcon size={12} />
+                      </button>
+                      <PrefetchLink className="link-underline" href={demo || !l.order_id ? `${base}/settings/orders` : `/orders/${l.order_id}`}>VIEW ORDER</PrefetchLink>
                     </>
                   )}
                 </div>
@@ -202,7 +226,7 @@ export default function SellCatalog({
       )}
       {/* Mobile web (14): the + NEW LISTING bar sits in the flow after the grid, the footer below it. */}
       <div className="sell-newbar">
-        <PrefetchLink href="/sell/new" className="btn-primary" data-testid="sell-new-m">+ NEW LISTING</PrefetchLink>
+        <PrefetchLink href={`${base}/sell/new`} className="btn-primary" data-testid="sell-new-m">+ NEW LISTING</PrefetchLink>
       </div>
     </main>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Listing-page save control — the square bookmark next to MESSAGE SELLER
+ * Listing-page save control — the bookmark (HeartIcon) on the gallery / caption
  * (design 4A). Optimistic; guests get the sign-in popup instead of the API —
  * dressed as the save gate (mobile-web 25) when the listing is passed in.
  */

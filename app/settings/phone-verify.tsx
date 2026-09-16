@@ -76,7 +76,7 @@ export default function PhoneVerify({ verified, initialPhone, compact = false }:
         <span className="phone-num">{maskedPhone(initialPhone)}</span>
         <span className="tag tag--ink">VERIFIED</span>
         <span className="spacer" />
-        {!compact && <span className="page-note">CHANGES GO THROUGH SUPPORT DURING THE ALPHA</span>}
+        {!compact && <span className="page-note">CHANGES GO THROUGH SUPPORT</span>}
       </div>
     )
   }

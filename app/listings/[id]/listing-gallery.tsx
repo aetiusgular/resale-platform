@@ -1,17 +1,15 @@
 'use client'
 
 /**
- * Listing gallery (design option 4A): 3:4 stage with prev/next arrows and a
- * counter, slot thumbnails below (FRONT / BACK / TAG / DETAIL / FLAW / POSSN).
- * Slot 5 (POSSESSION) is proof-of-possession — shown to the seller/admin only;
- * public viewers get the five listing photos.
+ * Listing gallery: 3:4 stage + chevron controls + unlabeled thumb strip.
+ * Layout is Dialkit-driven via html[data-gallery] (under-flush default).
+ * Slot names stay in aria-label only. Slot 5 (POSSESSION) is seller/admin only.
  *
- * Mobile web (≤720px, handoff 05): one swipeable image (scroll-snap track), a
- * "1 / 6" pill top-left, the save bookmark top-right (`saveSlot`), dots at the
- * bottom; arrows and thumbnails hide. Same DOM at both widths — the stage always
- * holds every slide, desktop shows only the current one.
+ * Same DOM at every width. Mobile keeps the swipe track; under variants keep
+ * the strip on the first screen. Stage-only hides thumbs in CSS.
  */
 import { useRef, useState, type ReactNode } from 'react'
+import { ChevronLeftIcon, ChevronRightIcon } from '@/app/components/icons'
 
 const SLOT_LABELS = ['FRONT', 'BACK', 'TAG', 'DETAIL', 'FLAW', 'POSSN']
 
@@ -28,8 +26,6 @@ export default function ListingGallery({ images, title, showPossession, saveSlot
   const tone = (i: number) => `var(--tone-${(i % 8) + 1})`
   const trackRef = useRef<HTMLDivElement | null>(null)
 
-  // Desktop: arrows / thumbs set the slot and the track follows (it has no overflow
-  // there, the scroll is a no-op). Mobile: the swipe sets the slot from scrollLeft.
   const go = (i: number) => {
     setSlot(i)
     const t = trackRef.current
@@ -43,53 +39,48 @@ export default function ListingGallery({ images, title, showPossession, saveSlot
   }
 
   return (
-    <>
-      <div className="pdp-gallery">
-        <button type="button" className="pdp-arrow pdp-arrow--l" aria-label="Previous photo" onClick={() => go((slot + n - 1) % n)}>
-          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><path d="M14 6l-6 6 6 6" /></svg>
-        </button>
-        <div className="pdp-stage" data-testid="listing-gallery">
-          <div className="pdp-stage__track" ref={trackRef} onScroll={onScroll}>
-            {slots.map((s, i) => (
-              <div key={s.label} className={`pdp-stage__slide${i === slot ? ' is-current' : ''}`} style={{ background: tone(i) }} aria-hidden={i !== slot}>
-                {s.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={s.url}
-                    alt={`${title} — ${s.label.toLowerCase()}`}
-                    fetchPriority={i === 0 ? 'high' : undefined}
-                    loading={i === 0 ? undefined : 'lazy'}
-                    decoding="async"
-                  />
-                ) : (
-                  <span className="pdp-stage__label">{s.label}</span>
-                )}
-              </div>
-            ))}
-          </div>
-          <span className="pdp-stage__count">{slot + 1} / {n}</span>
-          {saveSlot && <span className="pdp-stage__save">{saveSlot}</span>}
-          <span className="pdp-stage__dots" aria-hidden="true">
-            {slots.map((s, i) => <span key={s.label} className={`pdp-stage__dot${i === slot ? ' is-on' : ''}`} />)}
-          </span>
+    <div className="pdp-gallery">
+      <button type="button" className="pdp-arrow pdp-arrow--l" aria-label="Previous photo" onClick={() => go((slot + n - 1) % n)}>
+        <ChevronLeftIcon />
+      </button>
+      <div className="pdp-stage" data-testid="listing-gallery">
+        <div className="pdp-stage__track" ref={trackRef} onScroll={onScroll}>
+          {slots.map((s, i) => (
+            <div key={s.label} className={`pdp-stage__slide${i === slot ? ' is-current' : ''}`} style={{ background: tone(i) }} aria-hidden={i !== slot}>
+              {s.url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={s.url}
+                  alt={`${title} — ${s.label.toLowerCase()}`}
+                  fetchPriority={i === 0 ? 'high' : undefined}
+                  loading={i === 0 ? undefined : 'lazy'}
+                  decoding="async"
+                />
+              ) : null}
+            </div>
+          ))}
         </div>
-        <button type="button" className="pdp-arrow pdp-arrow--r" aria-label="Next photo" onClick={() => go((slot + 1) % n)}>
-          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><path d="M10 6l6 6-6 6" /></svg>
-        </button>
+        <span className="pdp-stage__count">{slot + 1} / {n}</span>
+        {saveSlot && <span className="pdp-stage__save">{saveSlot}</span>}
+        <span className="pdp-stage__dots" aria-hidden="true">
+          {slots.map((s, i) => <span key={s.label} className={`pdp-stage__dot${i === slot ? ' is-on' : ''}`} />)}
+        </span>
       </div>
-      <div className="pdp-thumbs" style={n === 5 ? { gridTemplateColumns: 'repeat(5, 1fr)' } : undefined}>
+      <button type="button" className="pdp-arrow pdp-arrow--r" aria-label="Next photo" onClick={() => go((slot + 1) % n)}>
+        <ChevronRightIcon />
+      </button>
+      <div className="pdp-thumbs">
         {slots.map((s, i) => (
           <button key={s.label} type="button" className={`pdp-thumb${i === slot ? ' is-active' : ''}`} onClick={() => go(i)} aria-label={`${s.label} photo`}>
-            <span className="pdp-thumb__img" style={{ background: tone(i), overflow: 'hidden' }}>
+            <span className="pdp-thumb__img" style={{ background: tone(i) }}>
               {s.url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={s.url} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={s.url} alt="" loading="lazy" decoding="async" />
               )}
             </span>
-            <span className="pdp-thumb__label">{s.label}</span>
           </button>
         ))}
       </div>
-    </>
+    </div>
   )
 }

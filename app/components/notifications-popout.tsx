@@ -11,7 +11,9 @@
  */
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BellIcon, CheckThinIcon } from './icons'
+import { Bell, Check } from '@phosphor-icons/react/ssr'
+import { ArrowRightIcon } from './icons'
+import MetaLine from './meta-line'
 import { usePushStatus } from './push-subscribe'
 
 export type NotificationItem = {
@@ -42,7 +44,8 @@ const str = (v: unknown) => (typeof v === 'string' && v ? v : '')
 type Presented = {
   tag: string
   title: string
-  sub: string
+  /** Meta facts in reading order; the renderer puts the hairline between them. */
+  sub: string[]
   kind: 'tone' | 'init' | 'check'
   init?: string
   link?: string
@@ -54,48 +57,53 @@ type Presented = {
 /** Reference row copy from the event payload; falls back to the stored title/body. */
 export function presentNotification(n: NotificationItem, opts: { shippingLabels: boolean }): Presented {
   const d = n.data ?? {}
-  const item = [str(d.brand).toUpperCase(), str(d.itemTitle).toUpperCase()].filter(Boolean).join(' · ') || str(d.itemTitle).toUpperCase()
+  const item = [str(d.brand).toUpperCase(), str(d.itemTitle).toUpperCase()].filter(Boolean)
   const actor = str(d.actorName) ? `@${str(d.actorName).toUpperCase()}` : ''
   const cid = str(d.conversationId)
   const oid = str(d.offerId)
   const offerIds = cid && oid ? { conversationId: cid, offerId: oid } : undefined
   const bodyUpper = n.body ? n.body.toUpperCase() : ''
+  /** Keeps the facts that exist, falling back to the stored body when none do. */
+  const facts = (...parts: Array<string | false | undefined>) => {
+    const kept = parts.filter((p): p is string => Boolean(p))
+    return kept.length ? kept : bodyUpper ? [bodyUpper] : []
+  }
   switch (n.type) {
     case 'offer_received':
-      return { tag: 'OFFER', title: `New offer — ${money(d.amountCents)}`, sub: [item, actor && `FROM ${actor}`].filter(Boolean).join(' · ') || bodyUpper, kind: 'tone', isOffer: true, offer: offerIds }
+      return { tag: 'OFFER', title: `New offer — ${money(d.amountCents)}`, sub: facts(...item, actor && `FROM ${actor}`), kind: 'tone', isOffer: true, offer: offerIds }
     case 'offer_countered':
-      return { tag: 'OFFER', title: `Counter received — ${money(d.amountCents)}`, sub: [item, actor].filter(Boolean).join(' · ') || bodyUpper, kind: 'tone', isOffer: true, offer: offerIds, link: 'VIEW OFFER →' }
+      return { tag: 'OFFER', title: `Counter received — ${money(d.amountCents)}`, sub: facts(...item, actor), kind: 'tone', isOffer: true, offer: offerIds, link: 'VIEW OFFER' }
     case 'offer_accepted':
-      return { tag: 'OFFER', title: `Offer accepted — ${money(d.amountCents)}`, sub: [item, 'PAY WITHIN 24H'].filter(Boolean).join(' · '), kind: 'check', isOffer: false, link: 'CHECKOUT →' }
+      return { tag: 'OFFER', title: `Offer accepted — ${money(d.amountCents)}`, sub: facts(...item, 'PAY WITHIN 24H'), kind: 'check', isOffer: false, link: 'CHECKOUT' }
     case 'offer_declined':
-      return { tag: 'OFFER', title: `Offer declined — ${money(d.amountCents)}`, sub: [item, actor].filter(Boolean).join(' · ') || bodyUpper, kind: 'tone', isOffer: false }
+      return { tag: 'OFFER', title: `Offer declined — ${money(d.amountCents)}`, sub: facts(...item, actor), kind: 'tone', isOffer: false }
     case 'sale':
-      return { tag: 'SOLD', title: `${str(d.itemTitle) || 'Item'} sold — ${money(d.amountCents)}`, sub: [actor && `BUYER ${actor}`, 'SHIP WITHIN 3 DAYS'].filter(Boolean).join(' · '), kind: 'tone', isOffer: false, link: opts.shippingLabels ? 'PRINT LABEL →' : 'VIEW ORDER →' }
+      return { tag: 'SOLD', title: `${str(d.itemTitle) || 'Item'} sold — ${money(d.amountCents)}`, sub: facts(actor && `BUYER ${actor}`, 'SHIP WITHIN 3 DAYS'), kind: 'tone', isOffer: false, link: opts.shippingLabels ? 'PRINT LABEL' : 'VIEW ORDER' }
     case 'message':
-      return { tag: 'MESSAGE', title: `${actor ? actor.toLowerCase() : 'Someone'} replied`, sub: [str(d.preview) && `“${str(d.preview).slice(0, 60).toUpperCase()}”`, item].filter(Boolean).join(' · ') || bodyUpper, kind: 'init', init: str(d.actorName).slice(0, 2).toUpperCase() || '@', isOffer: false }
+      return { tag: 'MESSAGE', title: `${actor ? actor.toLowerCase() : 'Someone'} replied`, sub: facts(str(d.preview) && `“${str(d.preview).slice(0, 60).toUpperCase()}”`, ...item), kind: 'init', init: str(d.actorName).slice(0, 2).toUpperCase() || '@', isOffer: false }
     case 'price_drop':
-      return { tag: 'PRICE DROP', title: `Saved item now ${money(d.amountCents)}`, sub: [item, typeof d.oldAmountCents === 'number' ? `WAS ${money(d.oldAmountCents)}` : ''].filter(Boolean).join(' · ') || bodyUpper, kind: 'tone', isOffer: false }
+      return { tag: 'PRICE DROP', title: `Saved item now ${money(d.amountCents)}`, sub: facts(...item, typeof d.oldAmountCents === 'number' && `WAS ${money(d.oldAmountCents)}`), kind: 'tone', isOffer: false }
     case 'listing_approved':
-      return { tag: 'LISTING', title: 'Listing approved — now live', sub: item || bodyUpper, kind: 'check', isOffer: false }
+      return { tag: 'LISTING', title: 'Listing approved — now live', sub: facts(...item), kind: 'check', isOffer: false }
     case 'shipped':
-      return { tag: 'ORDER', title: 'On the way', sub: item || bodyUpper, kind: 'tone', isOffer: false, link: 'TRACK →' }
+      return { tag: 'ORDER', title: 'On the way', sub: facts(...item), kind: 'tone', isOffer: false, link: 'TRACK' }
     case 'delivered':
-      return { tag: 'ORDER', title: 'Delivered', sub: item || bodyUpper, kind: 'check', isOffer: false, link: 'LEAVE FEEDBACK →' }
+      return { tag: 'ORDER', title: 'Delivered', sub: facts(...item), kind: 'check', isOffer: false, link: 'LEAVE FEEDBACK' }
     case 'dispute':
-      return { tag: 'DISPUTE', title: n.title, sub: item || bodyUpper, kind: 'tone', isOffer: false, link: 'VIEW →' }
+      return { tag: 'DISPUTE', title: n.title, sub: facts(...item), kind: 'tone', isOffer: false, link: 'VIEW' }
     case 'saved_search':
-      return { tag: 'SEARCH ALERT', title: n.title, sub: [item, money(d.amountCents)].filter(Boolean).join(' · ') || bodyUpper, kind: 'tone', isOffer: false }
+      return { tag: 'SEARCH ALERT', title: n.title, sub: facts(...item, money(d.amountCents)), kind: 'tone', isOffer: false }
     case 'tier_expiry':
-      return { tag: 'TIER', title: n.title, sub: bodyUpper, kind: 'tone', isOffer: false }
+      return { tag: 'TIER', title: n.title, sub: facts(), kind: 'tone', isOffer: false }
     case 'buyer_reward':
-      return { tag: 'REWARD', title: n.title, sub: bodyUpper, kind: 'check', isOffer: false }
+      return { tag: 'REWARD', title: n.title, sub: facts(), kind: 'check', isOffer: false }
     case 'elite_program':
     case 'admin_elite_lead':
-      return { tag: 'PROGRAM', title: n.title, sub: bodyUpper, kind: 'tone', isOffer: false }
+      return { tag: 'PROGRAM', title: n.title, sub: facts(), kind: 'tone', isOffer: false }
     case 'moderator_granted':
-      return { tag: 'MODERATOR', title: n.title, sub: bodyUpper, kind: 'check', isOffer: false }
+      return { tag: 'MODERATOR', title: n.title, sub: facts(), kind: 'check', isOffer: false }
     default:
-      return { tag: n.type.replace(/_/g, ' ').toUpperCase(), title: n.title, sub: bodyUpper, kind: 'tone', isOffer: false }
+      return { tag: n.type.replace(/_/g, ' ').toUpperCase(), title: n.title, sub: facts(), kind: 'tone', isOffer: false }
   }
 }
 
@@ -106,10 +114,13 @@ interface Props {
   items: NotificationItem[]
   onItems: (items: NotificationItem[]) => void
   onClose: () => void
+  /** Proto tour only: keep SETTINGS / MANAGE inside /styleguide/proto. */
+  protoBase?: string
 }
 
-export default function NotificationsPopout({ open, enabled, shippingLabelsEnabled = false, items, onItems, onClose }: Props) {
+export default function NotificationsPopout({ open, enabled, shippingLabelsEnabled = false, items, onItems, onClose, protoBase }: Props) {
   const router = useRouter()
+  const base = protoBase ?? ''
   const [tab, setTab] = useState<'all' | 'unread'>('all')
   const [hidePrompt, setHidePrompt] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -154,7 +165,7 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
     const { conversationId, offerId } = p.offer
     if (action === 'counter') {
       markRead(n.id)
-      go(`/messages/${conversationId}?counter=${offerId}`)
+      go(`${base}/messages/${conversationId}?counter=${offerId}`)
       return
     }
     setBusy(n.id)
@@ -162,10 +173,10 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
     setBusy(null)
     markRead(n.id)
     if (action === 'accept' && res.ok) {
-      go(`/messages/${conversationId}`)
+      go(`${base}/messages/${conversationId}`)
     } else if (!res.ok) {
       // Offer no longer open (expired / countered elsewhere) — the thread has the truth.
-      go(`/messages/${conversationId}`)
+      go(`${base}/messages/${conversationId}`)
     }
   }
 
@@ -189,7 +200,7 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
 
         {enabled && push === 'unsubscribed' && !hidePrompt && (
           <div className="push-prompt">
-            <span className="push-prompt__icon"><BellIcon /></span>
+            <span className="push-prompt__icon"><Bell size={15} aria-hidden="true" /></span>
             <div className="push-prompt__body">
               <div className="push-prompt__title">Turn on push alerts</div>
               <div className="push-prompt__sub">OFFERS, SALES AND ORDER UPDATES — AS THEY HAPPEN</div>
@@ -205,7 +216,7 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
             <span className="push-on__tag">PUSH ON</span>
             <span className="push-on__sub">DELIVERED TO THIS DEVICE</span>
             <span className="spacer" />
-            <button type="button" className="link-underline link-underline--sm" onClick={() => go('/settings/notifications')}>MANAGE</button>
+            <button type="button" className="link-underline link-underline--sm" onClick={() => go(`${base}/settings/notifications`)}>MANAGE</button>
           </div>
         )}
 
@@ -227,7 +238,7 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
                 >
                   {p.kind === 'tone' && <span className="notif-row__thumb" style={{ background: `var(--tone-${(n.id.charCodeAt(0) % 8) + 1})` }} />}
                   {p.kind === 'init' && <span className="notif-row__thumb notif-row__thumb--init">{p.init}</span>}
-                  {p.kind === 'check' && <span className="notif-row__thumb notif-row__thumb--check"><CheckThinIcon /></span>}
+                  {p.kind === 'check' && <span className="notif-row__thumb notif-row__thumb--check"><Check size={13} /></span>}
                   <div className="notif-row__body">
                     <div className="notif-row__meta">
                       <span className="tag">{p.tag}</span>
@@ -235,7 +246,7 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
                       <span className="notif-row__time">{timeAgoShort(n.created_at)}</span>
                     </div>
                     <div className="notif-row__title">{p.title}</div>
-                    {p.sub && <div className="notif-row__sub">{p.sub}</div>}
+                    {p.sub.length > 0 && <div className="notif-row__sub"><MetaLine parts={p.sub} /></div>}
                     {showActions && (
                       <div className="notif-row__actions" onClick={(e) => e.stopPropagation()}>
                         <button type="button" className="btn-mini btn-mini--solid" disabled={busy === n.id} onClick={() => offerAction(n, p, 'accept')}>ACCEPT</button>
@@ -244,7 +255,7 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
                       </div>
                     )}
                     {p.link && !showActions && n.url && (
-                      <div className="notif-row__link"><span className="link-underline link-underline--ink">{p.link}</span></div>
+                      <div className="notif-row__link"><span className="link-arrow link-arrow--ink"><span className="link-arrow__label">{p.link}</span><ArrowRightIcon size={12} /></span></div>
                     )}
                   </div>
                 </div>
@@ -253,15 +264,15 @@ export default function NotificationsPopout({ open, enabled, shippingLabelsEnabl
           </div>
         ) : (
           <div className="notif-empty">
-            <BellIcon size={24} />
+            <Bell size={24} aria-hidden="true" />
             <div className="notif-empty__title">You&rsquo;re all caught up.</div>
             <div className="notif-empty__sub">OFFERS, ORDERS AND ALERTS LAND HERE</div>
           </div>
         )}
 
         <div className="notif-panel__foot">
-          <button type="button" className="link-underline link-underline--ink" onClick={() => setTab('all')}>VIEW ALL →</button>
-          <button type="button" className="link-underline" onClick={() => go('/settings/notifications')}>SETTINGS</button>
+          <button type="button" className="link-arrow link-arrow--ink" onClick={() => setTab('all')}><span className="link-arrow__label">VIEW ALL</span><ArrowRightIcon size={12} /></button>
+          <button type="button" className="link-underline" onClick={() => go(`${base}/settings/notifications`)}>SETTINGS</button>
         </div>
       </div>
     </>

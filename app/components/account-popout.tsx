@@ -22,13 +22,22 @@ interface Props {
   notifCount: number
   onClose: () => void
   onNotifications: () => void
+  /**
+   * Proto tour only (/styleguide/proto): prefix the destinations so the popout
+   * opens the fixture settings/orders screens, and make Sign out a no-op close —
+   * there is no session to end. Undefined on every real route.
+   */
+  protoBase?: string
 }
 
-export default function AccountPopout({ open, username, displayName, initials, notifCount, onClose, onNotifications }: Props) {
+export default function AccountPopout({ open, username, displayName, initials, notifCount, onClose, onNotifications, protoBase }: Props) {
   const router = useRouter()
   const [signingOut, setSigningOut] = useState(false)
+  const demo = protoBase !== undefined
+  const base = protoBase ?? ''
   // Mobile web (handoff 27): notifications are a full page, reached from here.
-  const compact = useCompact()
+  // The tour has no notifications page, so it keeps the desktop popout at every width.
+  const compact = useCompact() && !demo
 
   useEffect(() => {
     if (!open) return
@@ -41,14 +50,15 @@ export default function AccountPopout({ open, username, displayName, initials, n
   // header mounts, since the links below only exist while the menu is open.
   // router.prefetch defaults to a full prefetch; Next skips it in dev and for bots.
   useEffect(() => {
-    router.prefetch('/settings')
-    router.prefetch('/settings/orders')
+    router.prefetch(`${base}/settings`)
+    router.prefetch(`${base}/settings/orders`)
     if (compact) router.prefetch('/notifications')
-  }, [router, compact])
+  }, [router, compact, base])
 
   if (!open) return null
 
   async function signOut() {
+    if (demo) { onClose(); return }
     setSigningOut(true)
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -65,7 +75,7 @@ export default function AccountPopout({ open, username, displayName, initials, n
           <span className="acct-panel__avatar">{initials}</span>
           <span className="acct-panel__id">
             <span className="acct-panel__name">{displayName || `@${username}`}</span>
-            <PrefetchLink className="acct-panel__profile" href="/settings" onClick={onClose} prefetch>VIEW PROFILE</PrefetchLink>
+            <PrefetchLink className="acct-panel__profile" href={`${base}/settings`} onClick={onClose} prefetch>VIEW PROFILE</PrefetchLink>
           </span>
         </div>
         <nav className="acct-panel__nav">
@@ -80,8 +90,8 @@ export default function AccountPopout({ open, username, displayName, initials, n
               {notifCount > 0 && <span className="acct-row__badge">{notifCount}</span>}
             </button>
           )}
-          <PrefetchLink className="acct-row" href="/settings/orders" onClick={onClose} prefetch><span className="acct-row__label"><Package size={16} aria-hidden="true" />Orders</span></PrefetchLink>
-          <PrefetchLink className="acct-row" href="/settings" onClick={onClose} prefetch><span className="acct-row__label"><GearSix size={16} aria-hidden="true" />Settings</span></PrefetchLink>
+          <PrefetchLink className="acct-row" href={`${base}/settings/orders`} onClick={onClose} prefetch><span className="acct-row__label"><Package size={16} aria-hidden="true" />Orders</span></PrefetchLink>
+          <PrefetchLink className="acct-row" href={`${base}/settings`} onClick={onClose} prefetch><span className="acct-row__label"><GearSix size={16} aria-hidden="true" />Settings</span></PrefetchLink>
         </nav>
         <div className="acct-panel__foot">
           <div className="acct-theme">

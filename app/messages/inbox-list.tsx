@@ -2,8 +2,8 @@
 
 /**
  * Messages sidebar (design 1A): title + "n UNREAD" / "ALL READ", ALL / BUYING /
- * SELLING filters + conversation rows with unread badges. Rows are real links
- * (/messages/[id]); the active one is highlighted with the ink rail.
+ * SELLING filters + conversation rows with an unread ink mark. Rows are real links
+ * (`hrefBase`/[id], default /messages); the active one is highlighted with the ink rail.
  */
 import { useState } from 'react'
 import PrefetchLink from '@/app/components/prefetch-link'
@@ -22,7 +22,7 @@ export function inboxTime(iso: string): string {
   return `${Math.floor(days / 7)}W`
 }
 
-export default function InboxList({ rows, activeId }: { rows: InboxRow[]; activeId?: string }) {
+export default function InboxList({ rows, activeId, hrefBase = '/messages' }: { rows: InboxRow[]; activeId?: string; hrefBase?: string }) {
   const [filter, setFilter] = useState<RoleFilter>('ALL')
   const list = rows.filter((c) => filter === 'ALL' || c.role === filter)
   // The open thread is read by definition (the page marks it on render).
@@ -31,19 +31,19 @@ export default function InboxList({ rows, activeId }: { rows: InboxRow[]; active
   return (
     <aside className="msgs__list" data-testid="inbox-list">
       <div className="msgs__head">
-        <h1 className="page-title page-title--sm">Messages</h1>
+        <h1 className="page-title">Messages</h1>
         <span className="page-note" data-testid="inbox-unread">{unreadConvs ? `${unreadConvs} UNREAD` : 'ALL READ'}</span>
       </div>
       <div className="msgs__filters" role="tablist">
         {(['ALL', 'BUYING', 'SELLING'] as RoleFilter[]).map((f) => (
-          <button key={f} type="button" role="tab" aria-selected={filter === f} className={`tab-mono tab-mono--sm${filter === f ? ' is-active' : ''}`} onClick={() => setFilter(f)}>
+          <button key={f} type="button" role="tab" aria-selected={filter === f} className={`tab-mono${filter === f ? ' is-active' : ''}`} onClick={() => setFilter(f)}>
             {f}
           </button>
         ))}
       </div>
       <div className="msgs__scroll">
         {list.length === 0 && (
-          <div className="empty" style={{ padding: '40px 24px' }}>
+          <div className="empty" style={{ padding: '40px var(--gutter-page)' }}>
             <div className="empty__title">No conversations yet.</div>
             <div className="empty__sub">START ONE FROM A LISTING — MESSAGE SELLER OR MAKE OFFER</div>
           </div>
@@ -51,7 +51,7 @@ export default function InboxList({ rows, activeId }: { rows: InboxRow[]; active
         {list.map((c, i) => {
           const unread = c.id === activeId ? 0 : c.unread
           return (
-            <PrefetchLink key={c.id} className={`conv${activeId === c.id ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} href={`/messages/${c.id}`} data-testid="inbox-row">
+            <PrefetchLink key={c.id} className={`conv${activeId === c.id ? ' is-active' : ''}${unread ? ' is-unread' : ''}`} href={`${hrefBase}/${c.id}`} data-testid="inbox-row">
               {/* ≤720px (mobile-web 07): initials left, the listing thumb moves to the right */}
               <span className={`conv__avatar${unread ? ' is-unread' : ''}`} aria-hidden="true">{c.handle.slice(0, 2).toUpperCase()}</span>
               <span className="conv__thumb" style={{ background: `var(--tone-${(i % 8) + 1})`, overflow: 'hidden' }}>
@@ -67,12 +67,15 @@ export default function InboxList({ rows, activeId }: { rows: InboxRow[]; active
                   <span className="conv__time conv__time--m">{inboxTime(c.updated_at)}</span>
                 </span>
                 <span className={`conv__preview${unread ? ' is-unread' : ''}`}>{c.previewMine ? 'You: ' : ''}{c.preview}</span>
-                <span className="conv__listing">{c.brand.toUpperCase()} · {c.price}{c.status === 'sold' ? ' · SOLD' : ''}</span>
+                <span className="conv__listing">
+                  {c.brand.toUpperCase()}<span className="sep" aria-hidden="true" />{c.price}
+                  {c.status === 'sold' && <><span className="sep" aria-hidden="true" />SOLD</>}
+                </span>
               </span>
               <span className="conv__side">
                 <span className="conv__time">{inboxTime(c.updated_at)}</span>
-                {unread > 0 && <span className="conv__badge" data-testid="conv-badge">{unread}</span>}
               </span>
+              {unread > 0 && <span className="conv__mark" data-testid="conv-badge" aria-label={`${unread} unread`} />}
             </PrefetchLink>
           )
         })}

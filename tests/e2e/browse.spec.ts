@@ -17,6 +17,13 @@ test.describe('Browse — public for guests', () => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/browse/)
   })
+
+  test('empty browse offers the public prototype without touching gated routes', async ({ page }) => {
+    await page.goto('/browse')
+    await expect(page.getByTestId('browse-empty')).toBeVisible()
+    await expect(page.getByTestId('open-prototype')).toHaveAttribute('href', '/styleguide/proto')
+    await expect(page.getByTestId('browse-signin')).toBeVisible()
+  })
 })
 
 test.describe('Browse — desktop sort dropdown', () => {

@@ -12,19 +12,23 @@ import { useCompact } from './use-compact'
 import { trackEvent } from '@/lib/analytics'
 import { trackSearch } from '@/lib/recs/telemetry'
 
-export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: string }) {
+export default function HeaderSearch({ defaultValue = '', protoBase }: { defaultValue?: string; protoBase?: string }) {
   const ref = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  // ≤720px the placeholder collapses to "Search" (reference Header / useIsMobile), and the
-  // row itself only belongs to browse + saved (Mobile Pages 1A / 1C) — every other page
-  // keeps the single 52px header row.
+  // The proto tour (/styleguide/proto) has its own fixture browse grid at `protoBase`;
+  // searching there must stay inside the tour instead of jumping to live /browse.
+  const demo = protoBase !== undefined
+  const browseHref = protoBase ?? '/browse'
+  const savedHref = `${protoBase ?? ''}/saved`
   const compact = useCompact()
-  const mobileRow = pathname === '/browse' || pathname === '/saved' ? 'show' : 'hide'
+  // Live: second row only on browse + saved. Proto: keep it everywhere so
+  // cycling catalog / saved / messages / sell does not change header height.
+  const mobileRow = demo || pathname === browseHref || pathname === savedHref ? 'show' : 'hide'
   // The header persists across navigations (app/layout.tsx), so the field mirrors the
   // URL: the active query on /browse, empty elsewhere. Never clobber a field being typed in.
-  const urlValue = pathname === '/browse' ? (searchParams.get('q') ?? '') : ''
+  const urlValue = pathname === browseHref ? (searchParams.get('q') ?? '') : ''
   useEffect(() => {
     const el = ref.current
     if (el && document.activeElement !== el) el.value = urlValue
@@ -50,13 +54,13 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
       onSubmit={(e) => {
         e.preventDefault()
         const q = (ref.current?.value ?? '').trim()
-        trackEvent('search_performed', { query: q })
-        const onBrowse = pathname === '/browse'
+        if (!demo) trackEvent('search_performed', { query: q })
+        const onBrowse = pathname === browseHref
         const p = new URLSearchParams(onBrowse ? searchParams.toString() : '')
         p.delete('offset')
         if (q) p.set('q', q)
         else p.delete('q')
-        if (onBrowse) {
+        if (onBrowse && !demo) {
           const filters: Record<string, string> = {}
           for (const k of ['dept', 'cat', 'size', 'brand'] as const) {
             const v = p.get(k)
@@ -65,7 +69,7 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
           trackSearch(q, filters)
         }
         const qs = p.toString()
-        router.push(qs ? `/browse?${qs}` : '/browse')
+        router.push(qs ? `${browseHref}?${qs}` : browseHref)
       }}
     >
       <SearchIcon />

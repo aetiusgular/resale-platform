@@ -8,6 +8,8 @@
  * from app/layout.tsx; it is created once per request and reused across routes.
  */
 import { usePathname } from 'next/navigation'
+import ProtoHeader from '@/app/styleguide/proto/proto-header'
+import { isProtoPath } from '@/app/proto/viewer-fixture'
 
 const BARE_PREFIXES = ['/enter', '/onboarding', '/reset-password', '/banned']
 
@@ -15,9 +17,12 @@ export default function ShellSwitch({ header, children }: { header: React.ReactN
   const pathname = usePathname() ?? ''
   const bare = BARE_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
   if (bare) return <>{children}</>
+  // The proto tour draws the signed-in chrome from fixtures (proto-header.tsx) so the
+  // walkthrough shows a member's header and its links stay inside /styleguide/proto.
+  // Display only — the real header, and every route gate, is untouched.
   return (
     <div className="app-shell">
-      {header}
+      {isProtoPath(pathname) ? <ProtoHeader key="proto-header" /> : header}
       {children}
     </div>
   )

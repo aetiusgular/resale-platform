@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import AppShell from '@/app/components/app-shell'
+import PrefetchLink from '@/app/components/prefetch-link'
 import { CardGhost } from '@/app/components/skeletons'
+import { Check } from '@phosphor-icons/react/ssr'
+import { ArrowRightIcon } from '@/app/components/icons'
 import { ThemeSegment } from '@/app/components/theme'
 import { getViewerUsername } from '@/app/components/viewer'
 import { TOKENS } from './tokens'
@@ -13,6 +16,19 @@ export const metadata: Metadata = {
 /* ─── Token data lives in ./tokens.ts (mirrors app/globals.css) ─────────── */
 
 const TONES = [1, 2, 3, 4, 5, 6, 7, 8]
+
+/** The proto tour, reachable from here only — the screens carry no banner of their own. */
+const PROTO_SCREENS: Array<{ label: string; href: string }> = [
+  { label: 'BROWSE', href: '/styleguide/proto' },
+  { label: 'LISTING', href: '/styleguide/proto/proto-01' },
+  { label: 'SAVED', href: '/styleguide/proto/saved' },
+  { label: 'MESSAGES', href: '/styleguide/proto/messages' },
+  { label: 'THREAD', href: '/styleguide/proto/messages/t1' },
+  { label: 'SELL', href: '/styleguide/proto/sell' },
+  { label: 'NEW LISTING', href: '/styleguide/proto/sell/new' },
+  { label: 'SETTINGS', href: '/styleguide/proto/settings' },
+  { label: 'ORDERS', href: '/styleguide/proto/settings/orders' },
+]
 
 const SANS_SCALE: Array<{ px: number; weight: number; label: string; sample: string }> = [
   { px: 30, weight: 300, label: 'PAGE TITLE / 30', sample: 'Saved.' },
@@ -62,7 +78,19 @@ export default async function StyleguidePage() {
         <div className="crumb">INTERNAL / STYLEGUIDE</div>
         <div className="page-head page-head--ruled">
           <h1 className="page-title">Styleguide.</h1>
-          <span className="page-note">TOKENS · TYPE · CONTROLS · CARDS</span>
+          <span className="page-note">TOKENS · TYPE · CONTROLS · CARDS · <PrefetchLink href="/styleguide/proto">PROTO</PrefetchLink></span>
+        </div>
+
+        {/* ── Prototype index ───────────────────────────────────────────── */}
+        <div className="sec-head"><span className="sec-head__label">PROTOTYPE</span><span className="page-note">FIXTURE DATA — NOT A SESSION</span></div>
+        <div className="proto-index">
+          {PROTO_SCREENS.map((s) => (
+            <PrefetchLink key={s.href} className="proto-index__row" href={s.href} aria-label={s.label}>
+              <span className="proto-index__label">{s.label}</span>
+              <span className="proto-index__path">{s.href.replace('/styleguide/proto', '') || '/'}</span>
+              <ArrowRightIcon size={12} />
+            </PrefetchLink>
+          ))}
         </div>
 
         {/* ── Theme ─────────────────────────────────────────────────────── */}
@@ -88,7 +116,7 @@ export default async function StyleguidePage() {
           <div style={{ flex: 1, height: 36, background: 'var(--tone-3)', position: 'relative' }}><div style={{ position: 'absolute', inset: 0, background: 'var(--scrim)' }} /></div>
           <div style={{ flex: 1, height: 36, background: 'var(--tone-3)', position: 'relative' }}><div style={{ position: 'absolute', inset: 0, background: 'var(--sold-scrim)' }} /></div>
           <div style={{ flex: 1, height: 36, background: 'var(--tone-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ background: 'var(--badge-bg)', border: '1px solid var(--badge-bd)', color: 'var(--badge-fg)', font: '400 8px var(--font-mono)', letterSpacing: '0.12em', padding: '2px 5px' }}>AUTH ✓</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--badge-bg)', border: '1px solid var(--badge-bd)', color: 'var(--badge-fg)', font: '400 8px var(--font-mono)', letterSpacing: '0.12em', padding: '2px 5px' }}><Check size={9} weight="bold" aria-hidden="true" />AUTH</span>
           </div>
         </div>
 

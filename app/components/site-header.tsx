@@ -1,5 +1,5 @@
 /**
- * SiteHeader — the shared chrome (design nav 16A / 6A): wordmark + stage badge,
+ * SiteHeader — the shared chrome (design nav 16A / 6A): wordmark,
  * underline search, SELL · SAVED · MESSAGES, avatar → account / notifications
  * popouts. Sticky. Collapses to a two-row header ≤720px (search drops below).
  *

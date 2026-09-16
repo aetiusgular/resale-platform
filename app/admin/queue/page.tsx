@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { Check } from '@phosphor-icons/react/ssr'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { formatCents } from '@/lib/fees'
 import { PHOTO_SLOTS } from '@/lib/condition'
@@ -150,7 +151,7 @@ export default async function AdminQueuePage() {
                             ) : (
                               <span className="admin-photo__blank">—</span>
                             )}
-                            {isPossession && url && <span className="admin-photo__check" aria-label="Possession photo present">✓</span>}
+                            {isPossession && url && <span className="admin-photo__check" aria-label="Possession photo present"><Check size={10} weight="bold" /></span>}
                           </div>
                           <span className="admin-photo__label">{slotLabel(slot)}</span>
                         </div>

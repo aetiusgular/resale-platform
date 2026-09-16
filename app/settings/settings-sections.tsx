@@ -13,7 +13,10 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
-import { CheckIcon } from '@/app/components/icons'
+import { useProtoBase } from '@/app/components/proto-base'
+import { Check } from '@phosphor-icons/react/ssr'
+import { ArrowRightIcon } from '@/app/components/icons'
+import MetaLine from '@/app/components/meta-line'
 import { ThemeSegment } from '@/app/components/theme'
 import PushSubscribe from '@/app/components/push-subscribe'
 import { createClient } from '@/lib/supabase/browser'
@@ -55,12 +58,13 @@ function Crumb({ trail, meta, mobile = 'bar', title }: {
   /** Mobile bar title when it differs from the trail label ("SHIPPING ADDRESS" vs ADDRESS). */
   title?: string
 }) {
-  const parent = trail.length > 1 && trail[trail.length - 2].href ? trail[trail.length - 2] : { label: 'SETTINGS', href: '/settings' }
+  const base = useProtoBase()
+  const parent = trail.length > 1 && trail[trail.length - 2].href ? trail[trail.length - 2] : { label: 'SETTINGS', href: `${base}/settings` }
   const current = trail[trail.length - 1]
   return (
     <div className={`crumb crumb--${mobile}`}>
       <span className="crumb__trail">
-        <PrefetchLink href="/settings">SETTINGS</PrefetchLink>
+        <PrefetchLink href={`${base}/settings`}>SETTINGS</PrefetchLink>
         {trail.map((t) => (
           <span key={t.label}> / {t.href ? <PrefetchLink href={t.href}>{t.label}</PrefetchLink> : t.label}</span>
         ))}
@@ -92,6 +96,7 @@ const TIER_NAMES = ['New seller', 'Established seller', 'Power seller', 'Elite s
 
 // ─── Hub ─────────────────────────────────────────────────────────────────────
 function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile?: boolean }) {
+  const base = useProtoBase()
   const router = useRouter()
   const [username, setUsername] = useState(`@${data.username}`)
   const [displayName, setDisplayName] = useState(data.displayName ?? '')
@@ -162,10 +167,10 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
       {asProfile && <Crumb trail={[{ label: 'PROFILE' }]} />}
       <div className="page-head">
         <h1 className="page-title">{asProfile ? 'Profile' : 'Settings'}</h1>
-        <span className="page-note">{data.memberSince ? `MEMBER SINCE ${data.memberSince}` : 'MEMBER'} · TIER {tierNumber}</span>
+        <span className="page-note"><MetaLine parts={[data.memberSince ? `MEMBER SINCE ${data.memberSince}` : 'MEMBER', `TIER ${tierNumber}`]} /></span>
       </div>
 
-      <SectionHead label="01 — PROFILE" right={<PrefetchLink className="link-underline" href={`/sellers/${data.username}`}>VIEW PUBLIC PROFILE →</PrefetchLink>} />
+      <SectionHead label="01 — PROFILE" right={<PrefetchLink className="link-arrow" href={base ? base : `/sellers/${data.username}`}><span className="link-arrow__label">VIEW PUBLIC PROFILE</span><ArrowRightIcon size={12} /></PrefetchLink>} />
       <div className="profile-row">
         <span className="profile-avatar" style={avatarUrl ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : undefined}>{initials}</span>
         <div className="profile-avatar__actions">
@@ -212,7 +217,7 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
       )}
       <div className="settings-note">Used for order and delivery alerts only — never shown publicly.</div>
 
-      <SectionHead label="03 — SELLER TIER" right={<PrefetchLink className="link-underline" href="/fees">VIEW FEE SCHEDULE →</PrefetchLink>} />
+      <SectionHead label="03 — SELLER TIER" right={<PrefetchLink className="link-arrow" href="/fees"><span className="link-arrow__label">VIEW FEE SCHEDULE</span><ArrowRightIcon size={12} /></PrefetchLink>} />
       <div className="tier-row">
         <div>
           <div className="tier-name">Tier {tierNumber}</div>
@@ -284,14 +289,14 @@ function orderDate(iso: string): string {
 
 function orderAction(row: SettingsOrderRow, labels: boolean): { label: string; href: string } {
   const buyer = row.role === 'buyer'
-  const view = { label: 'VIEW →', href: `/orders/${row.id}` }
+  const view = { label: 'VIEW', href: `/orders/${row.id}` }
   switch (row.state) {
-    case 'paid_held': return buyer ? view : { label: 'CONFIRM & SHIP →', href: `/orders/${row.id}` }
-    case 'seller_confirmed': return buyer ? view : { label: labels ? 'PRINT LABEL →' : 'ADD TRACKING →', href: `/orders/${row.id}` }
-    case 'shipped': return buyer ? { label: 'MARK AS RECEIVED →', href: `/orders/${row.id}` } : (row.hasTracking ? { label: 'TRACK →', href: `/orders/${row.id}` } : view)
-    case 'delivered': return buyer ? { label: 'CONFIRM DELIVERY →', href: `/orders/${row.id}` } : view
-    case 'released': return row.canReview ? { label: 'LEAVE FEEDBACK →', href: `/settings/review?order=${row.id}` } : view
-    case 'disputed': return { label: 'VIEW DISPUTE →', href: `/orders/${row.id}` }
+    case 'paid_held': return buyer ? view : { label: 'CONFIRM & SHIP', href: `/orders/${row.id}` }
+    case 'seller_confirmed': return buyer ? view : { label: labels ? 'PRINT LABEL' : 'ADD TRACKING', href: `/orders/${row.id}` }
+    case 'shipped': return buyer ? { label: 'MARK AS RECEIVED', href: `/orders/${row.id}` } : (row.hasTracking ? { label: 'TRACK', href: `/orders/${row.id}` } : view)
+    case 'delivered': return buyer ? { label: 'CONFIRM DELIVERY', href: `/orders/${row.id}` } : view
+    case 'released': return row.canReview ? { label: 'LEAVE FEEDBACK', href: `/settings/review?order=${row.id}` } : view
+    case 'disputed': return { label: 'VIEW DISPUTE', href: `/orders/${row.id}` }
     default: return view
   }
 }
@@ -304,6 +309,7 @@ function orderTag(state: string): { label: string; solid: boolean; alert?: boole
 }
 
 function OrdersSection({ data }: { data: SettingsData }) {
+  const base = useProtoBase()
   const [tab, setTab] = useState<'ALL' | 'BUYING' | 'SELLING'>('ALL')
   const rows = data.orders
   const list = rows.filter((o) => tab === 'ALL' || (tab === 'BUYING' ? o.role === 'buyer' : o.role === 'seller'))
@@ -315,7 +321,7 @@ function OrdersSection({ data }: { data: SettingsData }) {
       <Crumb trail={[{ label: 'ORDERS' }]} meta={`${active} ACTIVE`} />
       <div className="page-head page-head--ruled">
         <h1 className="page-title">Orders</h1>
-        <span className="page-note">{active} ACTIVE · {rows.length - active} COMPLETED</span>
+        <span className="page-note"><MetaLine parts={[`${active} ACTIVE`, `${rows.length - active} COMPLETED`]} /></span>
       </div>
       <div className="tabs-line tabs-line--tight" role="tablist">
         {(['ALL', 'BUYING', 'SELLING'] as const).map((t) => (
@@ -329,7 +335,7 @@ function OrdersSection({ data }: { data: SettingsData }) {
           <div className="empty__title">{tab === 'SELLING' ? 'No sales yet.' : tab === 'BUYING' ? 'No purchases yet.' : 'No orders yet.'}</div>
           <div className="empty__sub">{tab === 'SELLING' ? 'LIST SOMETHING — EVERY SALE IS HELD IN ESCROW' : 'EVERYTHING YOU BUY LANDS HERE WITH TRACKING AND ESCROW STATUS'}</div>
           <div className="empty__cta">
-            <PrefetchLink href={tab === 'SELLING' ? '/sell/new' : '/browse'} className="btn-ghost btn-ghost--inline">{tab === 'SELLING' ? 'NEW LISTING →' : 'BROWSE →'}</PrefetchLink>
+            <PrefetchLink href={tab === 'SELLING' ? `${base}/sell/new` : base || '/browse'} className="btn-ghost btn-ghost--inline">{tab === 'SELLING' ? 'NEW LISTING →' : 'BROWSE →'}</PrefetchLink>
           </div>
         </div>
       ) : (
@@ -351,11 +357,14 @@ function OrdersSection({ data }: { data: SettingsData }) {
                   <span className="tag">{o.role === 'buyer' ? 'BUYING' : 'SELLING'}</span>
                 </div>
                 <div className="order-row__title">{o.title}</div>
-                <div className="order-row__meta">ORDER #{o.id.slice(0, 8).toUpperCase()} · {orderDate(o.created_at)}{o.size ? ` · SIZE ${o.size.toUpperCase()}` : ''}</div>
+                <div className="order-row__meta"><MetaLine parts={[`ORDER #${o.id.slice(0, 8).toUpperCase()}`, orderDate(o.created_at), o.size ? `SIZE ${o.size.toUpperCase()}` : '']} /></div>
               </div>
               <span className="order-row__price">{o.amount}</span>
               <span className={`tag${t.solid ? ' tag--ink' : ''}${t.alert ? ' tag--alert' : ''}`}>{t.label}</span>
-              <PrefetchLink className="link-underline link-underline--ink" href={a.href}>{a.label}</PrefetchLink>
+              {/* The tour has no order-detail screen, so its row actions stay on the list. */}
+              <PrefetchLink className="link-arrow link-arrow--ink" href={base ? `${base}/settings/orders` : a.href}>
+                <span className="link-arrow__label">{a.label}</span><ArrowRightIcon size={12} />
+              </PrefetchLink>
             </div>
           )
         })
@@ -382,7 +391,7 @@ function ReviewSection({ data }: { data: SettingsData }) {
     return (
       <div className="settings-body">
         <Crumb trail={[{ label: 'ORDERS', href: '/settings/orders' }, { label: 'REVIEW' }]} mobile="link" />
-        <div className="empty"><div className="empty__title">Pick an order to review.</div><div className="empty__cta"><PrefetchLink href="/settings/orders" className="link-underline link-underline--ink">ORDERS →</PrefetchLink></div></div>
+        <div className="empty"><div className="empty__title">Pick an order to review.</div><div className="empty__cta"><PrefetchLink href="/settings/orders" className="link-arrow link-arrow--ink"><span className="link-arrow__label">ORDERS</span><ArrowRightIcon size={12} /></PrefetchLink></div></div>
       </div>
     )
   }
@@ -631,7 +640,7 @@ function AddressSection({ data }: { data: SettingsData }) {
           {saving ? 'SAVING…' : savedFlash ? 'SAVED ✓' : 'SAVE ADDRESS'}
         </button>
         <button type="button" className="check-inline" aria-pressed={asDefault} onClick={() => setAsDefault((v) => !v)}>
-          <span className={`checkbox${asDefault ? ' is-on' : ''}`}>{asDefault && <CheckIcon size={8} />}</span>
+          <span className={`checkbox${asDefault ? ' is-on' : ''}`}>{asDefault && <Check size={8} weight="bold" />}</span>
           <span>Set as default</span>
         </button>
       </div>
@@ -757,10 +766,10 @@ function NotificationsSection({ data }: { data: SettingsData }) {
           <div key={c.id} className="pref-row">
             <span className="pref-row__label">{c.label}</span>
             <button type="button" className="pref-row__cell" aria-pressed={prefs[ek]} aria-label={`${c.label} — email`} onClick={() => toggle(ek)} disabled={!enabled}>
-              <span className={`checkbox${prefs[ek] ? ' is-on' : ''}`}>{prefs[ek] && <CheckIcon size={8} />}</span>
+              <span className={`checkbox${prefs[ek] ? ' is-on' : ''}`}>{prefs[ek] && <Check size={8} weight="bold" />}</span>
             </button>
             <button type="button" className="pref-row__cell" aria-pressed={prefs[pk]} aria-label={`${c.label} — push`} onClick={() => toggle(pk)} disabled={!enabled}>
-              <span className={`checkbox${prefs[pk] ? ' is-on' : ''}`}>{prefs[pk] && <CheckIcon size={8} />}</span>
+              <span className={`checkbox${prefs[pk] ? ' is-on' : ''}`}>{prefs[pk] && <Check size={8} weight="bold" />}</span>
             </button>
           </div>
         )
@@ -793,6 +802,7 @@ type Balance = {
 }
 
 function PayoutsSection({ data }: { data: SettingsData }) {
+  const base = useProtoBase()
   const [bal, setBal] = useState<Balance | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -855,7 +865,7 @@ function PayoutsSection({ data }: { data: SettingsData }) {
         <div className="mono-note" style={{ paddingTop: 12 }}>{bal || failed ? 'NO PAYOUTS IN THE LAST 90 DAYS' : 'LOADING…'}</div>
       )}
       <div className="save-row save-row--left">
-        <PrefetchLink href="/settings/orders" className="link-underline link-underline--ink">VIEW SALES →</PrefetchLink>
+        <PrefetchLink href={`${base}/settings/orders`} className="link-arrow link-arrow--ink"><span className="link-arrow__label">VIEW SALES</span><ArrowRightIcon size={12} /></PrefetchLink>
         <PrefetchLink href="/fees" className="link-underline">FEE SCHEDULE</PrefetchLink>
       </div>
     </div>
@@ -869,7 +879,7 @@ function PhoneSection({ data }: { data: SettingsData }) {
       <Crumb trail={[{ label: 'PHONE' }]} />
       <div className="page-head page-head--ruled">
         <h1 className="page-title">Phone</h1>
-        <span className="page-note">REQUIRED TO SELL · NEVER SHOWN PUBLICLY</span>
+        <span className="page-note"><MetaLine parts={['REQUIRED TO SELL', 'NEVER SHOWN PUBLICLY']} /></span>
       </div>
       {data.phoneVerificationEnabled ? (
         <PhoneVerify verified={data.phoneVerified} initialPhone={data.phone} />
@@ -891,7 +901,7 @@ function TiersSection({ data }: { data: SettingsData }) {
       {data.tierDashboardEnabled ? (
         <TierDashboard buyer={data.buyerTier} seller={data.sellerTier} />
       ) : (
-        <div className="empty"><div className="empty__title">Tier dashboard arrives at launch.</div><div className="empty__cta"><PrefetchLink href="/fees" className="link-underline link-underline--ink">FEE SCHEDULE →</PrefetchLink></div></div>
+        <div className="empty"><div className="empty__title">Tier dashboard arrives at launch.</div><div className="empty__cta"><PrefetchLink href="/fees" className="link-arrow link-arrow--ink"><span className="link-arrow__label">FEE SCHEDULE</span><ArrowRightIcon size={12} /></PrefetchLink></div></div>
       )}
     </div>
   )
@@ -900,12 +910,13 @@ function TiersSection({ data }: { data: SettingsData }) {
 // ─── Mobile hub menu (mobile-web 09) ─────────────────────────────────────────
 /**
  * ≤720px /settings is a menu: profile card, then ACCOUNT / PREFERENCES / SELLING rows
- * into the sections, THEME inline, Sign out · ALPHA 01 at the foot. Hidden on desktop
+ * into the sections, THEME inline, Sign out at the foot. Hidden on desktop
  * (the hub there is the 2A profile page — `HubSection`). Rendered by the shell.
  */
 function MenuRow({ href, label, meta }: { href: string; label: string; meta?: string }) {
+  const base = useProtoBase()
   return (
-    <PrefetchLink href={href} className="menu-row">
+    <PrefetchLink href={`${base}${href}`} className="menu-row">
       {label}
       <span className="menu-row__right">
         {meta && <span className="menu-row__meta">{meta}</span>}
@@ -915,7 +926,8 @@ function MenuRow({ href, label, meta }: { href: string; label: string; meta?: st
   )
 }
 
-export function SettingsMenu({ data, activeOrders, stage }: { data: SettingsData; activeOrders: number; stage: string }) {
+export function SettingsMenu({ data, activeOrders }: { data: SettingsData; activeOrders: number }) {
+  const base = useProtoBase()
   const initials = (data.displayName || data.username).slice(0, 2).toUpperCase()
   const sizesChip = sizesChipLabel(data.sizes)
   const anyPush = PREF_ROWS.some((r) => data.prefs[`push_${r.id}` as keyof NotificationPrefs])
@@ -929,9 +941,9 @@ export function SettingsMenu({ data, activeOrders, stage }: { data: SettingsData
         <span className="menu-profile__avatar" style={data.avatarUrl ? { backgroundImage: `url(${data.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : undefined}>{initials}</span>
         <span className="menu-profile__main">
           <span className="menu-profile__name">{data.displayName || data.username}</span>
-          <span className="menu-profile__meta">@{data.username}{memberYear ? ` · MEMBER SINCE ${memberYear}` : ''}</span>
+          <span className="menu-profile__meta"><MetaLine parts={[`@${data.username}`, memberYear && `MEMBER SINCE ${memberYear}`]} /></span>
         </span>
-        <PrefetchLink href="/settings/profile" className="link-underline link-underline--ink menu-profile__edit">EDIT</PrefetchLink>
+        <PrefetchLink href={`${base}/settings/profile`} className="link-underline link-underline--ink menu-profile__edit">EDIT</PrefetchLink>
       </div>
       <div className="menu-group">ACCOUNT</div>
       <MenuRow href="/settings/profile" label="Profile" />
@@ -954,7 +966,6 @@ export function SettingsMenu({ data, activeOrders, stage }: { data: SettingsData
       )}
       <div className="menu-foot">
         <SignOutLink className="menu-foot__signout" label="Sign out" />
-        <span className="menu-foot__stage">{stage}</span>
       </div>
     </div>
   )

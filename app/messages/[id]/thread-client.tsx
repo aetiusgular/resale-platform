@@ -16,6 +16,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import PrefetchLink from '@/app/components/prefetch-link'
+import { ArrowLeftIcon } from '@/app/components/icons'
 import { formatCents } from '@/lib/fees'
 import { hoursUntilExpiry, hoursUntilPaymentDeadline } from '@/lib/offers'
 import type { Offer } from '@/lib/offers'
@@ -263,7 +264,7 @@ export default function ThreadClient({
   return (
     <div className="thread" data-testid="thread">
       <div className="thread__bar">
-        <PrefetchLink href="/messages" className="thread__back" aria-label="Back to inbox" data-testid="messages-back">←</PrefetchLink>
+        <PrefetchLink href="/messages" className="thread__back" aria-label="Back to inbox" data-testid="messages-back"><ArrowLeftIcon size={14} /></PrefetchLink>
         <span className="thread__avatar">{otherInitials}</span>
         <span className="thread__handle">@{other.username}</span>
         {other.verified && <span className="tag">VERIFIED</span>}

@@ -13,6 +13,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
+import MetaLine from '@/app/components/meta-line'
 import { createBrowserClient } from '@supabase/ssr'
 import { sellerFeeAt, formatCents, welcomeSellerFeeCents, FEE_TIERS } from '@/lib/fees'
 import { floorShippingCents } from '@/lib/shipping'
@@ -331,8 +332,8 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const currentStep = Math.max(0, stepDone.findIndex((d) => !d))
   const draftLabel = isEdit ? 'EDITING' : draftState === 'saving' ? 'SAVING…' : draftState === 'saved' ? 'DRAFT ✓' : draftState === 'error' ? 'NOT SAVED' : 'DRAFT'
   const headNote = isEdit
-    ? `LIVE LISTING · CHANGES APPLY IMMEDIATELY`
-    : `${draftState === 'saved' ? 'DRAFT AUTO-SAVED' : draftState === 'saving' ? 'SAVING DRAFT…' : draftState === 'error' ? 'DRAFT NOT SAVED' : 'DRAFT AUTO-SAVES'} · STEP ${currentStep + 1} OF 5`
+    ? ['LIVE LISTING', 'CHANGES APPLY IMMEDIATELY']
+    : [draftState === 'saved' ? 'DRAFT AUTO-SAVED' : draftState === 'saving' ? 'SAVING DRAFT…' : draftState === 'error' ? 'DRAFT NOT SAVED' : 'DRAFT AUTO-SAVES', `STEP ${currentStep + 1} OF 5`]
 
   const categoryValue = category ? catValue(department, category, subcategory) : ''
   const onCategoryChange = (v: string) => {
@@ -362,7 +363,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         })}
         <div className="wizard-rail-note">
           TIER {tierNumber} SELLER<br />
-          FEE {fmtRate(sellerBps)}{inWelcome ? ` · RAMP −${fmtRate(sellerBps)}` : ''}<br />
+          <MetaLine parts={[`FEE ${fmtRate(sellerBps)}`, inWelcome && `RAMP −${fmtRate(sellerBps)}`]} /><br />
           {isEdit ? 'PHOTOS ARE LOCKED ONCE LIVE' : 'FIRST BUMP FREE ON PUBLISH'}
         </div>
       </aside>
@@ -383,11 +384,11 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
           <div className="crumb crumb--wizard"><PrefetchLink href="/sell">SELL</PrefetchLink> / {isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</div>
           <div className="page-head page-head--ruled">
             <h1 className="page-title">{isEdit ? 'Edit listing' : 'New listing'}</h1>
-            <span className="page-note">{headNote}</span>
+            <span className="page-note"><MetaLine parts={headNote} /></span>
           </div>
 
           {/* ── 01 PHOTOS ── */}
-          <SectionLabel right={`${filledCount} / 6 · FRONT + POSSESSION REQUIRED · DUPLICATE CHECK (PHASH) ON UPLOAD`}>01 — PHOTOS</SectionLabel>
+          <SectionLabel right={<MetaLine parts={[`${filledCount} / 6`, 'FRONT + POSSESSION REQUIRED', 'DUPLICATE CHECK (PHASH) ON UPLOAD']} />}>01 — PHOTOS</SectionLabel>
           <div className="slots" data-testid="sell-photo-grid">
             {PHOTO_SLOTS.map((slot) => {
               const url  = slotUrls[slot]
@@ -506,7 +507,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
           </div>
 
           {/* ── 03 MEASUREMENTS ── */}
-          <SectionLabel right="FLAT · INCHES — SHOWN ON THE LISTING">03 — MEASUREMENTS</SectionLabel>
+          <SectionLabel right={<MetaLine parts={['FLAT', 'INCHES — SHOWN ON THE LISTING']} />}>03 — MEASUREMENTS</SectionLabel>
           <div className="meas-grid">
             {measLabels.map((label) => (
               <div key={label}>

@@ -18,9 +18,7 @@ import AppShell from '@/app/components/app-shell'
 import GuestAction from '@/app/components/guest-action'
 import PrefetchLink from '@/app/components/prefetch-link'
 import JsonLd from '@/app/components/json-ld'
-import { ChatIcon } from '@/app/components/icons'
-import { ArrowLeft } from '@phosphor-icons/react/ssr'
-import { Fragment } from 'react'
+import { ArrowLeftIcon, ChatIcon } from '@/app/components/icons'
 import { breadcrumbJsonLd, metaDescription, productJsonLd, schemaImages } from '@/lib/seo-listing'
 
 interface PageProps {
@@ -97,7 +95,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
   const listedLine = d.listing.listed_line
   const measurements = d.listing.measurements
   const measLabels = d.listing.measurement_labels
-  const spec = d.listing.spec
   const trustLine = d.seller.trust_line
 
   return (
@@ -152,8 +149,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
               stack ordered like the mobile-web 05 mock (globals.css `.pdp` rules). */}
           <div className="pdp__left">
             <PrefetchLink className="pdp__crumb" href={crumbHref}>
-              <span className="pdp__crumb-full"><ArrowLeft size={12} aria-hidden="true" />SEARCH<span className="sep" aria-hidden="true" />{crumbParts.map((p) => p.toUpperCase()).join(' / ')}</span>
-              <span className="pdp__crumb-short"><ArrowLeft size={12} aria-hidden="true" />BACK TO RESULTS</span>
+              <span className="pdp__crumb-full"><ArrowLeftIcon size={12} />SEARCH<span className="sep" aria-hidden="true" />{crumbParts.map((p) => p.toUpperCase()).join(' / ')}</span>
+              <span className="pdp__crumb-short"><ArrowLeftIcon size={12} />BACK TO RESULTS</span>
             </PrefetchLink>
             <ListingGallery
               images={images}
@@ -172,13 +169,16 @@ export default async function ListingDetailPage({ params }: PageProps) {
           <div className="pdp__right">
             <div className="pdp__toprow">
               <span className="pdp__listed">{listedLine.split(' · ')[0]}</span>
-              <a className="pdp__legit-link" href="#lc-thread" title="Jumps to the legit check thread" data-testid="lc-chip">{initialTally.legit} LEGIT</a>
+              <a className="pdp__legit-link" href="#lc-thread" title="Jumps to the legit check thread" data-testid="lc-chip">{initialTally.legit} legit</a>
             </div>
             <div className="pdp__caption">
               <div className="pdp__caption-main">
                 <div className="pdp__brand">{listing.brand.toUpperCase()}</div>
                 <h1 className="pdp__title">{listing.title}</h1>
-                <div className="pdp__spec">{spec}</div>
+                <div className="pdp__spec">
+                  {listing.size && <span className="pdp__fact">{listing.size.toUpperCase()}</span>}
+                  {listing.color && <span className="pdp__fact">{listing.color.toUpperCase()}</span>}
+                </div>
               </div>
               {!isSeller && (
                 user
@@ -234,14 +234,14 @@ export default async function ListingDetailPage({ params }: PageProps) {
               </div>
               {canBuy ? (
                 user ? (
-                  <MessageSellerButton listingId={id} icon className="btn-ghost btn-ghost--icon" />
+                  <MessageSellerButton listingId={id} />
                 ) : (
-                  <GuestAction next={`/listings/${id}`} testId="message-guest" className="btn-ghost btn-ghost--icon">
-                    <ChatIcon size={16} />MESSAGE SELLER
+                  <GuestAction next={`/listings/${id}`} testId="message-guest" className="pdp__msg">
+                    <ChatIcon size={18} />Message seller
                   </GuestAction>
                 )
               ) : (
-                <button type="button" className="btn-ghost btn-ghost--icon" disabled><ChatIcon size={16} />MESSAGE SELLER</button>
+                <button type="button" className="pdp__msg" disabled><ChatIcon size={18} />Message seller</button>
               )}
               {isSeller && isActive && (
                 <div className="stack" style={{ gap: 6, paddingTop: 6 }}>
@@ -262,24 +262,32 @@ export default async function ListingDetailPage({ params }: PageProps) {
             </div>
             <div className="spacer" />
             <div className="pdp__seller">
-              <span className="pdp__seller-left">
-                <span className="seller-init seller-init--sm">{sellerInitials}</span>
-                <span>
-                  <PrefetchLink className="pdp__seller-handle" href={seller?.username ? `/sellers/${seller.username}` : '#'}>@{sellerHandle.toUpperCase()}</PrefetchLink>
-                  <span className="pdp__seller-meta">{trustLine.split(' · ').map((part, i) => <Fragment key={i}>{i > 0 && <span className="sep" aria-hidden="true" />}{part}</Fragment>)}</span>
+              {seller?.username ? (
+                <PrefetchLink className="pdp__seller-left" href={`/sellers/${seller.username}`} aria-label={`${sellerHandle} profile`}>
+                  <span className="seller-init seller-init--sm">{sellerInitials}</span>
+                  <span>
+                    <span className="pdp__seller-handle">@{sellerHandle.toUpperCase()}</span>
+                    <span className="pdp__seller-meta">{trustLine.split(' · ').map((part) => <span key={part}>{part}</span>)}</span>
+                  </span>
+                </PrefetchLink>
+              ) : (
+                <span className="pdp__seller-left">
+                  <span className="seller-init seller-init--sm">{sellerInitials}</span>
+                  <span>
+                    <span className="pdp__seller-handle">@{sellerHandle.toUpperCase()}</span>
+                    <span className="pdp__seller-meta">{trustLine.split(' · ').map((part) => <span key={part}>{part}</span>)}</span>
+                  </span>
                 </span>
-              </span>
+              )}
               <span className="pdp__seller-right">
-                {/* Mobile (05): MESSAGE sits in the seller row; the placard's MESSAGE SELLER hides ≤720px. */}
+                {/* Mobile (05): Message sits in the seller row; the placard text link hides ≤720px. */}
                 {canBuy && (
                   user
-                    ? <MessageSellerButton listingId={id} className="link-underline link-underline--ink pdp__seller-msg" label="MESSAGE" testId="message-seller-m" />
-                    : <GuestAction next={`/listings/${id}`} className="link-underline link-underline--ink pdp__seller-msg">MESSAGE</GuestAction>
+                    ? <MessageSellerButton listingId={id} className="link-underline link-underline--ink pdp__seller-msg" label="MESSAGE" testId="message-seller-m" iconSize={16} />
+                    : <GuestAction next={`/listings/${id}`} className="link-underline link-underline--ink pdp__seller-msg"><ChatIcon size={16} />MESSAGE</GuestAction>
                 )}
                 {FOLLOWS_ENABLED && !isSeller ? (
                   <FollowButton sellerId={listing.seller_id} initialFollowing={isFollowing} small guest={!user} />
-                ) : seller?.username ? (
-                  <PrefetchLink href={`/sellers/${seller.username}`} className="btn-follow btn-follow--sm">VIEW PROFILE</PrefetchLink>
                 ) : null}
               </span>
             </div>

@@ -7,12 +7,12 @@
  * Server components; forms passed as children may be client components.
  */
 import Link from 'next/link'
-import { BRAND_STAGE, BRAND_WORDMARK } from './brand'
+import { BRAND_WORDMARK } from './brand'
 import SiteFooter from './site-footer'
 
 export const ENTRY_TAGLINE = 'A quieter market for the things worth keeping.'
 export const ENTRY_POINTS: [string, string][] = [
-  ['01', 'FREE TO JOIN — OPEN ALPHA'],
+  ['01', 'FREE TO JOIN'],
   ['02', 'EVERY SALE IN ESCROW'],
   ['03', 'CONDITION GRADED 1–10'],
 ]
@@ -21,7 +21,6 @@ function Brand() {
   return (
     <span className="header__brand">
       <span className="header__logo">{BRAND_WORDMARK}</span>
-      <span className="header__alpha">{BRAND_STAGE}</span>
     </span>
   )
 }

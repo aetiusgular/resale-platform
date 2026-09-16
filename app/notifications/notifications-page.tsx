@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
+import MetaLine from '@/app/components/meta-line'
 import { presentNotification, timeAgoShort, type NotificationItem } from '@/app/components/notifications-popout'
 
 export default function NotificationsPage({ enabled, shippingLabelsEnabled }: { enabled: boolean; shippingLabelsEnabled: boolean }) {
@@ -77,7 +78,7 @@ export default function NotificationsPage({ enabled, shippingLabelsEnabled }: { 
                 <span className="nrow__body">
                   <span className="nrow__tag">{p.tag}</span>
                   <span className="nrow__text">{p.title}</span>
-                  {p.sub && <span className="nrow__sub">{p.sub}</span>}
+                  {p.sub.length > 0 && <span className="nrow__sub"><MetaLine parts={p.sub} /></span>}
                 </span>
                 <span className="nrow__time">{timeAgoShort(n.created_at)}</span>
               </div>

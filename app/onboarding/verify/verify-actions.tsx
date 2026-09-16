@@ -29,7 +29,7 @@ export default function VerifyActions({ enabled, verified, after = '/browse' }: 
         onClick={() => { if (enabled) window.location.href = '/api/idv/start' }}
         title={!enabled ? 'Coming in beta' : undefined}
       >
-        {enabled ? 'START VERIFICATION →' : 'START VERIFICATION · COMING IN BETA'}
+        {enabled ? 'START VERIFICATION →' : 'START VERIFICATION · COMING SOON'}
       </button>
       <button type="button" className="link-underline onb-cta__skip" onClick={() => router.push('/browse')} data-testid="verify-skip">
         VERIFY LATER — BROWSE →

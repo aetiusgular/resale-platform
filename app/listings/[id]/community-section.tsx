@@ -3,7 +3,7 @@
 /**
  * Legit Check thread (design 4A "lc-section").
  *
- * Strip: "[check] n LEGIT  [flag] n FLAGGED" (counts only; icons from components/icons).
+ * Head: "Legit check" plus tally as type ("n legit · n flagged"). Same jobs.
  * Comments carry the author's vote as a tag (LC LEGIT / LC FLAG), moderators are
  * tagged LC MOD, system rows AUTO-AUTH; the meta line is "AGREE n | FLAG | REPLY"
  * with hairline separators (.sep), not middots.
@@ -14,7 +14,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
-import { CheckThinIcon, FlagIcon } from '@/app/components/icons'
+import { Check } from '@phosphor-icons/react/ssr'
+import { FlagIcon } from '@/app/components/icons'
 
 type TierBadge = 'bronze' | 'silver' | 'gold'
 type CommentSource = 'human' | 'auto'
@@ -150,13 +151,10 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
 
   return (
     <section className="lc-section" id="lc-thread" aria-labelledby="lc-heading">
-      <h2 id="lc-heading" className="sr-only">The community weighs in.</h2>
-      <div className="lc-strip">
-        <span className="lc-strip__left">
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckThinIcon size={11} />{tally.legit} LEGIT</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><FlagIcon />{tally.flagged} FLAGGED</span>
-        </span>
-      </div>
+      <header className="lc-head">
+        <h2 id="lc-heading" className="lc-head__title">Legit check</h2>
+        <p className="lc-head__tally">{tally.legit} legit · {tally.flagged} flagged</p>
+      </header>
 
       {pinned.map((c) => (
         <PinnedCard key={c.id} comment={c} />
@@ -209,7 +207,7 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
           title="Cast a LEGIT vote with your comment"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
         >
-          <CheckThinIcon size={11} />LEGIT
+          <Check size={11} />LEGIT
         </button>
         <button
           type="button"
@@ -308,11 +306,11 @@ function CommentRowView({
         {parent && <div className="lc-comment__meta" style={{ marginTop: 4 }}>↳ {(parent.profiles?.username ?? 'SYSTEM').toUpperCase()}</div>}
         <Body comment={comment} />
         <div className="lc-comment__actions">
-          <button type="button" className={agreed ? 'is-on' : ''} onClick={onAgree} data-testid="agree-button" aria-pressed={agreed} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <CheckThinIcon size={10} />AGREE {agrees}
+          <button type="button" className={agreed ? 'is-on' : ''} onClick={onAgree} data-testid="agree-button" aria-pressed={agreed}>
+            <Check size={10} />AGREE {agrees}
           </button>
           <span className="sep" aria-hidden="true" />
-          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged}>
             <FlagIcon size={10} />{flagged ? 'FLAGGED' : 'FLAG'}
           </button>
           {comment.source !== 'auto' && (

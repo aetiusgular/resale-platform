@@ -101,6 +101,9 @@ export default async function RootLayout({
     <html
       lang="en"
       className={`${archivo.variable} ${plexMono.variable}`}
+      data-gallery="under-flush"
+      data-gallery-stage="contained"
+      data-gallery-thumbs="peek"
       suppressHydrationWarning
     >
       <head>

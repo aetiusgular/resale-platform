@@ -8,7 +8,7 @@
  * Ghost blocks use `.skeleton` (defined in globals.css).
  */
 import Link from 'next/link'
-import { BRAND_STAGE, BRAND_WORDMARK } from './brand'
+import { BRAND_WORDMARK } from './brand'
 import { SearchIcon } from './icons'
 
 export function Ghost({ style, className }: { style?: React.CSSProperties; className?: string }) {
@@ -21,7 +21,6 @@ export function SiteHeaderGhost() {
     <header className="header">
       <Link className="header__brand" href="/" title="Home">
         <span className="header__logo">{BRAND_WORDMARK}</span>
-        <span className="header__alpha">{BRAND_STAGE}</span>
       </Link>
       <form action="/browse" method="get" className="search" role="search">
         <SearchIcon />

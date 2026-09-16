@@ -78,6 +78,35 @@ const DIALS: Dial[] = [
    the viewport; controls and header stay open. */
 const COLLAPSED = ['light', 'dark', 'cards', 'type']
 
+const GALLERY = {
+  layout: {
+    type: 'select' as const,
+    default: 'under-flush',
+    options: [
+      { value: 'under-flush', label: 'Under · flush' },
+      { value: 'under-compact', label: 'Under · compact' },
+      { value: 'beside-rail', label: 'Beside · rail' },
+      { value: 'stage-only', label: 'Stage only' },
+    ],
+  },
+  stage: {
+    type: 'select' as const,
+    default: 'contained',
+    options: [
+      { value: 'contained', label: 'Contained' },
+      { value: 'taller', label: 'Taller' },
+    ],
+  },
+  thumbs: {
+    type: 'select' as const,
+    default: 'peek',
+    options: [
+      { value: 'peek', label: 'Peek' },
+      { value: 'wrap', label: 'Wrap' },
+    ],
+  },
+}
+
 function buildConfig(dials: Dial[]): DialConfig {
   const config: DialConfig = {}
   for (const d of dials) {
@@ -91,7 +120,10 @@ function buildConfig(dials: Dial[]): DialConfig {
   return config
 }
 
-const CONFIG = buildConfig(DIALS)
+const CONFIG = {
+  ...buildConfig(DIALS),
+  gallery: GALLERY,
+} as DialConfig
 
 /* The floating readout's own rules ride in the injected sheet, so globals.css stays untouched.
    It sits above the Next dev indicator, which also lives bottom left. */
@@ -167,6 +199,19 @@ export default function TunerPanel() {
     el.textContent = css
     document.head.append(el) // keeps it last; a CSS hot reload in dev appends after it otherwise
   }, [css])
+
+  useEffect(() => {
+    const gallery = values.gallery as { layout?: string; stage?: string; thumbs?: string } | undefined
+    const root = document.documentElement
+    root.dataset.gallery = gallery?.layout || 'under-flush'
+    root.dataset.galleryStage = gallery?.stage || 'contained'
+    root.dataset.galleryThumbs = gallery?.thumbs || 'peek'
+    return () => {
+      root.dataset.gallery = 'under-flush'
+      root.dataset.galleryStage = 'contained'
+      root.dataset.galleryThumbs = 'peek'
+    }
+  }, [values])
 
   /* Contrast readout, one line per theme, from the live token values. */
   const readout = useMemo(() => {

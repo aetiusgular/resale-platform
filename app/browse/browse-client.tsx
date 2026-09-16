@@ -30,10 +30,14 @@ import {
   trackClick, trackSave, trackUnsave,
 } from '@/lib/recs/telemetry'
 import ListingCard from '@/app/components/listing-card'
+import PrefetchLink from '@/app/components/prefetch-link'
 import SizesModal from '@/app/components/sizes-modal'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
-import { CheckIcon, FilterIcon, XIcon } from '@/app/components/icons'
-import { CaretDown } from '@phosphor-icons/react/ssr'
+import { FilterIcon, XIcon } from '@/app/components/icons'
+import { PROTO_BASE, PROTO_TOUR } from '@/app/proto/viewer-fixture'
+import { CaretDown, Check } from '@phosphor-icons/react/ssr'
+
+const SHOW_PROTO_TOUR_LINK = PROTO_TOUR || process.env.NODE_ENV === 'development'
 
 type Props = {
   initialListings: BrowseListing[]
@@ -658,7 +662,7 @@ export default function BrowseClient({
                         const on = i === sortIndex
                         return (
                           <button key={o.value} type="button" role="option" aria-selected={on} className={`sort-menu__opt${on ? ' is-on' : ''}`} onClick={() => { setSortMenuOpen(false); if (!on) updateFilter('sort', o.value) }} data-testid={`sort-option-${o.value}`}>
-                            <span className={`checkbox${on ? ' is-on' : ''}`}>{on && <CheckIcon size={9} />}</span>
+                            <span className={`checkbox${on ? ' is-on' : ''}`}>{on && <Check size={9} weight="bold" />}</span>
                             <span className="sort-menu__label">{o.label}</span>
                             <span className="sort-menu__hint">{o.hint}</span>
                           </button>
@@ -699,6 +703,14 @@ export default function BrowseClient({
                 <button type="button" className="link-underline link-underline--ink" onClick={followSearch} disabled={followPending}>
                   {followedMsg || 'SAVE THIS SEARCH →'}
                 </button>
+                {SHOW_PROTO_TOUR_LINK && (
+                  <>
+                    <span aria-hidden="true">{' · '}</span>
+                    <PrefetchLink href={PROTO_BASE} className="link-underline link-underline--ink" data-testid="open-prototype">
+                      OPEN PROTOTYPE
+                    </PrefetchLink>
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -803,7 +815,7 @@ export default function BrowseClient({
               return (
                 <button key={o.value} type="button" className="sheet-row" onClick={() => pickSort(o.value)} aria-pressed={on}>
                   <span className="sheet-row__left">
-                    <span className={`checkbox${on ? ' is-on' : ''}`}>{on && <CheckIcon size={9} />}</span>
+                    <span className={`checkbox${on ? ' is-on' : ''}`}>{on && <Check size={9} weight="bold" />}</span>
                     <span className={`sheet-row__label${on ? ' is-on' : ''}`}>{o.label}</span>
                   </span>
                   <span className="sheet-row__hint">{o.hint}</span>
