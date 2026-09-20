@@ -4,6 +4,7 @@
  */
 import Link from 'next/link'
 import { Ghost } from '@/app/components/skeletons'
+import { ArrowLeftIcon } from '@/app/components/icons'
 
 export default function Loading() {
   return (
@@ -25,7 +26,7 @@ export default function Loading() {
         </aside>
         <div className="thread">
           <div className="thread__bar">
-            <Link href="/messages" className="thread__back" aria-label="Back to inbox">←</Link>
+            <Link href="/messages" className="thread__back" aria-label="Back to inbox"><ArrowLeftIcon size={14} /></Link>
             <Ghost style={{ width: 28, height: 28, flexShrink: 0 }} />
             <Ghost style={{ height: 12, width: 110 }} />
             <span className="spacer" />

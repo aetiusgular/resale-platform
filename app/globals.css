@@ -29,8 +29,37 @@
 
   --content-max: 1280px;
   --gutter: 28px;
+  /* --gutter is the shell edge (header, footer, rail-flanked pages); --gutter-page
+     is the wider inset for rail-less content pages (saved, messages, sell,
+     settings). Both collapse to --gutter-m below 720px. */
+  --gutter-page: 48px;
+  --gutter-m: 16px;
+  --page-top: 26px;
+  --page-bottom: 72px;
+  /* Tabbed page chrome — sell, saved and the messages inbox share one rhythm:
+     the head block's gap to the tab row, and the tab row's offset below it. */
+  --page-head-pb: 6px;
+  --tabs-top: 30px;
+  /* Messages inbox column. 448 = 352px of row content inside --gutter-page. */
+  --msgs-col: 448px;
   --radius: 0px;
   --control-h: 44px;
+  /* An icon sitting next to its label (Message seller). */
+  --icon-label-gap: 8px;
+
+  /* Listing gallery (W3 side-rail). The 3:4 stage is never taller than --pdp-stage-h. The thumb
+     strip moved to a vertical rail beside the photo, so it no longer eats vertical budget: 82% of
+     the viewport height, 780px at most, and never more than the viewport minus the 150px around it
+     (header 64 + top pad 16 + back row 44 + margin). --pdp-col is the matching 3:4 width cap for
+     the stage column. The svh override below keeps mobile browser chrome out of it. */
+  --pdp-stage-h: min(82vh, 780px, calc(100vh - 150px));
+  --pdp-col: calc(var(--pdp-stage-h) * 0.75);
+  --pdp-thumb-strip: 72px;
+  --pdp-thumb-gap: 6px;
+  --pdp-gallery-gap: 12px;
+  /* "more lots" rail: card gap, and cards per view — the fraction is the scroll cue. */
+  --lot-rail-gap: 16px;
+  --lot-rail-show: 3.2;
 
   --bg: #f5f5f3;
   --ink: #161616;
@@ -73,6 +102,12 @@
   --shadow-1: none;
 
   color-scheme: light;
+}
+
+/* Small-viewport units where they exist: 70vh on a phone counts the space behind the browser's
+   collapsing toolbar, svh does not — and unlike dvh it never resizes the stage mid-scroll. */
+@supports (height: 1svh) {
+  :root { --pdp-stage-h: min(82svh, 780px, calc(100svh - 150px)); }
 }
 
 [data-theme='dark'] {
@@ -174,7 +209,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .header__divider { width: 1px; height: 18px; background: var(--line); }
 /* Inline hairline separator: the cleaner treatment for what used to be middots. Flex parents with a gap zero the margin. */
 .sep { display: inline-block; width: 1px; height: 0.9em; background: var(--line-mid); margin: 0 8px; vertical-align: -0.1em; flex-shrink: 0; }
-.dock__btn .sep, .lc-comment__actions .sep, .pdp__crumb .sep, .lc-strip__left .sep { margin: 0; }
+.dock__btn .sep, .lc-comment__actions .sep { margin: 0; }
 .search { flex: 1; max-width: 440px; margin: 0 auto; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line-mid); padding: 7px 2px; }
 .search > svg { color: var(--sub); flex-shrink: 0; }
 .search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; font: 300 14px var(--font-sans); line-height: 15px; color: var(--ink); padding: 7px 0 22px; margin: -7px 0 -22px; }
@@ -189,7 +224,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .page-head--ruled { border-bottom: 1px solid var(--ink); padding-bottom: 14px; }
 .page-title { font-size: 30px; font-weight: 300; line-height: 1; letter-spacing: -0.01em; }
 .page-title--sm { font-size: 26px; }
-.page-note { font: 300 9px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); white-space: nowrap; }
+.page-note { font: 300 11px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); white-space: nowrap; }
 .page-note--alert { font: 400 11px var(--font-mono); color: var(--alert); }
 .crumb { font: 400 9px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); padding-bottom: 10px; }
 .crumb a { text-decoration: underline; text-underline-offset: 3px; }
@@ -202,6 +237,20 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .link-underline--sm { font-size: 8px; letter-spacing: 0.12em; }
 .link-btn { font-size: 10px; letter-spacing: 0.15em; font-weight: 500; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; white-space: nowrap; }
 .link-btn:hover { color: var(--sub); }
+/* Inline arrow link: the label carries the underline so the rule never runs under
+   the glyph, and the arrow leans on hover. ArrowLeft/Right move between screens
+   (Back, View, Continue); chevrons step through a set in place. */
+.link-arrow { position: relative; display: inline-flex; align-items: center; gap: 7px; font: 400 11px var(--font-mono); letter-spacing: 0.08em; color: var(--sub); white-space: nowrap; background: transparent; }
+.link-arrow::before { content: ''; position: absolute; inset: -14px -5px; }
+.link-arrow__label { text-decoration: underline; text-underline-offset: 3px; }
+.link-arrow svg { flex-shrink: 0; transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1); }
+.link-arrow:hover { color: var(--ink); opacity: 1; }
+.link-arrow:hover svg { transform: translateX(2px); }
+.link-arrow--back:hover svg { transform: translateX(-2px); }
+.link-arrow--ink { color: var(--ink); }
+.link-arrow--ink:hover { color: var(--sub); }
+.link-arrow:disabled { color: var(--faint); cursor: default; }
+.link-arrow:disabled svg { transform: none; }
 .tag { font: 400 10px var(--font-mono); letter-spacing: 0.12em; border: 1px solid var(--line-mid); color: var(--sub); padding: 2px 5px; white-space: nowrap; flex-shrink: 0; }
 .tag--solid, .tag--ink { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
 .btn-primary { display: block; width: 100%; margin-top: 14px; background: var(--ink); color: var(--on-ink); border: 1px solid var(--ink); padding: 12px 0; font: 400 11px var(--font-mono); letter-spacing: 0.2em; text-align: center; }
@@ -210,7 +259,6 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .btn-ink { display: block; width: 100%; background: transparent; color: var(--ink); border: 1px solid var(--ink); padding: 12px 0; font: 400 11px var(--font-mono); letter-spacing: 0.2em; text-align: center; }
 .btn-ghost { display: block; width: 100%; background: transparent; color: var(--ink); border: 1px solid var(--line-mid); padding: 11px 0; font: 400 11px var(--font-mono); letter-spacing: 0.16em; text-align: center; }
 .btn-ghost:hover { border-color: var(--ink); }
-.btn-ghost--icon { display: flex; align-items: center; justify-content: center; gap: 9px; font-size: 11px; }
 .btn-ghost--inline { display: inline-block; width: auto; padding: 10px 18px; letter-spacing: 0.14em; }
 /* AAA 2.5.5: controls are at least --control-h tall; flex keeps the label centred. */
 .btn-primary, .btn-ink, .btn-ghost { min-height: var(--control-h); display: flex; align-items: center; justify-content: center; }
@@ -238,13 +286,14 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .or-rule em { font: 400 8px var(--font-mono); letter-spacing: 0.18em; color: var(--faint); font-style: normal; }
 .legal-line { font: 300 8px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); line-height: 1.7; padding-top: 14px; }
 .legal-line a { color: var(--sub); text-decoration: underline; text-underline-offset: 2px; }
-.tabs-line { display: flex; gap: 28px; align-items: baseline; border-bottom: 1px solid var(--line); margin-top: 30px; }
+/* One tab row for every tabbed page: sell, saved and the messages inbox. */
+.tabs-line, .msgs__filters { display: flex; gap: 28px; align-items: baseline; border-bottom: 1px solid var(--line); margin-top: var(--tabs-top); }
 .tabs-line--tight { margin-top: 18px; gap: 22px; }
-.tabs-line__sort { padding-bottom: 10px; letter-spacing: 0.12em; font-size: 9px; }
-.tab-mono { padding: 0 0 10px; margin-bottom: -1px; border-bottom: 1px solid transparent; font: 300 10px var(--font-mono); letter-spacing: 0.14em; color: var(--sub); white-space: nowrap; }
+.tabs-line__sort { padding-bottom: 10px; letter-spacing: 0.12em; font-size: 11px; }
+.tab-mono { padding: 0 0 10px; margin-bottom: -1px; border-bottom: 1px solid transparent; font: 300 11px var(--font-mono); letter-spacing: 0.14em; color: var(--sub); white-space: nowrap; }
 .tab-mono:hover { color: var(--ink); }
 .tab-mono.is-active { font-weight: 400; color: var(--ink); border-bottom-color: var(--ink); }
-.tab-mono--sm { font-size: 9px; padding-bottom: 9px; }
+.tab-mono--sm { padding-bottom: 9px; }
 .seller-init { width: 40px; height: 40px; flex-shrink: 0; background: var(--ink); color: var(--on-ink); display: flex; align-items: center; justify-content: center; font: 400 12px var(--font-mono); }
 .seller-init--sm { width: 22px; height: 22px; font-size: 9px; display: inline-flex; }
 
@@ -355,9 +404,12 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .card__slot { position: absolute; bottom: 8px; right: 10px; font: 400 8px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); }
 .card__sold { position: absolute; inset: 0; background: var(--sold-scrim); display: flex; align-items: center; justify-content: center; }
 .card__sold span { border: 1px solid var(--ink); color: var(--ink); font: 400 11px var(--font-mono); letter-spacing: 0.3em; padding: 7px 14px 7px 18px; }
-.card__unsave { position: absolute; top: 8px; right: 8px; background: var(--badge-bg); border: 1px solid var(--line); padding: 6px; line-height: 0; color: var(--ink); }
-.card__unsave:hover { border-color: var(--ink); }
-.flag--tag + .card__unsave, .card__media .flag--tag ~ .card__unsave { top: 8px; }
+/* Reveals on card hover / keyboard focus — nine bordered boxes on the saved grid
+   were reading as layout. The translucent panel only appears with the glyph. */
+.card__unsave { position: absolute; top: 0; right: 0; isolation: isolate; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; padding: 0; line-height: 0; color: var(--sub); opacity: 0; transition: opacity 0.15s ease, color 0.15s ease; }
+.card__unsave::before { content: ''; position: absolute; inset: 8px; background: var(--badge-bg); z-index: -1; }
+.card:hover .card__unsave, .card__unsave:focus-visible { opacity: 1; }
+.card__unsave:hover { color: var(--ink); }
 .card__row1 { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 10px; }
 .card__meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .card__brand { flex: 1; min-width: 0; font-size: 12px; font-weight: 500; letter-spacing: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -423,13 +475,13 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .auth-guest-link .link-underline { font-size: 9px; letter-spacing: 0.14em; }
 
 /* ---- saved ---- */
-.saved-main { padding: 26px 48px 72px; }
+.saved-main { padding: var(--page-top) var(--gutter-page) var(--page-bottom); }
 .saved-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 30px 18px; padding-top: 24px; }
 .saved-grid .card__brand { font-size: 10px; }
 .saved-grid .card__title { font-size: 12px; }
 .saved-grid .card__price { font-size: 12px; }
 .rows-wrap { max-width: 880px; padding-top: 8px; }
-.rows-note { font: 300 9px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding-top: 14px; }
+.rows-note { font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding-top: 14px; }
 .row-line { display: flex; align-items: center; gap: 22px; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .row-line--seller { gap: 16px; padding: 15px 0; }
 .row-line__main { flex: 1; min-width: 0; }
@@ -443,48 +495,65 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .alerts-toggle__label { font: 400 9px var(--font-mono); letter-spacing: 0.12em; color: var(--sub); }
 
 /* ---- messages ---- */
+/* The split stays full-bleed, but both columns are inset by --gutter-page, so
+   the inbox and the thread line up with the sell / saved page chrome. */
 .msgs { display: flex; height: calc(100vh - 64px); min-height: 560px; }
-.msgs__list { width: 400px; flex-shrink: 0; border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
-.msgs__head { display: flex; justify-content: space-between; align-items: flex-end; padding: 20px 24px 0; }
-.msgs__filters { display: flex; gap: 22px; align-items: baseline; border-bottom: 1px solid var(--line); padding: 0 24px; margin-top: 16px; }
+.msgs__list { width: var(--msgs-col); flex-shrink: 0; border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.msgs__head { display: flex; justify-content: space-between; align-items: flex-end; padding: var(--page-top) var(--gutter-page) var(--page-head-pb); }
+.msgs__filters { padding: 0 var(--gutter-page); }
 .msgs__scroll { flex: 1; overflow: auto; min-height: 0; }
-.conv { display: flex; gap: 12px; width: 100%; padding: 14px 24px 14px 22px; border-bottom: 1px solid var(--line); border-left: 2px solid transparent; text-align: left; }
+/* left padding absorbs the 2px active rail so both edges land on --gutter-page */
+.conv { display: flex; gap: 12px; width: 100%; padding: 14px var(--gutter-page) 14px calc(var(--gutter-page) - 2px); border-bottom: 1px solid var(--line); border-left: 2px solid transparent; text-align: left; transition: background-color 0.16s ease; }
+.conv:hover { background: var(--hover); }
+.conv:focus-visible { outline: 1px solid var(--ink); outline-offset: -2px; }
 .conv.is-active { background: var(--hover); border-left-color: var(--ink); }
 .conv__thumb { width: 40px; height: 52px; flex-shrink: 0; border: 1px solid var(--line); }
 .conv__body { flex: 1; min-width: 0; display: block; }
 .conv__top { display: flex; align-items: center; gap: 8px; }
 .conv__handle { font-size: 12px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.conv__top .tag { font-size: 7px; padding: 2px 4px; }
+.conv__top .tag { font-size: 10px; padding: 2px 4px; }
 .conv__preview { display: block; font-size: 12px; font-weight: 300; color: var(--sub); padding-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .conv__preview.is-unread { font-weight: 400; color: var(--ink); }
-.conv__listing { display: block; font: 300 8px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.conv__side { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex-shrink: 0; }
-.conv__time { font: 300 8px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); }
-.conv__badge { background: var(--ink); color: var(--on-ink); font: 400 8px var(--font-mono); padding: 1px 5px; }
+.conv__listing { display: block; font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv__side { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex-shrink: 0; margin-inline-start: auto; }
+.conv__time { font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); }
+.conv__badge { background: var(--ink); color: var(--on-ink); font: 400 10px var(--font-mono); padding: 1px 5px; }
+.conv__mark { width: 7px; height: 7px; background: var(--ink); flex-shrink: 0; margin-inline-start: 8px; align-self: center; }
+.msgs--inbox { display: block; height: auto; min-height: 0; }
+.msgs--inbox .msgs__list { width: min(100%, var(--msgs-col)); border-right: none; }
 .thread { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
-.thread__bar { display: flex; align-items: center; gap: 12px; padding: 15px 28px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.thread__bar { display: flex; align-items: center; gap: 12px; padding: 15px var(--gutter-page) 8px; flex-shrink: 0; }
 .thread__avatar { width: 30px; height: 30px; background: var(--ink); color: var(--on-ink); display: flex; align-items: center; justify-content: center; font: 400 10px var(--font-mono); flex-shrink: 0; }
 .thread__handle { font-size: 13px; font-weight: 400; white-space: nowrap; }
-.thread__meta { font: 300 8px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.listing-strip { display: flex; align-items: center; gap: 14px; padding: 11px 28px; border-bottom: 1px solid var(--line); background: var(--hover); flex-shrink: 0; }
+.thread__meta { font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.listing-strip { display: flex; align-items: center; gap: 14px; padding: 4px var(--gutter-page) 14px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
 .listing-strip__thumb { width: 34px; height: 44px; border: 1px solid var(--line); flex-shrink: 0; }
 .listing-strip__main { flex: 1; min-width: 0; }
 .listing-strip__row { display: flex; align-items: baseline; gap: 10px; }
 .listing-strip__brand { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; white-space: nowrap; }
 .listing-strip__title { font-size: 12px; font-weight: 300; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.listing-strip__role { font: 300 8px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); padding-top: 4px; }
+.listing-strip__role { font: 300 11px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); padding-top: 4px; }
 .listing-strip__size { font: 300 9px var(--font-mono); letter-spacing: 0.1em; color: var(--sub); white-space: nowrap; }
 .listing-strip__price { font: 400 12px var(--font-mono); white-space: nowrap; }
-.thread__scroll { flex: 1; overflow: auto; min-height: 0; padding: 20px 28px; display: flex; flex-direction: column; gap: 14px; }
-.day-line { text-align: center; font: 300 8px var(--font-mono); letter-spacing: 0.18em; color: var(--faint); padding: 4px 0; }
-.sys-line { align-self: center; border: 1px solid var(--line); color: var(--sub); font: 400 8px var(--font-mono); letter-spacing: 0.12em; padding: 5px 9px; text-align: center; max-width: 80%; }
+.listing-strip__main > .listing-strip__price { display: block; padding-top: 4px; }
+.thread__scroll { flex: 1; overflow: auto; min-height: 0; padding: 20px var(--gutter-page); display: flex; flex-direction: column; gap: 14px; }
+.offer-line { align-self: flex-start; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; max-width: 100%; font: 400 11px var(--font-mono); letter-spacing: 0.04em; color: var(--ink); padding: 2px 0; }
+.offer-line--mine { align-self: flex-end; }
+.offer-line__label { color: var(--sub); }
+.offer-line__amt { font-size: 13px; }
+.offer-line__state { color: var(--faint); }
+.offer-line__actions { display: inline-flex; gap: 12px; }
+.offer-line__actions button { font: 400 11px var(--font-mono); color: var(--sub); text-decoration: underline; text-underline-offset: 3px; transition: color 0.16s ease; }
+.offer-line__actions button:hover { color: var(--ink); }
+.day-line { text-align: center; font: 300 11px var(--font-mono); letter-spacing: 0.18em; color: var(--faint); padding: 4px 0; }
+.sys-line { align-self: center; border: 1px solid var(--line); color: var(--sub); font: 400 11px var(--font-mono); letter-spacing: 0.12em; padding: 5px 9px; text-align: center; max-width: 80%; }
 .bubble-wrap { max-width: 55%; }
 .bubble-wrap--them { align-self: flex-start; }
 .bubble-wrap--me { align-self: flex-end; }
 .bubble { padding: 10px 13px; font-size: 13px; font-weight: 300; line-height: 1.55; }
 .bubble--them { border: 1px solid var(--line-mid); }
 .bubble--me { background: var(--ink); color: var(--on-ink); }
-.bubble__time { font: 300 8px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding-top: 5px; }
+.bubble__time { font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding-top: 5px; }
 .bubble__time--right { text-align: right; }
 .offer-card { align-self: flex-start; width: 320px; max-width: 100%; border: 1px solid var(--ink); padding: 14px 16px; margin-bottom: 14px; }
 .offer-card:last-child { margin-bottom: 0; }
@@ -499,10 +568,25 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .offer-card__actions { display: flex; gap: 8px; padding-top: 14px; }
 .offer-card__actions .btn-mini { font-size: 9px; padding: 9px 14px; }
 .offer-card__go { padding-top: 12px; }
-.thread__composer { display: flex; align-items: center; gap: 14px; border-top: 1px solid var(--line); padding: 14px 28px; flex-shrink: 0; }
+.thread__composer { display: flex; align-items: flex-end; gap: 12px; border-top: 1px solid var(--line); padding: 14px var(--gutter-page); flex-shrink: 0; }
 .thread__composer input { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px solid var(--line-mid); outline: none; font: 300 13px var(--font-sans); color: var(--ink); padding: 7px 2px; }
 .thread__composer input:focus { border-bottom-color: var(--ink); }
-.btn-send { background: var(--ink); color: var(--on-ink); border: 1px solid var(--ink); padding: 10px 16px; font: 400 9px var(--font-mono); letter-spacing: 0.14em; white-space: nowrap; }
+.btn-send { background: var(--ink); color: var(--on-ink); border: 1px solid var(--ink); min-height: var(--control-h); padding: 0 18px; font: 400 11px var(--font-mono); letter-spacing: 0.14em; white-space: nowrap; }
+
+/* Compose: one underline for the field, a bare attach glyph, one filled SEND.
+   No surrounding box — the hairline above the row is the only chrome it needs. */
+.compose__field { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.compose__input { width: 100%; box-sizing: border-box; resize: none; overflow-y: auto; max-height: 132px; background: transparent; border: none; border-bottom: 1px solid var(--line-mid); outline: none; font: 300 13px/1.55 var(--font-sans); color: var(--ink); padding: 10px 2px; transition: border-color 0.14s ease; }
+.compose__input:focus { border-bottom-color: var(--ink); }
+.compose__input:focus-visible { outline: none; }
+.compose__attached { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 0; }
+.compose__chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-mid); padding: 4px 6px 4px 8px; font: 300 11px var(--font-mono); letter-spacing: 0.06em; color: var(--sub); }
+.compose__chip-thumb { width: 18px; height: 18px; flex-shrink: 0; }
+.compose__chip-rm { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; color: var(--faint); transition: color 0.14s ease; }
+.compose__chip-rm:hover { color: var(--ink); }
+.compose__attach { display: inline-flex; align-items: center; justify-content: center; width: var(--control-h); height: var(--control-h); flex-shrink: 0; background: transparent; border: none; color: var(--sub); transition: color 0.14s ease; }
+.compose__attach:hover { color: var(--ink); }
+.compose__hint { font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding: 8px 0 0; }
 
 /* ---- notifications popout ---- */
 .notif-overlay { position: fixed; inset: 0; z-index: 55; }
@@ -558,100 +642,287 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .acct-signout { font: 300 14px var(--font-sans); color: var(--sub); text-align: left; background: transparent; padding: 0; }
 .acct-signout:hover { color: var(--ink); }
 
-/* ---- listing detail (4A) ---- */
-.pdp { display: flex; align-items: stretch; max-width: 1180px; margin: 0 auto; }
-.pdp__left { flex: 1.15; border-right: 1px solid var(--line); padding: 22px 32px 32px 28px; min-width: 0; }
-.pdp__crumb { display: block; font: 300 11px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); padding-bottom: 14px; }
-.pdp__crumb:hover { color: var(--ink); opacity: 1; }
-/* One width for the stage and the thumbnail strip so the carousel aligns with the main image:
-   the 3:4 stage fits the viewport height (capped at 600px tall) and never exceeds the column minus the arrows. */
-.pdp__left { --pdp-stage-w: min(calc(min(calc(100vh - 300px), 600px) * 0.75), calc(100% - 80px)); }
-.pdp-gallery { display: flex; align-items: center; justify-content: center; gap: 14px; }
-.pdp-arrow { width: 26px; height: 26px; flex-shrink: 0; border: 1px solid var(--line-mid); background: var(--bg); color: var(--ink); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.pdp-arrow:hover { border-color: var(--ink); }
-.pdp-stage { width: var(--pdp-stage-w); height: auto; flex-shrink: 0; aspect-ratio: 3 / 4; border: 1px solid var(--line); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+/* ---- listing detail ---- */
+/* The gallery column HUGS its content (rail + 3:4 stage) instead of flex-growing, and the block is
+   centered. Otherwise, because the 3:4 image is height-capped, a wide/short viewport would grow the
+   column past the image and open an ever-larger void between the photo and the placard. Now the
+   middle gutter stays constant (the columns' padding) at any aspect ratio; the image shrinks to fit
+   when width-constrained (the stage cell is minmax(0,--pdp-col)). */
+.pdp { display: flex; align-items: stretch; justify-content: center; max-width: 1180px; margin: 0 auto; }
+.pdp__left { flex: 0 1 auto; padding: 16px 32px 32px 28px; min-width: 0; }
+/* History-aware back link (listing-back.tsx): arrow + "Back" in a 44px target. */
+.pdp__back { display: inline-flex; align-items: center; gap: 6px; min-height: var(--control-h); font: 400 11px var(--font-sans); color: var(--sub); padding: 0 0 8px; background: transparent; text-decoration: none; }
+.pdp__back:hover { color: var(--ink); }
+.pdp__back svg { display: block; }
+/* Gallery (W3 side-rail) = a two-column grid: a vertical thumbnail rail, then the 3:4 stage that
+   fills the rest of the column (capped at --pdp-col). Prev/next chevrons overlay the stage and are
+   revealed only on hover/focus (see .pdp-arrow). The rail aligns to the stage top. ≤960px this
+   whole block is overridden into the mobile swipe stage. */
+.pdp-gallery {
+  display: grid;
+  grid-template-areas: "thumbs stage";
+  grid-template-columns: var(--pdp-rail, 76px) minmax(0, var(--pdp-col));
+  column-gap: 14px;
+  row-gap: 0;
+  width: 100%;
+  align-items: start;
+  justify-content: start;
+}
+/* Prev/next overlay the photo (they live inside .pdp-stage) and are revealed only on hover of the
+   stage, or when focused for keyboard. Hidden = not clickable (pointer-events:none), so a click on
+   a resting image opens the viewer instead of paging. */
+.pdp-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 28px; height: 28px; border: 1px solid var(--line-mid); background: var(--bg); color: var(--ink); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.16s ease, border-color 0.16s ease, background-color 0.16s ease; }
+/* 28px box, 44px+ target */
+.pdp-arrow::before { content: ''; position: absolute; inset: -8px; }
+.pdp-arrow--l { left: 12px; }
+.pdp-arrow--r { right: 12px; }
+.pdp-stage:hover .pdp-arrow, .pdp-arrow:focus-visible { opacity: 1; pointer-events: auto; }
+.pdp-arrow:hover { border-color: var(--ink); background: var(--hover); }
+.pdp-stage { grid-area: stage; width: 100%; height: auto; max-height: var(--pdp-stage-h); aspect-ratio: 3 / 4; border: none; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .pdp-stage__track { position: absolute; inset: 0; }
 .pdp-stage__slide { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; }
 .pdp-stage__slide.is-current { display: flex; }
 .pdp-stage__slide img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.pdp-stage__label { font: 300 12px var(--font-mono); letter-spacing: 0.24em; color: var(--faint); }
-/* mobile-only stage furniture (05): save bookmark top-right, dots bottom */
-.pdp-stage__save { display: none; position: absolute; top: 10px; right: 10px; line-height: 0; }
-.pdp-stage__save .btn-square { width: 29px; height: 29px; background: var(--bg); border-color: var(--line); }
-.pdp-stage__dots { display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); gap: 5px; }
+/* ≤960px stage furniture: save bookmark top-right — a borderless 44px target. Like the counter it
+   sits ON the photo, so the glyph rides a 32px --bg plate (::before) instead of bare pixels. */
+.pdp-stage__save { display: none; position: absolute; top: 6px; right: 6px; line-height: 0; }
+.pdp-stage__save .btn-square { position: relative; isolation: isolate; width: 44px; height: 44px; background: transparent; border: none; color: var(--sub); transition: color 0.16s ease; }
+.pdp-stage__save .btn-square::before { content: ''; position: absolute; inset: 6px; background: var(--bg); z-index: -1; }
+/* Position dots — the swipe indicator, shown only ≤960px (the desktop gallery uses the thumb strip). */
+.pdp-stage__dots { display: none; position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); gap: 5px; }
 .pdp-stage__dot { width: 5px; height: 5px; background: var(--line-mid); }
 .pdp-stage__dot.is-on { background: var(--ink); }
-.pdp-stage__arrow { position: absolute; top: 50%; transform: translateY(-50%); font: 300 22px var(--font-mono); color: var(--sub); padding: 8px 14px; line-height: 1; }
-.pdp-stage__arrow:hover { color: var(--ink); }
-.pdp-stage__arrow--l { left: 4px; }
-.pdp-stage__arrow--r { right: 4px; }
-.pdp-stage__count { position: absolute; bottom: 10px; right: 12px; font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--sub); }
-.pdp-thumbs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding-top: 10px; width: var(--pdp-stage-w); margin-left: auto; margin-right: auto; }
-.pdp-thumb { text-align: center; padding: 0; }
-.pdp-thumb__img { display: block; aspect-ratio: 3 / 4; border: 1px solid var(--line); }
-.pdp-thumb.is-active .pdp-thumb__img { border-color: var(--ink); }
-.pdp-thumb__label { display: block; font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); padding-top: 5px; }
-.pdp-thumb.is-active .pdp-thumb__label { font-weight: 400; color: var(--ink); }
-.pdp-meas { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
-.pdp-meas__head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; }
-.pdp-meas__title { font: 500 11px var(--font-mono); letter-spacing: 0.16em; color: var(--sub); }
-.unit-toggle { display: inline-flex; border: 1px solid var(--line-mid); }
-.unit-toggle button { font: 300 9px var(--font-mono); letter-spacing: 0.12em; padding: 3px 9px; color: var(--sub); }
-.unit-toggle button.is-on { background: var(--ink); color: var(--on-ink); font-weight: 400; }
+.pdp-stage__save .btn-square:hover, .pdp-stage__save .btn-square.is-on { color: var(--ink); border: none; }
+/* The counter sits ON the photo, so it carries its own --bg backing: token-coloured type straight
+   over an image disappears whenever the photo matches it (light photo in dark theme, and vice versa). */
+.pdp-stage__count { position: absolute; bottom: 10px; right: 12px; background: var(--bg); padding: 3px 6px; font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--sub); }
+/* Legit-check badge over the photo, top-left (B2). --bg chip so it reads over any image; hidden <=960 where the counter takes that corner. */
+.pdp-stage__legit { position: absolute; top: 10px; left: 12px; line-height: 0; }
+/* Thumb rail (W3): a vertical column of 3:4 crops to the LEFT of the stage, aligned to its top and
+   never taller than the photo — beyond ~8 it scrolls inside that height. The current slot carries
+   the 2px ink underline. */
+.pdp-thumbs {
+  grid-area: thumbs;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: var(--pdp-thumb-gap);
+  width: var(--pdp-rail, 76px);
+  max-height: var(--pdp-stage-h);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
+  scrollbar-width: none;
+}
+.pdp-thumbs::-webkit-scrollbar { display: none; }
+.pdp-thumb { position: relative; text-align: center; padding: 0; flex: 0 0 auto; width: 100%; min-width: 0; background: transparent; scroll-snap-align: start; }
+.pdp-thumb__img { display: block; width: 100%; height: 96px; overflow: hidden; outline: 1px solid transparent; outline-offset: 0; transition: outline-color 0.16s ease; }
+.pdp-thumb:hover .pdp-thumb__img { outline-color: var(--line-hover); }
+.pdp-thumb:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
+.pdp-thumb__img img { width: 100%; height: 100%; object-fit: cover; }
+.pdp-thumb.is-active .pdp-thumb__img { outline-color: transparent; }
+.pdp-thumb.is-active::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ink); }
+
+/* Full-screen photo viewer (listing-gallery Lightbox) — a flat --bg takeover, the
+   same full-bleed pattern as the mobile filter sheet, portalled to <body>. Controls
+   are hairline 44px chips on --bg so they read over any photo; the image is contained. */
+.pdp-lightbox { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 72px; }
+.pdp-lightbox__stage { max-width: 100%; max-height: 100%; display: flex; align-items: center; justify-content: center; }
+.pdp-lightbox__stage img { max-width: 100%; max-height: calc(100vh - 144px); max-height: calc(100dvh - 144px); object-fit: contain; display: block; }
+.pdp-lightbox__blank { display: block; aspect-ratio: 3 / 4; height: calc(100vh - 144px); height: calc(100dvh - 144px); max-width: 100%; }
+.pdp-lightbox__close { position: fixed; top: 16px; right: 16px; width: var(--control-h); height: var(--control-h); display: flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--line-mid); color: var(--ink); transition: border-color 0.16s ease, background-color 0.16s ease; }
+.pdp-lightbox__close:hover { border-color: var(--ink); background: var(--hover); }
+.pdp-lightbox__arrow { position: fixed; top: 50%; transform: translateY(-50%); width: var(--control-h); height: var(--control-h); display: flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--line-mid); color: var(--ink); transition: border-color 0.16s ease, background-color 0.16s ease; }
+.pdp-lightbox__arrow:hover { border-color: var(--ink); background: var(--hover); }
+.pdp-lightbox__arrow--l { left: 16px; }
+.pdp-lightbox__arrow--r { right: 16px; }
+.pdp-lightbox__count { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--sub); }
+@media (max-width: 720px) {
+  .pdp-lightbox { padding: 56px 12px 72px; }
+  .pdp-lightbox__stage img { max-height: calc(100dvh - 128px); }
+  /* Thumb-reachable: arrows drop to the bottom corners, the counter sits between them. */
+  .pdp-lightbox__arrow { top: auto; bottom: 12px; transform: none; }
+  .pdp-lightbox__arrow--l { left: 12px; }
+  .pdp-lightbox__arrow--r { right: 12px; }
+  .pdp-lightbox__count { bottom: 26px; }
+}
+.pdp-meas { margin-top: 16px; padding-top: 12px; }
+.pdp-meas__head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; }
+.pdp-meas__title { display: inline-flex; align-items: center; gap: 6px; font: 400 13px var(--font-sans); letter-spacing: 0; color: var(--sub); }
+/* "?" — 18px glyph box, 44px target */
+.pdp-meas__q { position: relative; width: 18px; height: 18px; font: 400 11px var(--font-mono); color: var(--faint); line-height: 1; transition: color 0.16s ease; }
+.pdp-meas__q::before { content: ''; position: absolute; inset: -13px; }
+.pdp-meas__q:hover, .pdp-meas__q:focus-visible, .pdp-meas__q.is-open { color: var(--ink); }
+.pdp-meas__hint { margin: 0 0 8px; font: 300 12px var(--font-sans); color: var(--faint); max-width: 36ch; }
+/* IN / CM as type: the current unit is ink with a 1px underline, no boxes */
+.unit-toggle { display: inline-flex; align-items: center; gap: 2px; border: none; }
+.unit-toggle button { position: relative; font: 400 11px var(--font-mono); letter-spacing: 0.08em; padding: 8px 8px; color: var(--faint); transition: color 0.16s ease; }
+.unit-toggle button::before { content: ''; position: absolute; inset: -7px 0; }
+.unit-toggle button:hover { color: var(--ink); }
+.unit-toggle button.is-on { background: transparent; color: var(--ink); }
+.unit-toggle button.is-on::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: 6px; height: 1px; background: var(--ink); }
 .pdp-meas__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
-.pdp-meas__row { display: flex; justify-content: space-between; padding: 7px 0; border-top: 1px solid var(--line-row); }
+.pdp-meas__row { display: flex; justify-content: space-between; padding: 7px 0; }
 .pdp-meas__label { font: 300 11px var(--font-mono); letter-spacing: 0.12em; color: var(--sub); }
 .pdp-meas__val { font: 500 11px var(--font-mono); }
 .pdp-meas__row--note { flex-direction: column; gap: 4px; }
 .pdp-meas__note { font: 300 12px var(--font-sans); color: var(--sub); line-height: 1.5; }
-.pdp__right { flex: 1; padding: 22px 28px 32px 32px; min-width: 0; display: flex; flex-direction: column; }
-.pdp__toprow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 14px; }
-.pdp__listed { font: 400 11px var(--font-mono); letter-spacing: 0.08em; color: var(--emphasis); white-space: nowrap; }
-.lc-chip { display: flex; align-items: center; gap: 6px; border: 1px solid var(--ink); color: var(--ink); padding: 4px 8px; font: 500 11px var(--font-mono); letter-spacing: 0.12em; white-space: nowrap; }
-.lc-chip:hover { background: var(--hover); }
-.lc-chip__dot { width: 6px; height: 6px; background: var(--ink); flex-shrink: 0; }
-.pdp__legit-link { display: inline-flex; align-items: center; min-height: 24px; font: 400 11px var(--font-mono); letter-spacing: 0.1em; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
-.pdp__legit-link:hover { opacity: 0.7; }
-.pdp__caption { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.pdp__caption-main { min-width: 0; }
-.pdp__caption-save { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; flex-shrink: 0; background: transparent; border: none; padding: 0; line-height: 0; color: var(--ink); cursor: pointer; }
-.pdp__caption-save:hover { opacity: 0.7; }
-.pdp__brand { font-size: 16px; font-weight: 600; letter-spacing: 0.12em; }
+/* No-measurements empty state (buyer): status line + one solid REQUEST MEASUREMENTS
+   button. Kept in the panel's footprint so nothing around it moves. */
+.pdp-meas__request { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 6px; }
+/* Empty-state status rides the head line, opposite "Measurements" (where IN/CM sits otherwise). */
+.pdp-meas__status { font: 400 11px var(--font-mono); letter-spacing: 0.08em; color: var(--faint); white-space: nowrap; }
+.pdp-meas__request-btn { display: inline-flex; width: auto; align-self: flex-start; min-height: 44px; padding: 0 28px; margin: 0; font-size: 12px; letter-spacing: 0.18em; }
+.pdp-meas__request-btn.is-done { color: var(--faint); border-color: var(--line-mid); cursor: default; }
+/* The right column stretches to the photo column's height (align-items:stretch). The
+   description flex-grows into that slack so Measurements pins to the photo's bottom line
+   (R5B), and position:relative anchors the READ FULL reading pane over the rail. */
+.pdp__right { flex: 0 0 500px; padding: 16px 28px 32px 32px; min-width: 0; display: flex; flex-direction: column; position: relative; }
+/* Lockup: listed / legit stacked, brand + save, title, spec, price, shipping — one block. */
+/* Offset the placard down by the Back-link height so its first line (brand, or the seller
+   status meta) lines up with the top of the photo. The flex-grow description keeps
+   measurements pinned to the photo's bottom line. ≤960 the lockup is display:contents, so
+   this margin is inert there. */
+.pdp__lockup { display: flex; flex-direction: column; min-width: 0; margin-top: var(--control-h); }
+.pdp__meta { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding-bottom: 14px; }
+.pdp__listed { font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--faint); white-space: nowrap; }
+.pdp__legit { display: inline-flex; align-items: center; gap: 5px; background: var(--bg); padding: 5px 8px; font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--sub); text-decoration: none; white-space: nowrap; transition: color 0.16s ease; }
+.pdp__legit:hover { color: var(--ink); }
+/* Listed-time footnote pinned to the bottom of the rail, below measurements (A3). */
+.pdp__listed-foot { margin: 0; padding-top: 14px; font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--faint); }
+.pdp__brand-row { display: flex; align-items: center; gap: 10px; }
+/* 24px glyph box beside the brand, 44px target */
+.pdp__caption-save { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; flex-shrink: 0; background: transparent; border: none; padding: 0; line-height: 0; color: var(--sub); cursor: pointer; transition: color 0.16s ease; }
+.pdp__caption-save::before { content: ''; position: absolute; inset: -11px; }
+.pdp__caption-save:hover, .pdp__caption-save.is-on { color: var(--ink); }
+.pdp__brand { font-size: 14px; font-weight: 500; letter-spacing: 0.12em; }
 .pdp__title { font-size: 13px; font-weight: 300; color: var(--sub); padding-top: 4px; }
-.pdp__spec { font: 500 11px var(--font-mono); letter-spacing: 0.12em; padding-top: 8px; }
-.pdp__pricerow { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 14px 0 16px; }
+.pdp__spec { font: 400 11px var(--font-mono); letter-spacing: 0.08em; padding-top: 8px; }
+.pdp__pricerow { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 12px 0 12px; }
 .pdp__price { font: 400 20px var(--font-mono); display: flex; align-items: baseline; gap: 10px; }
 .pdp__old { font: 300 13px var(--font-mono); color: var(--faint); text-decoration: line-through; }
-.pdp__ship { font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--emphasis); white-space: nowrap; }
-.pdp__ctas { display: flex; flex-direction: column; gap: 9px; padding-bottom: 16px; }
+.pdp__ship { font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--sub); white-space: nowrap; }
+.pdp__ctas { display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; }
 .pdp__ctas .btn-primary, .pdp__ctas .btn-ink { padding: 13px 0; font-size: 12px; letter-spacing: 0.18em; }
 .pdp__buyrow { display: flex; gap: 9px; }
 .pdp__buyrow > * { flex: 1; min-width: 0; margin: 0; }
-.pdp__ctas > .btn-ghost { padding: 13px 0; }
-.pdp__ctas .btn-primary, .pdp__ctas .btn-ink, .pdp__ctas > .btn-ghost { min-height: 52px; font-size: 13px; }
+/* Save moved beside the buy actions (NN/g: save sits next to add-to-cart; the count is
+   the decision-point social-proof tally). A 52px square matching the CTA height: glyph over
+   the live count. Outlined so it reads as secondary to the filled BUY NOW. */
+.pdp__buyrow > .pdp__save-square { flex: 0 0 52px; }
+.pdp__save-square { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; background: transparent; border: 1px solid var(--line-mid); color: var(--sub); cursor: pointer; transition: border-color 0.16s ease, color 0.16s ease; }
+.pdp__save-square:hover, .pdp__save-square.is-on { border-color: var(--ink); color: var(--ink); }
+.pdp__save-square:disabled { cursor: default; }
+.pdp__save-count { font: 400 9px var(--font-mono); letter-spacing: 0.06em; line-height: 1; color: var(--sub); }
+.pdp__save-square:hover .pdp__save-count, .pdp__save-square.is-on .pdp__save-count { color: var(--ink); }
+/* Save (VC) — minimal borderless bookmark + count, inline at the right of the brand line
+   (desktop). margin-left:auto pushes it to the corner; ≤960 it hides and the dock carries save. */
+.pdp__save-inline { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 0; min-height: 28px; background: transparent; border: none; color: var(--sub); cursor: pointer; transition: color 0.16s ease; }
+.pdp__save-inline:hover, .pdp__save-inline.is-on { color: var(--ink); }
+.pdp__save-inline:disabled { cursor: default; }
+.pdp__save-inline .pdp__save-count { font-size: 13px; letter-spacing: 0.06em; color: inherit; }
+/* Seller-view save is a read-only tally (you can't save your own listing) — same square, no hover/action. */
+.pdp__save-stat { cursor: default; }
+.pdp__save-stat:hover { border-color: var(--line-mid); color: var(--sub); }
+.pdp__save-stat:hover .pdp__save-count { color: var(--sub); }
+/* Seller owner controls: EDIT LISTING | VIEW AS BUYER | saves tally, then BUMP | BOOST | ···.
+   Its own block (not pdp__ctas) so it shows on mobile too. Rows reuse pdp__buyrow (equal columns);
+   views/saves stats live in the seller row, not here (R5B). */
+.pdp__owner { display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px; }
+.pdp__owner .btn-primary, .pdp__owner .btn-ink { min-height: 52px; margin: 0; font-size: 13px; letter-spacing: 0.18em; }
+.pdp__ownerrow { display: flex; gap: 9px; align-items: stretch; }
+.pdp__ownerrow > * { flex: 1; min-width: 0; margin: 0; }
+.pdp__ownerrow .btn-ink, .pdp__ownerrow .btn-ghost, .pdp__ownerrow .stack { margin: 0; }
+.pdp__ownerrow .stack { flex: 1; }
+.pdp__ownerrow .btn-ghost { min-height: 44px; }
+/* ··· overflow square — fixed like the save-stat opposite it; margin-left:auto keeps it flush
+   right when BUMP/BOOST are absent. */
+.pdp__ownerrow > .pdp__owner-more { flex: 0 0 52px; margin-left: auto; }
+.pdp__owner-more-glyph { font: 400 15px var(--font-mono); letter-spacing: 0.08em; line-height: 1; color: var(--sub); }
+.pdp__owner-more:hover .pdp__owner-more-glyph { color: var(--ink); }
+.pdp__ctas .btn-primary, .pdp__ctas .btn-ink { min-height: 44px; font-size: 13px; }
+/* Message seller: chat glyph + underlined label, a 44px text link under the buy row */
+.pdp__msg { display: inline-flex; align-items: center; gap: var(--icon-label-gap); align-self: flex-start; min-height: var(--control-h); margin: 0; padding: 0; background: transparent; border: none; font: 400 13px var(--font-sans); color: var(--sub); text-decoration: underline; text-underline-offset: 3px; transition: color 0.16s ease; }
+.pdp__msg svg { display: block; flex-shrink: 0; }
+.pdp__msg:hover { color: var(--ink); }
+.pdp__msg:disabled { opacity: 0.45; cursor: default; }
+.pdp__msg:disabled:hover { color: var(--sub); }
 .btn-square { width: 46px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--line-mid); color: var(--ink); }
 .btn-square:hover { border-color: var(--ink); }
 .btn-square.is-on { border-color: var(--ink); }
-.pdp__desc { border-top: 1px solid var(--line-row); padding-top: 12px; margin-bottom: 14px; }
+/* Flex-grows into the rail's slack: the "air" of a short listing stays in the description
+   window and Measurements below it pins to the photo's bottom line (R5B, every listing). */
+.pdp__desc { flex: 1 1 auto; min-height: 0; padding-top: 12px; margin-bottom: 14px; }
 .pdp__desc .field-label { font-size: 11px; }
 .pdp__desc p { margin: 0; font-size: 13px; font-weight: 300; color: var(--ink); line-height: 1.6; }
-.pdp__escrow { display: flex; align-items: center; gap: 8px; font: 400 10px var(--font-mono); letter-spacing: 0.08em; color: var(--sub); padding-bottom: 16px; }
-.pdp__seller { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 12px; }
+/* Long-copy handling: the excerpt box clips to ~8 wrapped lines (the element the component
+   measures for overflow); READ FULL then opens the full text in the reading pane. white-space
+   pre-line keeps the seller's line breaks. */
+.pdp__desc-body { white-space: pre-line; }
+.pdp__desc-excerpt { max-height: calc(var(--desc-lines, 8) * 1.6 * 13px); overflow: hidden; }
+/* READ FULL DESCRIPTION → / N WORDS — an underlined mono link on the left, the count muted
+   on the right, in a 44px target. Becomes READ LESS when open. */
+.pdp__desc-toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: var(--control-h); padding: 8px 0 0; background: transparent; border: none; cursor: pointer; text-align: left; }
+.pdp__desc-more { font: 400 11px var(--font-mono); letter-spacing: 0.08em; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.pdp__desc-words { font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--faint); white-space: nowrap; }
+.pdp__desc-toggle:hover .pdp__desc-more { color: var(--ink); }
+/* READ FULL reading pane (R5B "open") — flips the rail into a full-text reader IN PLACE.
+   Portalled into .pdp__right (position:relative) so it covers the whole placard; the photo,
+   thumbs and height are untouched. Head + piece pinned top, body scrolls, dock (price + CTAs)
+   pinned bottom. Crossfade in; suppressed under prefers-reduced-motion (WCAG 2.3.3). */
+.pdp-reader { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; padding: 16px 28px 32px 32px; background: var(--bg); animation: pdp-reader-fade 0.18s ease both; }
+@keyframes pdp-reader-fade { from { opacity: 0; } to { opacity: 1; } }
+.pdp-reader__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line-mid); }
+.pdp-reader__title { display: inline-flex; align-items: baseline; gap: 14px; font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--sub); }
+.pdp-reader__words { color: var(--faint); }
+.pdp-reader__close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: 0 0 32px; background: transparent; border: 1px solid var(--line-mid); color: var(--sub); cursor: pointer; transition: border-color 0.16s ease, color 0.16s ease; }
+.pdp-reader__close:hover { border-color: var(--ink); color: var(--ink); }
+.pdp-reader__piece { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0 12px; }
+.pdp-reader__piece-text { font: 400 11px var(--font-mono); letter-spacing: 0.1em; color: var(--sub); }
+.pdp-reader__msg { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; background: transparent; border: none; padding: 0; font: 400 11px var(--font-mono); letter-spacing: 0.08em; color: var(--sub); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; cursor: pointer; transition: color 0.16s ease; }
+.pdp-reader__msg:hover { color: var(--ink); }
+.pdp-reader__msg svg { display: block; flex-shrink: 0; }
+.pdp-reader__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 0 16px; }
+.pdp-reader__body p { font-size: 15px; font-weight: 300; line-height: 1.65; color: var(--ink); }
+.pdp-reader__dock { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-top: 16px; border-top: 1px solid var(--line-mid); }
+.pdp-reader__price { display: inline-flex; flex-direction: column; gap: 3px; font: 500 20px var(--font-sans); color: var(--ink); }
+.pdp-reader__ship { font: 400 10px var(--font-mono); letter-spacing: 0.08em; color: var(--faint); }
+.pdp-reader__actions { display: flex; gap: 10px; }
+.pdp-reader__actions > * { min-height: 52px; margin: 0; display: inline-flex; align-items: center; justify-content: center; padding: 0 28px; font-size: 12px; letter-spacing: 0.16em; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .pdp-reader { animation: none; } }
+/* Seller moved to the legit band on desktop; the placard keeps it only ≤960 (near the product). */
+.pdp__seller { display: none; justify-content: space-between; align-items: center; padding-top: 12px; }
 .pdp__seller-left { display: flex; align-items: center; gap: 10px; }
+a.pdp__seller-left { color: inherit; text-decoration: none; }
 .pdp__seller-right { display: flex; align-items: center; gap: 12px; }
-/* mobile-only pieces of the placard (05) — hidden on desktop */
-.pdp__crumb-short, .pdp__listed--m, .pdp__seller-msg, .pdp-specs { display: none; }
-.pdp__crumb-full { display: inline-flex; align-items: center; gap: 6px; }
-.pdp-specs__row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line-row); }
-.pdp-specs__row:last-child { border-bottom: none; }
+/* ≤960px-only pieces of the placard — hidden on desktop */
+.pdp__seller-msg, .pdp-specs { display: none; }
+.pdp-specs__row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border: none; }
 .pdp-specs__k { font: 300 11px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); }
 .pdp-specs__v { font: 300 11px var(--font-mono); color: var(--ink); text-align: right; }
 .pdp__seller-handle { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; }
-.pdp__seller-meta { display: block; font: 300 11px var(--font-mono); color: var(--faint); padding-top: 2px; }
-.lc-section { max-width: 1180px; margin: 0 auto; border-top: 1px solid var(--line); padding: 18px 28px 40px; }
-.lc-strip { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--line); padding: 11px 14px; margin-bottom: 16px; }
-.lc-strip__left { display: flex; align-items: center; gap: 16px; font: 500 11px var(--font-mono); letter-spacing: 0.16em; }
-.lc-strip__right { font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--faint); white-space: nowrap; }
+/* trust facts ride one line, 20px apart (the hairline seps are gone) */
+.pdp__seller-meta { display: flex; flex-wrap: wrap; gap: 0 20px; font: 300 11px var(--font-mono); color: var(--faint); padding-top: 2px; }
+/* Legit check + seller band: the thread fills the left, a slim seller rail sits inline on the
+   right, aligned under the placard column (not a half). The band owns the centering + top border. */
+.pdp-band { max-width: 1180px; margin: 0 auto; border-top: 1px solid var(--line); display: flex; flex-direction: row; align-items: stretch; }
+.lc-section { flex: 1 1 0; min-width: 0; padding: 18px 40px 40px 28px; scroll-margin-top: 64px; }
+/* focused only by the "n legit" jump (tabindex -1), never in the tab order — no ring on a whole section */
+.lc-section:focus { outline: none; }
+.pdp-seller-rail { flex: 0 0 500px; min-width: 0; box-sizing: border-box; border-left: 1px solid var(--line); padding: 18px 28px 40px 40px; display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 16px; }
+/* Follow in the rail: a slim text affordance ("+ FOLLOW"), not a button */
+.pdp-seller-rail .btn-follow { background: transparent; border: none; padding: 0; min-height: 0; font: 600 11px var(--font-mono); letter-spacing: 0.12em; color: var(--sub); white-space: nowrap; }
+.pdp-seller-rail .btn-follow:hover { color: var(--ink); border: none; }
+.pdp-seller-rail .btn-follow.is-on { background: transparent; color: var(--ink); border: none; }
+.pdp-seller-rail .btn-follow:not(.is-on)::before { content: '+ '; }
+.pdp-seller-rail .btn-follow.is-on::before { content: '\2212\0020'; }
+/* Head: "Legit check" + the tally as type ("n legit · n flagged") — it replaced the boxed strip */
+.lc-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; padding: 0 0 14px; margin-bottom: 16px; }
+.lc-head__title { font: 400 15px var(--font-sans); letter-spacing: 0; color: var(--ink); }
+.lc-head__tally { display: inline-flex; align-items: center; margin: 0; font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--faint); }
+/* the author's vote, as a glyph after the handle */
+.lc-vote { display: inline-flex; color: var(--ink); }
 .lc-comment { display: flex; gap: 10px; padding-bottom: 14px; max-width: 560px; }
 .lc-comment__avatar { width: 22px; height: 22px; background: var(--tone-5); border: 1px solid var(--line); flex-shrink: 0; }
 .lc-comment__body { flex: 1; min-width: 0; }
@@ -971,7 +1242,8 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .menu-foot { display: flex; justify-content: space-between; align-items: center; margin: -1px -16px 0; padding: 14px 16px; border-top: 1px solid var(--line); }
 .menu-foot__signout { font-size: 13px; font-weight: 300; color: var(--sub); }
 .menu-foot__stage { font: 300 8px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); }
-.thread__back { display: none; background: transparent; color: var(--ink); font: 300 16px var(--font-mono); line-height: 1; padding: 2px 6px 2px 0; }
+.thread__back { display: none; align-items: center; justify-content: center; width: var(--control-h); height: var(--control-h); margin-left: -12px; flex-shrink: 0; background: transparent; color: var(--sub); transition: color 0.14s ease; }
+.thread__back:hover { color: var(--ink); opacity: 1; }
 
 /* ---- responsive ---- */
 @media (max-width: 1280px) {
@@ -1030,53 +1302,94 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 
   .pdp-page { display: flex; flex-direction: column; flex: 1 0 auto; }
 
-  /* listing (05): both columns unwrap into one stack — back link, swipe gallery,
-     brand / title / price, spec rows, seller row, then the LC chip, description,
-     escrow and measurements; BUY NOW · $ | MAKE OFFER docked at the bottom */
+  /* listing: both columns unwrap into one stack — back link, swipe gallery with the thumb
+     strip under it, brand / title / price, spec rows, seller row, description, measurements;
+     BUY NOW | MAKE OFFER docked at the bottom */
   .pdp { flex-direction: column; padding: 0 16px 24px; width: 100%; }
+  /* Viewport-fit, kept from the previous stacked layout: header + back row + the docked CTAs
+     take ~190px, the 3:4 photo never claims more than what is left, so it is whole above the
+     dock on short phones and in landscape. Tall phones are width-bound and never hit this. */
+  :root { --pdp-stage-h: min(70vh, 640px, calc(100vh - 190px)); }
+  @supports (height: 1svh) {
+    :root { --pdp-stage-h: min(70svh, 640px, calc(100svh - 190px)); }
+  }
   .pdp__left, .pdp__right { display: contents; }
-  .pdp__crumb { order: 1; padding: 12px 0; font-size: 11px; letter-spacing: 0.14em; color: var(--sub); }
-  .pdp__crumb-full { display: none; }
-  .pdp__crumb-short { display: inline-flex; align-items: center; gap: 6px; }
-  .pdp-gallery, .pdp__caption, .pdp__caption-main { display: contents; }
+  .pdp__lockup, .pdp__brand-row { display: contents; }
+  .pdp__meta { display: none; }
   .pdp-arrow, .pdp__caption-save { display: none; }
-  .pdp-stage { order: 2; aspect-ratio: 3 / 4; height: auto; width: 100%; max-width: calc((100vh - 180px) * 3 / 4); max-width: calc((100dvh - 180px) * 3 / 4); margin-left: auto; margin-right: auto; }
+  .pdp__back { order: 1; align-self: flex-start; padding: 12px 0; }
+  /* One column: the swipe stage, then the strip. Never wider than --pdp-col, so on a short or
+     landscape viewport the photo still fits the screen; centred when the page is wider. */
+  /* Mobile carousel (live 4A): swipe stage + dots, no strip, no chevrons. One column. */
+  .pdp-gallery {
+    order: 2;
+    display: grid;
+    grid-template-areas: "stage";
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
+    width: 100%;
+    max-width: min(100%, var(--pdp-col));
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .pdp-stage { width: 100%; height: auto; max-width: none; aspect-ratio: 3 / 4; }
   .pdp-stage__track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .pdp-stage__track::-webkit-scrollbar { display: none; }
   .pdp-stage__slide { display: flex; position: relative; flex: 0 0 100%; height: 100%; scroll-snap-align: start; }
-  .pdp-stage__arrow, .pdp-thumbs { display: none; }
-  .pdp-stage__count { top: 10px; left: 10px; right: auto; bottom: auto; background: var(--bg); border: 1px solid var(--line); font: 300 11px var(--font-mono); letter-spacing: 0.1em; color: var(--ink); padding: 3px 6px; }
+  /* Counter rides on the stage as a --bg chip (dark on a dark theme, light on light) so it reads over any photo. */
+  .pdp-stage__count { top: 10px; left: 10px; right: auto; bottom: auto; background: var(--bg); color: var(--ink); font: 300 11px var(--font-mono); letter-spacing: 0.1em; padding: 4px 8px; }
   .pdp-stage__save { display: block; }
+  .pdp-thumbs { display: none; }
   .pdp-stage__dots { display: flex; }
   .pdp__brand { order: 3; font-size: 12px; letter-spacing: 0.14em; padding-top: 14px; }
+  /* The inline brand-line save is desktop-only; ≤960 the sticky dock carries the save. */
+  .pdp__save-inline { display: none; }
   .pdp__title { order: 4; font-size: 18px; color: var(--ink); line-height: 1.3; padding-top: 3px; }
   .pdp__spec { display: none; }
   .pdp__pricerow { order: 5; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 8px; padding: 8px 0 0; }
   .pdp__price { font-size: 16px; gap: 8px; }
   .pdp__old { font-size: 11px; }
   .pdp__ship { display: none; }
-  .pdp__listed--m { display: inline; margin-left: auto; }
-  .pdp-specs { display: block; order: 6; margin-top: 14px; border-top: 1px solid var(--line); }
-  .pdp__seller { order: 7; padding: 12px 0; }
+  .pdp__listed-foot { order: 12; padding-top: 12px; }
+  .pdp-stage__legit { display: none; }
+  .pdp-specs { display: block; order: 6; margin-top: 14px; }
+  .pdp__seller { display: flex; order: 7; padding: 12px 0; }
   .pdp__seller .seller-init--sm { width: 26px; height: 26px; font-size: 10px; }
   .pdp__seller-handle { font: 300 11px var(--font-mono); letter-spacing: 0; text-transform: lowercase; }
-  .pdp__seller-msg { display: inline; font-size: 11px; letter-spacing: 0.12em; }
-  .pdp__toprow { order: 8; padding: 14px 0 0; }
-  .pdp__toprow .pdp__listed { display: none; }
+  .pdp__seller-msg { display: inline-flex; align-items: center; gap: var(--icon-label-gap); min-height: var(--control-h); font-size: 11px; letter-spacing: 0.12em; }
   .pdp__desc { order: 9; margin-top: 14px; }
-  .pdp__escrow { order: 10; }
   .pdp-meas { order: 11; margin-top: 0; }
-  .pdp__right > .spacer, .pdp__ctas { display: none; }
+  .pdp__ctas { display: none; }
+  /* Seller owner controls sit in-flow after the seller row on mobile (there is no buy dock
+     for the seller). pdp__ctas is hidden here, but pdp__owner is not. */
+  .pdp__owner { order: 8; display: flex; margin-top: 14px; }
   .pdp-dock { position: sticky; bottom: 0; margin-top: auto; display: flex; gap: 10px; padding: 12px 16px; background: var(--bg); border-top: 1px solid var(--line-mid); z-index: 45; }
   .pdp-dock .btn-primary, .pdp-dock .btn-ink { margin: 0; flex: 1; height: 52px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; letter-spacing: 0.16em; }
+  /* Save square joins the dock (it left the stage): fixed 52px, glyph over the count. */
+  .pdp-dock__save { flex: 0 0 52px; height: 52px; min-height: 52px; }
   .pdp-meas__grid { grid-template-columns: 1fr; }
-  .lc-section { padding: 16px 16px 24px; }
-  .lc-strip { flex-wrap: wrap; gap: 6px 12px; }
-  .lc-strip__right { white-space: normal; }
+  /* READ FULL becomes a full-screen sheet (same takeover as the filters). It is fixed to the
+     viewport, so display:contents on .pdp__right does not affect it. Dock stacks: price line,
+     then BUY NOW / MAKE OFFER as equal buttons. */
+  .pdp-reader { position: fixed; inset: 0; z-index: 60; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); animation: none; }
+  .pdp-reader__dock { flex-direction: column; align-items: stretch; gap: 12px; }
+  .pdp-reader__price { flex-direction: row; align-items: baseline; gap: 10px; }
+  .pdp-reader__actions { gap: 10px; }
+  .pdp-reader__actions > * { flex: 1; padding: 0; }
+  /* .pdp-page is a flex column here: without an explicit width the auto margins shrink the
+     thread to its longest line (a centred ~430px block between 721 and 960px). */
+  /* Band stacks to just the thread ≤960; the seller stays in the placard flow above. */
+  .pdp-band { display: block; max-width: none; margin: 0; }
+  .lc-section { width: 100%; padding: 16px 16px 24px; }
+  .pdp-seller-rail { display: none; }
+  .lc-head { gap: 6px 12px; }
 }
 
 /* ---- mobile breakpoint (≤720px) — nav 6A + Mobile Pages board ---- */
 @media (max-width: 720px) {
+  /* One override retunes every page gutter below; surfaces that also change
+     their vertical rhythm still set their own padding. */
+  :root { --gutter: var(--gutter-m); --gutter-page: var(--gutter-m); }
   /* header → 6A: brand left, icons right, full-width search below */
   .header { flex-wrap: wrap; height: auto; gap: 0 16px; padding: 0 16px; }
   .header__brand { order: 1; height: 52px; align-items: center; }
@@ -1105,20 +1418,19 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 
   /* saved (06): "Saved" + "n ITEMS", ITEMS / SEARCHES · n / SELLERS · n, changes strip, 2-col grid
      with the caption bookmark as the unsave control */
-  .saved-main { padding: 16px 16px 72px; }
+  .saved-main { padding: 16px var(--gutter-page) 72px; }
   .page-head { flex-wrap: wrap; gap: 8px 16px; }
   .saved-main .page-head { align-items: baseline; }
   .saved-main .page-title { font-size: 22px; letter-spacing: 0.02em; }
   .page-note--d { display: none; }
   .page-note--m { display: inline; color: var(--sub); }
-  .tabs-line { overflow-x: auto; gap: 22px; margin-top: 14px; scrollbar-width: none; }
+  .tabs-line, .msgs__filters { overflow-x: auto; gap: 22px; margin-top: 14px; scrollbar-width: none; }
   .tabs-line span.tabs-line__sort { display: none; }
-  .tabs-line::-webkit-scrollbar { display: none; }
-  .saved-main .tab-mono { font-size: 9px; padding-bottom: 10px; }
+  .tabs-line::-webkit-scrollbar, .msgs__filters::-webkit-scrollbar { display: none; }
   .tab-mono__n--d { display: none; }
   .tab-mono__n--m { display: inline; }
-  .since-strip { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 -16px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--hover); font: 400 9px var(--font-mono); letter-spacing: 0.14em; color: var(--ink); }
-  .since-strip .link-underline { font-size: 9px; letter-spacing: 0.12em; }
+  .since-strip { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 -16px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--hover); font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--ink); }
+  .since-strip .link-underline { font-size: 11px; letter-spacing: 0.12em; }
   .saved-grid { gap: 18px 14px; padding-top: 16px; }
   .card__unsave { display: none; }
   .card__save--m { display: inline-flex; }
@@ -1127,13 +1439,11 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   /* messages (07) — single pane; rows: initials, handle + time, preview, thumb, unread ■.
      The thread slides in over the inbox in the same chrome. */
   .msgs { height: auto; min-height: 0; }
-  .msgs__list { width: 100%; border-right: none; }
-  .msgs__head { padding: 16px 16px 0; align-items: baseline; }
+  .msgs--inbox .msgs__list, .msgs__list { width: 100%; max-width: none; border-right: none; }
+  .msgs__head { padding: 16px var(--gutter-page) var(--page-head-pb); align-items: baseline; }
   .msgs__head .page-title { font-size: 22px; letter-spacing: 0.02em; }
   .msgs__head .page-note { color: var(--sub); }
-  .msgs__filters { padding: 0 16px; margin-top: 14px; }
-  .msgs__filters .tab-mono { font-size: 9px; padding-bottom: 10px; }
-  .conv { align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line-row); border-left: none; }
+  .conv { align-items: center; gap: 12px; padding: 14px var(--gutter-page); border-bottom: 1px solid var(--line-row); border-left: none; }
   .conv.is-active { background: transparent; }
   .conv__avatar { display: inline-flex; order: 1; width: 36px; height: 36px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid var(--line-mid); color: var(--sub); font: 400 10px var(--font-mono); }
   .conv__avatar.is-unread { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
@@ -1148,26 +1458,26 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   .conv__time--m { display: inline; white-space: nowrap; }
   .conv__preview { padding-top: 3px; }
   .conv__listing { display: none; }
-  .conv__badge { order: 4; width: 6px; height: 6px; padding: 0; font-size: 0; line-height: 0; flex-shrink: 0; }
+  .conv__badge, .conv__mark { order: 4; width: 6px; height: 6px; padding: 0; font-size: 0; line-height: 0; flex-shrink: 0; margin-inline-start: auto; align-self: center; }
   .thread { display: none; }
   .msgs--thread .msgs__list { display: none; }
   /* thread (26): "← @HANDLE · VIEW LISTING" back row, listing strip, full-scroll messages,
      the composer docked (sticky) with the footer below it in the scroll */
   .msgs--thread .thread { display: flex; height: auto; flex: 1 0 auto; }
-  .thread__back { display: inline-flex; font-size: 14px; padding: 8px 4px 8px 0; }
-  .thread__bar { height: 50px; padding: 0 16px; gap: 12px; border-bottom: 1px solid var(--ink); overflow: hidden; }
+  .thread__back { display: inline-flex; }
+  .thread__bar { height: 50px; padding: 0 var(--gutter-page); gap: 12px; border-bottom: 1px solid var(--ink); overflow: hidden; }
   .thread__avatar, .thread__bar .tag, .thread__meta, .thread__profile { display: none; }
   .thread__handle { font: 400 11px var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; }
   .thread__viewlisting { display: inline; font-size: 9px; }
-  .listing-strip { padding: 12px 16px; gap: 12px; background: transparent; }
+  .listing-strip { padding: 12px var(--gutter-page); gap: 12px; }
   .listing-strip__thumb { width: 44px; height: 44px; }
   .listing-strip__row { flex-direction: column; align-items: flex-start; gap: 2px; }
   .listing-strip__title { font-size: 13px; font-weight: 400; color: var(--ink); white-space: normal; }
   .listing-strip__role, .listing-strip__size, .listing-strip__price, .listing-strip > .link-underline { display: none; }
-  .listing-strip__m { display: block; font: 300 9px var(--font-mono); color: var(--sub); padding-top: 3px; }
-  .thread__scroll { flex: 1 0 auto; overflow: visible; padding: 16px; }
+  .listing-strip__m { display: block; font: 300 11px var(--font-mono); color: var(--sub); padding-top: 3px; }
+  .thread__scroll { flex: 1 0 auto; overflow: visible; padding: 16px var(--gutter-page); }
   .bubble-wrap { max-width: 80%; }
-  .thread__composer { position: sticky; bottom: 0; margin-top: auto; z-index: 5; background: var(--bg); border-top: 1px solid var(--ink); padding: 12px 16px; gap: 10px; }
+  .thread__composer { position: sticky; bottom: 0; margin-top: auto; z-index: 5; background: var(--bg); border-top: 1px solid var(--ink); padding: 12px var(--gutter-page); gap: 10px; }
   .thread__composer input { border: 1px solid var(--line-mid); padding: 11px 12px; }
   .thread__composer input:focus { border-color: var(--ink); }
   .thread__composer .btn-outline { display: none; }
@@ -1441,7 +1751,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .header__actions .btn-mini--solid::before { content: ''; position: absolute; inset: -9px 0; }
 .footer__link, .nav-icon, .acct-row, .side-link, .tab-mono, .link-underline, .link-btn { cursor: pointer; }
 a.btn-primary, a.btn-ink, a.btn-ghost, a.btn-outline, a.btn-mini, a.chip, a.tab-mono, a.side-link, a.acct-row { text-decoration: none; }
-a.btn-primary:hover, a.btn-ink:hover, a.btn-ghost:hover, a.nav-icon:hover, a.side-link:hover, a.tab-mono:hover, a.acct-row:hover { opacity: 1; }
+a.btn-primary:hover, a.btn-ink:hover, a.btn-ghost:hover, a.nav-icon:hover, a.pdp__back:hover, a.pdp__legit:hover, a.side-link:hover, a.tab-mono:hover, a.acct-row:hover { opacity: 1; }
 a.btn-primary--inline { display: inline-flex; }
 .main--flush { padding: 0; }
 
@@ -1456,14 +1766,14 @@ a.btn-primary--inline { display: inline-flex; }
 .pdp__title { font-weight: 300; }
 .lc-comment--pinned { border: 1px solid var(--ink); padding: 12px 14px; margin-bottom: 16px; }
 .lc-comment__actions { display: flex; gap: 14px; align-items: center; margin-top: 6px; }
-.lc-comment__actions button { font: 300 11px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); }
+.lc-comment__actions button { display: inline-flex; align-items: center; gap: 4px; font: 300 11px var(--font-mono); letter-spacing: 0.12em; color: var(--faint); }
 .lc-comment__actions button:hover, .lc-comment__actions button.is-on { color: var(--ink); }
 .lc-input:disabled { opacity: 0.5; cursor: not-allowed; }
 .lc-form { display: flex; gap: 8px; max-width: 560px; align-items: stretch; }
 .lc-form .lc-input { flex: 1; }
 
 /* ---- messages extras ---- */
-.offer-compose { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 28px 10px; border: 1px solid var(--ink); padding: 12px 16px; }
+.offer-compose { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 var(--gutter-page) 10px; border: 1px solid var(--ink); padding: 12px 16px; }
 .offer-compose__field { display: inline-flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line-mid); padding: 4px 2px; }
 .offer-compose__field input { width: 96px; background: transparent; border: none; outline: none; font: 400 16px var(--font-mono); color: var(--ink); padding: 0; }
 .offer-compose__field--inline { border: 1px solid var(--line-mid); padding: 2px 6px; gap: 8px; }
@@ -1534,4 +1844,45 @@ a.btn-primary--inline { display: inline-flex; }
 @media (max-width: 767px) {
   .admin-photos { grid-template-columns: repeat(3, 1fr); }
   .admin-item__right { margin-left: 0; width: 100%; }
+}
+
+/* ---- lots rail ("more lots" under a listing) ----
+   One row of listing cards on a scroll-snap track. --lot-rail-show cards fit per view
+   (3.2 → 2.2 ≤960px → 1.35 ≤720px); the part-card at the edge is the cue that it scrolls.
+   Square chevrons step one card and disable at either end; ≤960px they hide and the track swipes. */
+.lot-rail { width: 100%; max-width: 100%; min-width: 0; margin-top: 32px; padding-top: 24px; overflow-x: hidden; }
+.lot-rail__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-bottom: 12px; }
+.lot-rail__label { font: 300 12px var(--font-sans); color: var(--sub); }
+.lot-rail__nav { display: flex; }
+.lot-rail__nav .btn-square + .btn-square { margin-left: -1px; }
+.lot-rail__nav .btn-square:disabled { color: var(--faint); border-color: var(--line); cursor: default; }
+.lot-rail__track {
+  display: flex;
+  gap: var(--lot-rail-gap);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.lot-rail__track::-webkit-scrollbar { display: none; }
+.lot-rail__item { flex: 0 0 calc((100% - (var(--lot-rail-gap) * (var(--lot-rail-show) - 1))) / var(--lot-rail-show)); min-width: 0; scroll-snap-align: start; }
+/* On the listing page the rail takes the page's measure and gutters. */
+.pdp-page > .lot-rail { max-width: 1180px; width: 100%; box-sizing: border-box; margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); padding-bottom: 32px; }
+@media (max-width: 960px) {
+  :root { --lot-rail-show: 2.2; }
+  .lot-rail__nav { display: none; }
+  /* the stacked listing runs on a 16px gutter from 960px down — the rail lines up with it */
+  .pdp-page > .lot-rail { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 720px) {
+  :root { --lot-rail-show: 1.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lot-rail__track { scroll-behavior: auto; }
+  /* Colour still changes (it carries no motion); it just stops easing. */
+  .pdp-thumb__img, .pdp-arrow, .pdp__caption-save, .pdp__legit, .pdp__msg, .pdp-meas__q, .unit-toggle button, .pdp-stage__save .btn-square { transition: none; }
 }

@@ -252,7 +252,6 @@ function HubSection({ data, asProfile = false }: { data: SettingsData; asProfile
 
       <div className="danger-row">
         <SignOutLink className="btn-ghost btn-ghost--inline" label="SIGN OUT" />
-        <span className="settings-note">Signed in as @{data.username}.</span>
         <span className="spacer" />
         <button type="button" className="link-underline link-underline--sm" onClick={() => setDeleteOpen((v) => !v)} data-testid="delete-account">DELETE ACCOUNT…</button>
       </div>

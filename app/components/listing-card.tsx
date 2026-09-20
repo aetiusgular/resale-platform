@@ -61,11 +61,18 @@ type ListingCardProps = {
   onBump?: (id: string) => void
   /** Own listing already bumped this session → "BUMPED ✓" */
   bumped?: boolean
+  /** Image loading override. The default (first 8 positions eager) is tuned for the browse grid's
+   *  first rows; a rail below the fold passes 'lazy' so it never competes with the page's hero. */
+  imgLoading?: 'eager' | 'lazy'
+  /** Override the card's destination (proto tour points cards at fixture routes).
+   *  Undefined on every real screen, where the card links to /listings/[id]. */
+  href?: string
 }
 
 export default function ListingCard({
-  listing, isSaved, onSaveToggle, timeLabel, unavailable, own, onRemove, position, onProductClick, showAuthBadge = true, onBump, bumped,
+  listing, isSaved, onSaveToggle, timeLabel, unavailable, own, onRemove, position, onProductClick, showAuthBadge = true, onBump, bumped, imgLoading, href,
 }: ListingCardProps) {
+  const listingHref = href ?? `/listings/${listing.id}`
   const frontImage = listing.images[0] ?? null
   const authenticated = showAuthBadge && listing.authentication_status === 'authenticated'
   const tone = ((position ?? listing.id.charCodeAt(0)) % 8) + 1
@@ -87,7 +94,7 @@ export default function ListingCard({
       data-testid="listing-card"
     >
       <PrefetchLink
-        href={`/listings/${listing.id}`}
+        href={listingHref}
         onClick={() => { trackEvent('product_clicked', { listing_id: listing.id }); onProductClick?.(listing.id) }}
         aria-label={`${listing.brand} — ${listing.title}`}
       >
@@ -98,7 +105,7 @@ export default function ListingCard({
               src={frontImage}
               alt={listing.title}
               // First two grid rows load eagerly; the rest wait until scrolled near.
-              loading={(position ?? 0) < 8 ? 'eager' : 'lazy'}
+              loading={imgLoading ?? ((position ?? 0) < 8 ? 'eager' : 'lazy')}
               decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
@@ -126,7 +133,7 @@ export default function ListingCard({
       )}
 
       <div className="card__row1">
-        <PrefetchLink href={`/listings/${listing.id}`} className="card__brand" title={listing.brand}>
+        <PrefetchLink href={listingHref} className="card__brand" title={listing.brand}>
           {listing.brand.toUpperCase()}
         </PrefetchLink>
         <span className="card__meta">

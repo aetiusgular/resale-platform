@@ -98,6 +98,34 @@ export function ArrowLeftIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+export function ArrowRightIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+/**
+ * Chevrons step through a set in place (listing gallery, lots rail). Arrows move
+ * between screens. Keeping the two apart is what makes either one mean anything.
+ */
+export function ChevronLeftIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 6l-6 6 6 6" />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 /** Three shrinking bars — the FILTERS cell of the mobile browse dock (mobile-web 01). */
 export function FilterIcon({ size = 13 }: { size?: number }) {
   return (

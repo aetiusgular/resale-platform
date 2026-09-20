@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
 
   const { data: listing } = await service
     .from('listings')
-    .select('id, seller_id, status, title, brand, description, category, price_cents')
+    .select('id, seller_id, status, title, brand, description, category, price_cents, measurements')
     .eq('id', id)
     .single()
   if (!listing || listing.seller_id !== user.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -106,6 +106,21 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     await Promise.all([...ids].map((uid) => notify(service, uid, 'price_drop', {
       itemTitle: listing.title ?? undefined, listingId: id, amountCents: newPrice, oldAmountCents: listing.price_cents,
     })))
+  }
+
+  // Measurements added to a live listing that had none → tell everyone who asked
+  // (non-blocking), then close their open requests. Only fires empty → filled.
+  const newMeas = patch.measurements as Record<string, unknown> | undefined
+  const priorMeas = (listing.measurements ?? {}) as Record<string, unknown>
+  const priorEmpty = Object.keys(priorMeas).length === 0
+  if (listing.status === 'active' && newMeas && Object.keys(newMeas).length > 0 && priorEmpty && NOTIFICATIONS_ENABLED) {
+    const { data: reqs } = await service.from('measurement_requests').select('requester_id').eq('listing_id', id).is('fulfilled_at', null).limit(500)
+    const rids = new Set(((reqs ?? []) as Array<{ requester_id: string }>).map((r) => r.requester_id))
+    rids.delete(user.id)
+    await Promise.all([...rids].map((uid) => notify(service, uid, 'measurements_added', {
+      itemTitle: listing.title ?? undefined, listingId: id,
+    })))
+    await service.from('measurement_requests').update({ fulfilled_at: new Date().toISOString() }).eq('listing_id', id).is('fulfilled_at', null)
   }
 
   return NextResponse.json({ ok: true, id, patch })

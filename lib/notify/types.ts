@@ -29,6 +29,8 @@ export type NotifyEvent =
   | 'elite_program'
   | 'admin_elite_lead'
   | 'moderator_granted'
+  | 'measurement_request'   // a buyer asked the seller to add measurements
+  | 'measurements_added'    // the seller added measurements a buyer asked for
 
 export type NotifyContext = {
   actorName?: string       // username that triggered it (buyer/seller/sender)

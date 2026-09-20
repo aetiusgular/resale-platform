@@ -42,6 +42,8 @@ const CATEGORY_OF: Record<NotifyEvent, NotifyCategory> = {
   elite_program: 'alerts',
   admin_elite_lead: 'alerts',
   moderator_granted: 'alerts',
+  measurement_request: 'alerts',
+  measurements_added: 'alerts',
 }
 
 export function categoryOf(event: NotifyEvent): NotifyCategory {

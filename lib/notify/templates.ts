@@ -55,6 +55,10 @@ function parts(event: NotifyEvent, ctx: NotifyContext): { title: string; body: s
       return { title: `Elite seller lead: ${who}`, body: `${who} just crossed the $25k Elite threshold${ctx.amountCents ? ` (${money(ctx.amountCents)} trailing sales)` : ''}. Reach out about the Elite Seller Program.`, url: ctx.actorName ? `/sellers/${ctx.actorName}` : '/admin' }
     case 'moderator_granted':
       return { title: 'You\u2019re now a moderator', body: 'Three moderators vouched for you \u2014 you can now post Legit Checks across the marketplace.', url: '/browse' }
+    case 'measurement_request':
+      return { title: 'Measurements requested', body: `${who} asked for measurements on ${item}. Add them from the listing to notify everyone who asked.`, url: ctx.listingId ? `/sell?edit=${ctx.listingId}` : '/sell' }
+    case 'measurements_added':
+      return { title: 'Measurements added', body: `The seller added measurements to ${item} — the item you asked about.`, url: ctx.listingId ? `/listings/${ctx.listingId}` : '/browse' }
   }
 }
 

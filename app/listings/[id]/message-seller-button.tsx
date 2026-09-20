@@ -7,14 +7,15 @@ import { ChatIcon } from '@/app/components/icons'
 
 interface Props {
   listingId: string
-  /** Button styling — the placard's ghost button by default; the mobile seller row passes a link style. */
+  /** Button styling — the placard's icon + text link by default; the mobile seller row passes a link style. */
   className?: string
   label?: string
   testId?: string
   icon?: boolean
+  iconSize?: number
 }
 
-export default function MessageSellerButton({ listingId, className = 'btn-ghost', label = 'MESSAGE SELLER', testId = 'message-seller-btn', icon = false }: Props) {
+export default function MessageSellerButton({ listingId, className = 'pdp__msg', label = 'Message seller', testId = 'message-seller-btn', icon = true, iconSize = 20 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const { openAuthModal } = useAuthModal()
@@ -47,7 +48,7 @@ export default function MessageSellerButton({ listingId, className = 'btn-ghost'
       disabled={loading}
       data-testid={testId}
     >
-      {loading ? 'OPENING…' : (<>{icon && <ChatIcon size={16} />}{label}</>)}
+      {loading ? 'OPENING…' : (<>{icon && <ChatIcon size={iconSize} />}{label}</>)}
     </button>
   )
 }

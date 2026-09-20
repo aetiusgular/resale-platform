@@ -3,10 +3,11 @@
 /**
  * Legit Check thread (design 4A "lc-section").
  *
- * Strip: "[check] n LEGIT  [flag] n FLAGGED" (counts only; icons from components/icons).
- * Comments carry the author's vote as a tag (LC LEGIT / LC FLAG), moderators are
- * tagged LC MOD, system rows AUTO-AUTH; the meta line is "AGREE n | FLAG | REPLY"
- * with hairline separators (.sep), not middots.
+ * Head: "Legit check" plus the tally as type ("n legit · n flagged").
+ * A comment carries its author's vote as a glyph after the handle (tick = legit,
+ * flag = flag; the words ride along for screen readers), moderators are tagged
+ * LC MOD, system rows AUTO-AUTH; the meta line is "AGREE n | FLAG | REPLY" with
+ * hairline separators (.sep), not middots.
  * Any verified member can post a comment and cast ONE vote per listing (the
  * post_comment RPC enforces it); moderators sign the verdict (pinned card).
  * General comments stay removed (G10).
@@ -14,7 +15,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
-import { CheckThinIcon, FlagIcon } from '@/app/components/icons'
+import { Check } from '@phosphor-icons/react/ssr'
+import { FlagIcon } from '@/app/components/icons'
 
 type TierBadge = 'bronze' | 'silver' | 'gold'
 type CommentSource = 'human' | 'auto'
@@ -149,14 +151,11 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
   const inputDisabled = closed || (!isGuest && !canPost)
 
   return (
-    <section className="lc-section" id="lc-thread" aria-labelledby="lc-heading">
-      <h2 id="lc-heading" className="sr-only">The community weighs in.</h2>
-      <div className="lc-strip">
-        <span className="lc-strip__left">
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><CheckThinIcon size={11} />{tally.legit} LEGIT</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><FlagIcon />{tally.flagged} FLAGGED</span>
-        </span>
-      </div>
+    <section className="lc-section" id="lc-thread" aria-labelledby="lc-heading" tabIndex={-1}>
+      <header className="lc-head">
+        <h2 id="lc-heading" className="lc-head__title">Legit check</h2>
+        <p className="lc-head__tally">{tally.legit} legit · {tally.flagged} flagged</p>
+      </header>
 
       {pinned.map((c) => (
         <PinnedCard key={c.id} comment={c} />
@@ -209,7 +208,7 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
           title="Cast a LEGIT vote with your comment"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
         >
-          <CheckThinIcon size={11} />LEGIT
+          <Check size={11} aria-hidden="true" />LEGIT
         </button>
         <button
           type="button"
@@ -229,8 +228,8 @@ export default function CommunitySection({ listingId, isGuest = false, canPost, 
       {(closed || inputDisabled) && (
         <div className="mono-note" style={{ paddingTop: 8 }}>
           {closed
-            ? 'THREAD CLOSED — THIS ITEM HAS SOLD'
-            : <>VERIFIED MEMBERS CAN COMMENT AND CAST ONE VOTE PER LISTING<span className="sep" aria-hidden="true" />VERIFY YOUR ID IN SETTINGS</>}
+            ? 'Thread closed — this item has sold'
+            : <>Members vote once on each listing. If you can&apos;t yet, verify your ID in Settings.</>}
         </div>
       )}
       {postError && <div className="alert-line" role="alert">{postError.toUpperCase()}</div>}
@@ -253,7 +252,12 @@ function AuthorLine({ comment }: { comment: CommentRow }) {
       {author?.is_moderator || author?.role === 'admin'
         ? <span className="tag tag--ink">LC MOD</span>
         : comment.vote
-          ? <span className="tag">LC {comment.vote === 'legit' ? 'LEGIT' : 'FLAG'}</span>
+          ? (
+            <span className="lc-vote" title={comment.vote === 'legit' ? 'Voted legit' : 'Voted flag'} data-testid="lc-vote">
+              {comment.vote === 'legit' ? <Check size={11} aria-hidden="true" /> : <FlagIcon size={11} />}
+              <span className="sr-only">{comment.vote === 'legit' ? 'voted legit' : 'voted flag'}</span>
+            </span>
+          )
           : null}
       {author?.checker_category && <span className="tag">{author.checker_category.toUpperCase()}</span>}
     </>
@@ -308,11 +312,11 @@ function CommentRowView({
         {parent && <div className="lc-comment__meta" style={{ marginTop: 4 }}>↳ {(parent.profiles?.username ?? 'SYSTEM').toUpperCase()}</div>}
         <Body comment={comment} />
         <div className="lc-comment__actions">
-          <button type="button" className={agreed ? 'is-on' : ''} onClick={onAgree} data-testid="agree-button" aria-pressed={agreed} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <CheckThinIcon size={10} />AGREE {agrees}
+          <button type="button" className={agreed ? 'is-on' : ''} onClick={onAgree} data-testid="agree-button" aria-pressed={agreed}>
+            <Check size={10} aria-hidden="true" />AGREE {agrees}
           </button>
           <span className="sep" aria-hidden="true" />
-          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <button type="button" className={flagged ? 'is-on' : ''} onClick={onFlag} data-testid="flag-button" disabled={flagged}>
             <FlagIcon size={10} />{flagged ? 'FLAGGED' : 'FLAG'}
           </button>
           {comment.source !== 'auto' && (

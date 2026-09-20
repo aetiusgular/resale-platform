@@ -127,6 +127,8 @@ export type ListingDetail = {
     /** Verified member, moderator or admin — enables the LC composer (post_comment RPC is the source of truth). */
     can_post: boolean
     can_edit: boolean
+    /** This viewer already asked the seller to add measurements (PDP REQUESTED state). */
+    measurement_requested: boolean
   }
   lc: LcTally
   flags: { bump: boolean; boost: boolean; follows: boolean; auth_badge: boolean }
@@ -149,10 +151,11 @@ export async function loadListingDetail(opts: {
   let currentUsername = ''
   let isSaved = false
   let isFollowing = false
+  let measurementRequested = false
   let originalPriceCents: number | null = null
 
   if (user) {
-    const [profileResult, saveResult, priceResult, followResult] = await Promise.all([
+    const [profileResult, saveResult, priceResult, followResult, measReqResult] = await Promise.all([
       supabase.from('profiles').select('role, is_moderator, username, id_verification_status').eq('id', user.id).single(),
       supabase.from('saves').select('id').eq('user_id', user.id).eq('listing_id', id).maybeSingle(),
       listing.is_price_dropped
@@ -161,12 +164,16 @@ export async function loadListingDetail(opts: {
       FOLLOWS_ENABLED && !isSeller
         ? supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', listing.seller_id).maybeSingle()
         : Promise.resolve({ data: null }),
+      !isSeller
+        ? supabase.from('measurement_requests').select('id').eq('requester_id', user.id).eq('listing_id', id).maybeSingle()
+        : Promise.resolve({ data: null }),
     ])
     isAdmin = profileResult.data?.role === 'admin'
     userProfile = profileResult.data
     currentUsername = (profileResult.data?.username as string) ?? ''
     isSaved = !!saveResult.data
     isFollowing = !!followResult.data
+    measurementRequested = !!measReqResult.data
     originalPriceCents = (priceResult.data as { old_price_cents?: number } | null)?.old_price_cents ?? null
   } else if (listing.is_price_dropped) {
     const { data: firstHistory } = await supabase
@@ -276,6 +283,7 @@ export async function loadListingDetail(opts: {
       can_buy: canBuy,
       can_post: canPost && isActive,
       can_edit: isSeller && (isActive || listing.status === 'pending_review'),
+      measurement_requested: measurementRequested,
     },
     lc,
     flags: { bump: BUMP_ENABLED, boost: BOOSTED_POSTS_ENABLED, follows: FOLLOWS_ENABLED, auth_badge: AUTH_BADGE_ENABLED },

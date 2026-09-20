@@ -1,6 +1,6 @@
 /**
  * /messages — conversation inbox (design 1A).
- * Desktop: two-pane — sidebar list + "select a conversation" empty pane.
+ * Desktop: inbox list until a thread is open (no empty pane).
  * Mobile: full-width list; a thread opens as its own route.
  * If ?listing=<id> is present, auto-creates or finds the conversation and redirects.
  */
@@ -11,7 +11,6 @@ import { createServiceClientRaw } from '@/lib/supabase/service'
 import AppShell from '@/app/components/app-shell'
 import InboxList from './inbox-list'
 import { loadInbox } from '@/lib/loaders/inbox'
-import { ChatIcon } from '@/app/components/icons'
 
 export const metadata: Metadata = { title: 'Messages' }
 
@@ -69,15 +68,8 @@ export default async function MessagesPage({ searchParams }: PageProps) {
 
   return (
     <AppShell username={username} footer={false}>
-      <div className="msgs">
+      <div className="msgs msgs--inbox">
         <InboxList rows={rows} />
-        <div className="thread">
-          <div className="empty" style={{ margin: 'auto', color: 'var(--faint)' }}>
-            <ChatIcon />
-            <div className="empty__title" style={{ paddingTop: 12 }}>Select a conversation</div>
-            <div className="empty__sub">OFFERS, QUESTIONS AND ORDER CHAT LIVE HERE</div>
-          </div>
-        </div>
       </div>
     </AppShell>
   )

@@ -1,11 +1,12 @@
 'use client'
 
 /**
- * Conversation thread (design 1A): thread bar (counterparty · rating/sales ·
- * VIEW PROFILE · REPORT), pinned listing strip, message stream with day lines /
- * system lines (redactions, order events) / offer cards, composer with MAKE
- * OFFER + SEND. Realtime via Supabase channel; incoming messages move the read
- * cursor (POST …/read) so the header badge stays accurate.
+ * Conversation thread: a handle-forward bar (back · @handle · VIEW PROFILE /
+ * VIEW LISTING / REPORT — no rule, avatar and rating/sales dropped for the proto
+ * look), pinned listing strip, message stream with day lines / system lines
+ * (redactions, order events) / offer cards, and a compose row — MAKE OFFER plus
+ * an auto-growing textarea and SEND. Realtime via Supabase channel; incoming
+ * messages move the read cursor (POST …/read) so the header badge stays accurate.
  *
  * Offer flow (reference): OFFER FROM @x → ACCEPT / COUNTER / DECLINE.
  *   accepted → chip ACCEPTED + PROCEED TO CHECKOUT → (buyer)
@@ -16,6 +17,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import PrefetchLink from '@/app/components/prefetch-link'
+import { ArrowLeftIcon } from '@/app/components/icons'
 import { formatCents } from '@/lib/fees'
 import { hoursUntilExpiry, hoursUntilPaymentDeadline } from '@/lib/offers'
 import type { Offer } from '@/lib/offers'
@@ -126,6 +128,7 @@ export default function ThreadClient({
   )
   const [pending, startTransition] = useTransition()
   const bottomRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
 
   // Supabase realtime subscription for new messages; an incoming message moves
   // the read cursor so the header badge doesn't count what is on screen.
@@ -155,6 +158,16 @@ export default function ThreadClient({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, offers])
+
+  // The composer grows with its content and snaps back to one line when cleared
+  // (on send, and on a manual clear) — the height is imperative, so React won't
+  // reset it for us on the value change.
+  useEffect(() => {
+    const el = composerRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    if (messageText) el.style.height = `${el.scrollHeight}px`
+  }, [messageText])
 
   async function sendMessage() {
     if (!messageText.trim()) return
@@ -247,7 +260,6 @@ export default function ThreadClient({
   const activeOffer = offers.find((o) => o.state === 'open' || o.state === 'accepted')
   const sold = listing.status === 'sold'
   const canOffer = !activeOffer && listing.status === 'active'
-  const otherInitials = other.username.slice(0, 2).toUpperCase()
   const handleUpper = `@${other.username.toUpperCase()}`
 
   // Day separators: an item opens a new day when its key differs from the previous item's.
@@ -263,11 +275,9 @@ export default function ThreadClient({
   return (
     <div className="thread" data-testid="thread">
       <div className="thread__bar">
-        <PrefetchLink href="/messages" className="thread__back" aria-label="Back to inbox" data-testid="messages-back">←</PrefetchLink>
-        <span className="thread__avatar">{otherInitials}</span>
+        <PrefetchLink href="/messages" className="thread__back" aria-label="Back to inbox" data-testid="messages-back"><ArrowLeftIcon size={14} /></PrefetchLink>
         <span className="thread__handle">@{other.username}</span>
         {other.verified && <span className="tag">VERIFIED</span>}
-        <span className="thread__meta">{other.meta}</span>
         <span className="spacer" />
         <PrefetchLink href={`/sellers/${other.username}`} className="link-underline link-underline--ink thread__profile">VIEW PROFILE</PrefetchLink>
         {/* Mobile web (26): the back row carries VIEW LISTING; the strip's VIEW → hides there. */}
@@ -427,7 +437,7 @@ export default function ThreadClient({
       </div>
 
       {showConsentBanner && (
-        <div className="push-banner" style={{ margin: '0 28px 10px' }}>
+        <div className="push-banner" style={{ margin: '0 var(--gutter-page) 10px' }}>
           <span>Chat transcripts can be referenced in disputes only if both parties consent.</span>
           <span className="row" style={{ gap: 14 }}>
             <button type="button" className="link-underline link-underline--ink" onClick={() => void toggleConsent()}>GIVE CONSENT</button>
@@ -458,23 +468,27 @@ export default function ThreadClient({
           <button type="button" className="btn-mini btn-mini--link" onClick={() => setShowOfferInput(false)}>CANCEL</button>
         </div>
       )}
-      {sendError && <div className="alert-line" style={{ padding: '0 28px 8px' }} role="alert">{sendError}</div>}
+      {sendError && <div className="alert-line" style={{ padding: '0 var(--gutter-page) 8px' }} role="alert">{sendError}</div>}
 
-      <div className="thread__composer">
+      <form className="thread__composer" onSubmit={(e) => { e.preventDefault(); void sendMessage() }}>
         {canOffer && !showOfferInput && (
           <button type="button" className="btn-outline btn-outline--mono" onClick={() => setShowOfferInput(true)} data-testid="make-offer-btn">MAKE OFFER</button>
         )}
-        <input
-          type="text"
-          value={messageText}
-          onChange={(e) => setMessageText(e.target.value)}
-          placeholder="Write a message"
-          aria-label="Write a message"
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage() } }}
-          data-testid="message-input"
-        />
-        <button type="button" className="btn-send" onClick={() => void sendMessage()} disabled={!messageText.trim()} data-testid="send-btn">SEND →</button>
-      </div>
+        <div className="compose__field">
+          <textarea
+            ref={composerRef}
+            className="compose__input"
+            rows={1}
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            placeholder="Write a message"
+            aria-label="Write a message"
+            data-testid="message-input"
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage() } }}
+          />
+        </div>
+        <button type="submit" className="btn-send" disabled={!messageText.trim()} data-testid="send-btn">SEND</button>
+      </form>
     </div>
   )
 }

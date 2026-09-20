@@ -5,6 +5,13 @@
  */
 export const PUBLIC_IMAGE_SLOTS = 5
 
+/**
+ * Slots are POSITIONAL and sparse: the sell form stores six entries with '' for an empty slot, and
+ * only FRONT + POSSESSION are required. So the cut to slots 0–4 has to happen by index BEFORE the
+ * empties are dropped — filtering first compacts the array and slides the possession proof
+ * (index 5) into the public five whenever any of BACK / TAG / DETAIL / FLAW is empty.
+ */
 export function publicImages(images: unknown): string[] {
-  return (Array.isArray(images) ? (images as unknown[]).filter((u): u is string => typeof u === 'string' && u.length > 0) : []).slice(0, PUBLIC_IMAGE_SLOTS)
+  if (!Array.isArray(images)) return []
+  return (images as unknown[]).slice(0, PUBLIC_IMAGE_SLOTS).filter((u): u is string => typeof u === 'string' && u.length > 0)
 }

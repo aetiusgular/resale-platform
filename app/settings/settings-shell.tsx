@@ -63,7 +63,6 @@ export default async function SettingsShell({
         <aside className="rail">
           <div className="rail__top">
             <span className="rail__title">ACCOUNT</span>
-            <span className="rail__handle">@{username.toUpperCase()}</span>
           </div>
           {nav.map((n, i) => {
             const on = n.id === activeNav
