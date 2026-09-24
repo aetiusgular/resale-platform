@@ -28,10 +28,10 @@ import { fmtRate } from '@/lib/tier-dashboard'
 import {
   COLORS, measurementDisplayLabel, measurementKindFor, measurementKindIsChoice, measurementKindOf, measurementLabelsForKind,
 } from '@/lib/taxonomy'
-import { sizeScaleFor } from '@/lib/sizes'
 import { REGION_LABELS, needsIntlRegion } from '@/lib/shipping-regions'
 import { countryName } from '@/lib/countries'
 import SellCategory from './sell-category'
+import SellSize from './sell-size'
 import SellPhotos from './sell-photos'
 import SellShipping, { regionDraftsFrom, intlFromDrafts, regionMissingPrice, type RegionDrafts } from './sell-shipping'
 
@@ -140,7 +140,6 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const measurements = Object.fromEntries(
     measLabels.map((l) => [l, parseFloat((meas[l] ?? '').replace(/[^0-9.]/g, ''))]).filter(([, v]) => Number.isFinite(v as number) && (v as number) > 0),
   ) as Record<string, number>
-  const sizeOptions  = sizeScaleFor(department, category)
   const intlShipping = intlFromDrafts(regions, origin)
   const hasIntl      = Object.keys(intlShipping).length > 0
 
@@ -361,14 +360,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
           <div className="sellx-grid sellx-grid--pair">
             <div className="sellx-field">
               <label className="sellx__label" htmlFor="sell-size">SIZE</label>
-              <span className="select-wrap">
-                <select id="sell-size" className="sellx-input sellx-select" value={size} onChange={(e) => setSize(e.target.value)} data-testid="sell-size">
-                  <option value="" disabled>{category ? 'Select' : 'Pick a category first'}</option>
-                  {size && !sizeOptions.includes(size) && <option value={size}>{size}</option>}
-                  {sizeOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <span className="select-row__caret select-wrap__caret">▾</span>
-              </span>
+              <SellSize department={department} category={category} size={size} onPick={setSize} />
             </div>
             <div className="sellx-field">
               <label className="sellx__label" htmlFor="sell-color">COLOR</label>
