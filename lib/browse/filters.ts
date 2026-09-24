@@ -7,14 +7,14 @@
  * URL contract (design 16A rail + results header):
  *   q, dept (csv), cat (csv — whole categories), subcat (csv — `Category:Subcategory`
  *   picks; bare labels resolve via lib/taxonomy), size, sizes (csv — MY SIZES list),
- *   brand (csv, exact labels), color (csv), min_price, max_price (dollars), verified=1,
+ *   brand (csv, exact labels), color (csv of lib/taxonomy labels, case-insensitive), min_price, max_price (dollars), verified=1,
  *   authenticated=1, dropped=1, sold=1, sort=newest|price_asc|price_desc,
  *   offset. `cond` (minimum condition grade) is still honoured for old links.
  *   DEPARTMENT and CATEGORY are multi-select: departments OR together, and the
  *   catalogue matches any whole category OR any (category AND picked subcategory).
  */
 import { BUMP_ENABLED } from '@/lib/flags'
-import { DEPARTMENTS, categoryScopeLabel, departmentScopeLabel, picksByCategory, resolveCategorySelection } from '@/lib/taxonomy'
+import { DEPARTMENTS, canonicalColor, categoryScopeLabel, departmentScopeLabel, picksByCategory, resolveCategorySelection } from '@/lib/taxonomy'
 
 export type BrowseSort = 'newest' | 'price_asc' | 'price_desc' | 'relevance' | 'most_saved'
 
@@ -76,7 +76,7 @@ export function parseBrowseParams(src: ParamSource): BrowseFilters {
     size: (get('size') ?? '').trim(),
     sizes: csv(get('sizes')),
     brands: csv(get('brand')),
-    colors: csv(get('color')),
+    colors: Array.from(new Set(csv(get('color')).map((c) => canonicalColor(c) ?? c))),
     minPriceCents: dollarsToCents(get('min_price')),
     maxPriceCents: dollarsToCents(get('max_price')),
     condMin: Number.isFinite(condRaw) && condRaw >= 1 && condRaw <= 10 ? condRaw : null,

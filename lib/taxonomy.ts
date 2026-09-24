@@ -128,18 +128,121 @@ export function departmentScopeLabel(depts: ReadonlyArray<string>): string {
   return valid.map((d) => d.charAt(0).toUpperCase() + d.slice(1)).join(' + ')
 }
 
-/** Colour filter (rail: swatch + label). Stored on listings.color as the label. */
-export const COLORS: ReadonlyArray<{ label: string; swatch: string }> = [
-  { label: 'Black', swatch: '#161616' },
-  { label: 'White', swatch: '#fbfbf9' },
-  { label: 'Grey',  swatch: '#8a8a86' },
-  { label: 'Cream', swatch: '#e6dcc3' },
-  { label: 'Navy',  swatch: '#2c3550' },
-  { label: 'Brown', swatch: '#6d4a2f' },
-  { label: 'Olive', swatch: '#62653c' },
-  { label: 'Multi', swatch: 'linear-gradient(135deg,#b3382f 0 25%,#2c62b8 0 50%,#d9a52a 0 75%,#3c7a3f 0)' },
+// ── Colours ──────────────────────────────────────────────────────────────────
+//
+// ONE list for the browse rail, the sell form and the listings API. Stored on
+// listings.color as the label and matched exactly (`in('color', …)`), so a label
+// is a data value: the eight original labels (Black, White, Grey, Cream, Navy,
+// Brown, Olive, Multi) are kept verbatim and every row written so far still
+// filters.
+//
+// The set comes from the filters of the platforms this catalogue competes with
+// (Grailed 15 · Vinted 29 · SSENSE 14 · END. 15) and Google's 13 standard colour
+// families, cut to what a second-hand clothing catalogue needs: the core every
+// platform shares (black, white, grey, brown, blue, green, red, yellow, orange,
+// pink, purple, multi), the neutrals menswear splits (cream, beige, tan,
+// charcoal), the shades that decide a purchase (navy vs blue vs light blue,
+// olive vs green, burgundy vs red, teal) and the two metals accessories need.
+// Order is the rail order: neutrals dark → light, then blues, greens, warm,
+// pink / purple, metals, multi.
+//
+// `aliases` are the words people type for a colour that isn't its label
+// ("gray", "ivory", "off-white", "khaki", "oxblood"). They only drive the
+// type-ahead (`searchColors`) and are never stored; an alias may sit on two
+// colours when the word is ambiguous (khaki is tan in the US and green in the UK).
+
+export interface ColorOption {
+  /** Stored value and display label. */
+  label: string
+  /** CSS background of the swatch dot — flat colours; Multi is the one gradient. */
+  swatch: string
+  /** Lower-case search terms that surface this colour besides its label. */
+  aliases: ReadonlyArray<string>
+}
+
+export const COLORS: ReadonlyArray<ColorOption> = [
+  { label: 'Black',      swatch: '#161616', aliases: ['jet black', 'faded black', 'washed black'] },
+  { label: 'Charcoal',   swatch: '#3c3c3a', aliases: ['dark grey', 'dark gray', 'anthracite', 'graphite', 'gunmetal'] },
+  { label: 'Grey',       swatch: '#8a8a86', aliases: ['gray', 'heather', 'heather grey', 'heather gray', 'slate', 'ash', 'light grey', 'light gray'] },
+  { label: 'White',      swatch: '#fbfbf9', aliases: ['optic white', 'bright white', 'snow'] },
+  { label: 'Cream',      swatch: '#efe7d3', aliases: ['ivory', 'off-white', 'off white', 'ecru', 'bone', 'eggshell', 'natural', 'milk', 'vanilla', 'oatmeal'] },
+  { label: 'Beige',      swatch: '#d6c4a0', aliases: ['sand', 'stone', 'nude', 'putty', 'khaki', 'taupe', 'oatmeal', 'wheat', 'light brown'] },
+  { label: 'Tan',        swatch: '#b98b5b', aliases: ['camel', 'caramel', 'khaki', 'saddle', 'toffee', 'cognac', 'light brown'] },
+  { label: 'Brown',      swatch: '#6d4a2f', aliases: ['chocolate', 'coffee', 'espresso', 'chestnut', 'mocha', 'cognac', 'walnut', 'dark brown'] },
+  { label: 'Navy',       swatch: '#2c3550', aliases: ['dark blue', 'midnight', 'marine', 'indigo'] },
+  { label: 'Blue',       swatch: '#3b63a8', aliases: ['cobalt', 'royal blue', 'indigo', 'denim', 'electric blue', 'medium blue'] },
+  { label: 'Light blue', swatch: '#9ebbd8', aliases: ['sky blue', 'baby blue', 'powder blue', 'pale blue', 'ice blue', 'light wash'] },
+  { label: 'Teal',       swatch: '#2f7f82', aliases: ['turquoise', 'aqua', 'cyan', 'sea green', 'petrol', 'dark teal'] },
+  { label: 'Green',      swatch: '#3f6f46', aliases: ['forest', 'forest green', 'hunter green', 'emerald', 'kelly green', 'bottle green', 'dark green', 'mint', 'lime', 'sage'] },
+  { label: 'Olive',      swatch: '#62653c', aliases: ['army green', 'military green', 'khaki', 'moss', 'sage', 'fatigue', 'olive drab'] },
+  { label: 'Yellow',     swatch: '#e0c34a', aliases: ['mustard', 'lemon', 'canary', 'butter', 'pale yellow'] },
+  { label: 'Orange',     swatch: '#df772f', aliases: ['rust', 'burnt orange', 'apricot', 'peach', 'tangerine', 'coral', 'terracotta'] },
+  { label: 'Red',        swatch: '#b3382f', aliases: ['crimson', 'scarlet', 'cherry', 'brick', 'bright red'] },
+  { label: 'Burgundy',   swatch: '#6e2231', aliases: ['maroon', 'wine', 'oxblood', 'bordeaux', 'dark red', 'merlot', 'claret'] },
+  { label: 'Pink',       swatch: '#e2a3b5', aliases: ['rose', 'blush', 'salmon', 'coral', 'hot pink', 'fuchsia', 'magenta', 'dusty pink'] },
+  { label: 'Purple',     swatch: '#6e4b8e', aliases: ['lilac', 'lavender', 'violet', 'plum', 'mauve', 'aubergine', 'eggplant'] },
+  { label: 'Silver',     swatch: '#c3c3c0', aliases: ['metallic', 'metal', 'chrome', 'steel', 'platinum'] },
+  { label: 'Gold',       swatch: '#c9a54a', aliases: ['metallic', 'metal', 'brass', 'bronze', 'copper', 'champagne'] },
+  { label: 'Multi',      swatch: 'linear-gradient(135deg,#b3382f 0 25%,#2c62b8 0 50%,#d9a52a 0 75%,#3c7a3f 0)', aliases: ['multicolor', 'multicolour', 'multi-color', 'multi-colour', 'mixed', 'print', 'printed', 'pattern', 'patterned', 'camo', 'camouflage', 'plaid', 'check', 'striped', 'stripes', 'tie dye', 'tie-dye', 'colorful', 'colourful', 'rainbow'] },
 ]
 export const COLOR_LABELS = COLORS.map((c) => c.label)
+
+const normColor = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+const colorWords = (s: string) => s.split(/[\s-]+/)
+
+export function colorByLabel(label: string | null | undefined): ColorOption | undefined {
+  if (typeof label !== 'string') return undefined
+  const q = normColor(label)
+  return COLORS.find((c) => c.label.toLowerCase() === q)
+}
+
+/**
+ * The stored label for a client-supplied colour, matched case-insensitively on the
+ * label only ('navy' → 'Navy'); null when it is not a listed colour. Aliases are
+ * deliberately NOT accepted here: "khaki" is two colours, and a seller picks from
+ * the list in every client, so the API never has to guess.
+ */
+export function canonicalColor(raw: unknown): string | null {
+  return typeof raw === 'string' ? colorByLabel(raw)?.label ?? null : null
+}
+
+/**
+ * Type-ahead over the colour set. '' → every colour in rail order. Otherwise four
+ * tiers, each in rail order: labels that start with the text ("gre" → Grey, Green);
+ * an alias that starts with it, or a later word of the label ("gray" → Grey, "blue" →
+ * Light blue); a later word of an alias ("blue" → Navy via "dark blue", "green" →
+ * Olive via "army green"); anything that merely contains it.
+ */
+export function searchColors(query: string): ColorOption[] {
+  const q = normColor(query)
+  if (!q) return [...COLORS]
+  const tier = (c: ColorOption): number => {
+    const label = c.label.toLowerCase()
+    if (label.startsWith(q)) return 0
+    if (colorWords(label).slice(1).some((w) => w.startsWith(q)) || c.aliases.some((a) => a.startsWith(q))) return 1
+    if (c.aliases.some((a) => colorWords(a).slice(1).some((w) => w.startsWith(q)))) return 2
+    if (label.includes(q) || c.aliases.some((a) => a.includes(q))) return 3
+    return 4
+  }
+  return COLORS.map((c, i) => ({ c, i, t: tier(c) }))
+    .filter((x) => x.t < 4)
+    .sort((a, b) => a.t - b.t || a.i - b.i)
+    .map((x) => x.c)
+}
+
+/**
+ * Why a colour matched a query when its label doesn't start with it: the alias that
+ * did ("ivory" for Cream, "oxblood" for Burgundy), so the type-ahead can print it
+ * beside the label. Null when the label itself is the match or nothing was typed.
+ */
+export function colorMatchHint(c: ColorOption, query: string): string | null {
+  const q = normColor(query)
+  if (!q || c.label.toLowerCase().startsWith(q)) return null
+  return c.aliases.find((a) => a.startsWith(q))
+    ?? c.aliases.find((a) => colorWords(a).some((w) => w.startsWith(q)))
+    ?? c.aliases.find((a) => a.includes(q))
+    ?? null
+}
 
 /**
  * Flat measurements (inches) the listing form asks for and the listing page shows.

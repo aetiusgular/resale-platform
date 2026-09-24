@@ -3,7 +3,7 @@
  * (drafts are partial); values are trimmed, cased and validated against the
  * taxonomy, and anything unknown is dropped. PURE.
  */
-import { CATEGORIES, COLOR_LABELS, DEPARTMENTS, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
+import { CATEGORIES, DEPARTMENTS, canonicalColor, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
 import { cleanIntlShipping, type IntlShipping } from '@/lib/shipping-regions'
 import { MAX_PHOTOS } from '@/lib/listings/images'
 
@@ -48,7 +48,7 @@ export function cleanDraftFields(body: Record<string, unknown>, origin: string =
   const size = str(body.size, 30)
   if (size !== undefined) out.size = size ? size.toUpperCase() : null
   const color = str(body.color, 20)
-  if (color !== undefined) out.color = color && COLOR_LABELS.includes(color) ? color : null
+  if (color !== undefined) out.color = canonicalColor(color)
   const description = str(body.description, 1000)
   if (description !== undefined) out.description = description
   if (body.condition_score !== undefined) {

@@ -21,8 +21,8 @@ import { useState, useTransition, useCallback, useRef, useEffect, type ReactNode
 import type { BrowseListing, FilterCounts } from './page'
 import { sizesChipLabel, type UserSizes } from '@/lib/sizes'
 import {
-  CATEGORY_TREE, COLORS, DEPARTMENTS, categoriesWithSubcategory, categoryScopeLabel, departmentScopeLabel,
-  parseSubcatKey, picksByCategory, resolveCategorySelection, subcatKey,
+  CATEGORY_TREE, COLORS, DEPARTMENTS, categoriesWithSubcategory, categoryScopeLabel, colorByLabel, departmentScopeLabel,
+  parseSubcatKey, picksByCategory, resolveCategorySelection, searchColors, subcatKey, type ColorOption,
 } from '@/lib/taxonomy'
 import { trackEvent } from '@/lib/analytics'
 import {
@@ -64,6 +64,8 @@ const SHOW_ONLY: Array<{ id: 'authenticated' | 'verified' | 'dropped' | 'sold'; 
   { id: 'sold',          label: 'Sold items' },
 ]
 const DESIGNERS_SHOWN = 5
+/** COLOR rows shown before VIEW ALL (the reference rail's eight). */
+const COLORS_SHOWN = 8
 
 const fmt = (n: number) => n.toLocaleString('en-US')
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
@@ -145,6 +147,23 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
   const designerPool = filterCounts.brands.filter((d) => d.label.toLowerCase().includes(dq))
   const designers = allDesigners || dq ? designerPool : designerPool.slice(0, DESIGNERS_SHOWN)
   const selectedOffList = brands.filter((b) => !designers.some((d) => d.label === b))
+
+  // COLOR: type to find (labels, then the words people use — "gray", "ivory", "khaki"),
+  // tick to filter; multi-select like DESIGNER. Idle, the rail shows the colours the
+  // active catalogue actually has (facet counts, list order), padded from the list to
+  // eight rows; VIEW ALL or typing shows every match. Ticked colours are always listed.
+  const [colorQuery, setColorQuery] = useState('')
+  const [allColors, setAllColors] = useState(false)
+  const cq = colorQuery.trim()
+  const colorCount = (label: string) => filterCounts.colors[label] ?? 0
+  let colorRows: ColorOption[]
+  if (cq || allColors) colorRows = searchColors(cq)
+  else {
+    const present = COLORS.filter((c) => colorCount(c.label) > 0)
+    colorRows = [...present, ...COLORS.filter((c) => colorCount(c.label) === 0)].slice(0, Math.max(COLORS_SHOWN, present.length))
+  }
+  const selectedColorsOffList = colors.filter((c) => !colorRows.some((r) => r.label === c))
+  const toggleColor = (label: string) => update({ color: toggleIn(colors, label).join(',') || null })
 
   return (
     <aside className="rail" data-testid="filter-rail">
@@ -283,16 +302,46 @@ function FilterRail({ params, update, clearAll, filterCounts }: {
       </Section>
 
       <Section label="COLOR" open={open.color} onToggle={sec('color')}>
-        {COLORS.map((c) => (
-          <CheckRow
-            key={c.label}
-            label={c.label}
-            swatch={c.swatch}
-            count={`(${fmt(filterCounts.colors[c.label] ?? 0)})`}
-            on={colors.includes(c.label)}
-            onClick={() => update({ color: toggleIn(colors, c.label).join(',') || null })}
-          />
-        ))}
+        <input
+          className={`text-input${colors.length ? ' is-set' : ''}`}
+          placeholder="Search colors"
+          value={colorQuery}
+          onChange={(e) => setColorQuery(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter takes the typed colour: its exact label if typed in full, else the top match.
+            if (e.key === 'Enter' && cq && colorRows.length) {
+              e.preventDefault()
+              const exact = colorRows.find((r) => r.label.toLowerCase() === cq.toLowerCase())
+              toggleColor((exact ?? colorRows[0]).label)
+              setColorQuery('')
+            } else if (e.key === 'Escape') setColorQuery('')
+          }}
+          aria-label="Search colors"
+          data-testid="color-search"
+        />
+        <div className="rail__list" data-testid="color-list">
+          {selectedColorsOffList.map((label) => (
+            <CheckRow key={label} label={label} swatch={colorByLabel(label)?.swatch} count={`(${fmt(colorCount(label))})`} on onClick={() => toggleColor(label)} />
+          ))}
+          {colorRows.map((c) => (
+            <CheckRow
+              key={c.label}
+              label={c.label}
+              swatch={c.swatch}
+              count={`(${fmt(colorCount(c.label))})`}
+              on={colors.includes(c.label)}
+              onClick={() => toggleColor(c.label)}
+            />
+          ))}
+          {colorRows.length === 0 && <div className="rail__note">No colors match “{cq}”.</div>}
+          {!cq && (allColors || colorRows.length < COLORS.length) && (
+            <div className="rail__viewall">
+              <button type="button" className="link-underline" onClick={() => setAllColors((v) => !v)}>
+                {allColors ? 'SHOW FEWER ←' : `VIEW ALL ${COLORS.length} →`}
+              </button>
+            </div>
+          )}
+        </div>
       </Section>
 
       <Section label="PRICE" open={open.price} onToggle={sec('price')}>

@@ -15,7 +15,7 @@ import { isBanned } from '@/lib/auth/ban'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { quoteShippingCents } from '@/lib/shipping'
 import { makeEasypostRater } from '@/lib/shipping-easypost'
-import { CATEGORIES, COLOR_LABELS, DEPARTMENTS, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
+import { CATEGORIES, DEPARTMENTS, canonicalColor, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
 import { sellerShipFrom } from '@/lib/listings/origin'
 import { cleanIntlShipping, needsIntlRegion } from '@/lib/shipping-regions'
 import { countryName, isRestrictedCountry, normalizeCountry } from '@/lib/countries'
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     typeof subcategory === 'string' && subcategory.trim() && isValidSubcategory(categoryClean, subcategory.trim())
       ? subcategory.trim()
       : null
-  const colorClean: string | null = typeof color === 'string' && COLOR_LABELS.includes(color.trim()) ? color.trim() : null
+  const colorClean: string | null = canonicalColor(color)
   const measurementsClean = normalizeMeasurements(measurements, categoryClean)
   const draftId: string | null = typeof draft_id === 'string' && /^[0-9a-f-]{36}$/i.test(draft_id) ? draft_id : null
 

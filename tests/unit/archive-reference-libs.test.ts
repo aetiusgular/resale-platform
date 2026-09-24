@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseBrowseParams, applyBrowseWhere, applyBrowseOrder, applyCategoryWhere, browseSearchParams, isDiscoveryView, browseScope } from '../../lib/browse/filters'
 import {
-  CATEGORIES, COLOR_LABELS, isValidSubcategory, measurementLabelsFor, normalizeMeasurements, formatMeasurement, subcategoriesOf,
+  CATEGORIES, COLORS, COLOR_LABELS, canonicalColor, colorMatchHint, searchColors, isValidSubcategory, measurementLabelsFor, normalizeMeasurements, formatMeasurement, subcategoriesOf,
   measurementKindFor, measurementKindOf, measurementDisplayLabel,
   resolveCategorySelection, picksByCategory, categoryScopeLabel, departmentScopeLabel, subcatKey, parseSubcatKey,
 } from '../../lib/taxonomy'
@@ -121,7 +121,40 @@ describe('lib/taxonomy', () => {
     expect(subcategoriesOf('Tops')).toContain('Short-sleeve tees')
     expect(isValidSubcategory('Tops', 'Short-sleeve tees')).toBe(true)
     expect(isValidSubcategory('Tops', 'Boots')).toBe(false)
-    expect(COLOR_LABELS).toEqual(['Black', 'White', 'Grey', 'Cream', 'Navy', 'Brown', 'Olive', 'Multi'])
+    // The original eight labels are stored on live rows and must survive every taxonomy change.
+    for (const kept of ['Black', 'White', 'Grey', 'Cream', 'Navy', 'Brown', 'Olive', 'Multi']) expect(COLOR_LABELS).toContain(kept)
+    expect(COLOR_LABELS.length).toBeGreaterThanOrEqual(20)
+    expect(new Set(COLOR_LABELS).size).toBe(COLOR_LABELS.length)
+    for (const c of COLORS) {
+      expect(c.label.length).toBeLessThanOrEqual(20) // draft-fields caps the field at 20 chars
+      expect(c.swatch).toBeTruthy()
+      for (const a of c.aliases) expect(a).toBe(a.toLowerCase())
+    }
+  })
+
+  it('colours: canonical labels are case-insensitive, aliases only drive search', () => {
+    expect(canonicalColor('navy')).toBe('Navy')
+    expect(canonicalColor(' Light Blue ')).toBe('Light blue')
+    expect(canonicalColor('ivory')).toBeNull() // alias, not a stored value
+    expect(canonicalColor('Chartreuse')).toBeNull()
+    expect(canonicalColor(42)).toBeNull()
+    // '' → the whole list in rail order, starting with the neutrals.
+    expect(searchColors('').map((c) => c.label).slice(0, 4)).toEqual(['Black', 'Charcoal', 'Grey', 'White'])
+    // Label prefix first, then alias / later-word matches, then contains — each in rail order.
+    expect(searchColors('gr').map((c) => c.label)).toEqual(['Grey', 'Green', 'Charcoal', 'Teal', 'Olive'])
+    expect(searchColors('blue').map((c) => c.label)).toEqual(['Blue', 'Light blue', 'Navy'])
+    expect(searchColors('green').map((c) => c.label)).toEqual(['Green', 'Teal', 'Olive'])
+    expect(searchColors('gray').map((c) => c.label)).toEqual(['Grey', 'Charcoal'])
+    expect(searchColors('ivory').map((c) => c.label)).toEqual(['Cream'])
+    expect(searchColors('off-white').map((c) => c.label)).toEqual(['Cream'])
+    expect(searchColors('khaki').map((c) => c.label)).toEqual(['Beige', 'Tan', 'Olive'])
+    expect(searchColors('oxblood').map((c) => c.label)).toEqual(['Burgundy'])
+    expect(searchColors('camo').map((c) => c.label)).toEqual(['Multi'])
+    expect(searchColors('zzz')).toEqual([])
+    const cream = COLORS.find((c) => c.label === 'Cream')!
+    expect(colorMatchHint(cream, 'ivo')).toBe('ivory')
+    expect(colorMatchHint(cream, 'cre')).toBeNull()
+    expect(colorMatchHint(cream, '')).toBeNull()
   })
 
   it('rail selection: qualified picks, narrowing, ordering, scope labels', () => {
@@ -226,7 +259,7 @@ describe('lib/listings/draft-fields', () => {
   it('keeps title casing, upper-cases brand + size, validates taxonomy, drops junk', () => {
     const f = cleanDraftFields({
       title: '1998 painter-dyed tee', brand: 'helmut lang', category: 'Tops', subcategory: 'Polos', size: 'm',
-      color: 'Pink', price_cents: 14500, condition_score: 11, images: ['a', 2, 'b'], measurements: { LENGTH: '27' },
+      color: 'Chartreuse', price_cents: 14500, condition_score: 11, images: ['a', 2, 'b'], measurements: { LENGTH: '27' },
     })
     expect(f.title).toBe('1998 painter-dyed tee')
     expect(f.brand).toBe('HELMUT LANG')
@@ -237,6 +270,13 @@ describe('lib/listings/draft-fields', () => {
     expect(f.condition_score).toBeNull()
     expect(f.images).toEqual(['a', 'b'])
     expect(f.measurements).toEqual({ LENGTH: 27 })
+  })
+
+  it('colour accepts any listed label case-insensitively and stores the canonical spelling', () => {
+    expect(cleanDraftFields({ color: 'burgundy' }).color).toBe('Burgundy')
+    expect(cleanDraftFields({ color: 'light BLUE' }).color).toBe('Light blue')
+    expect(cleanDraftFields({ color: '' }).color).toBeNull()
+    expect(cleanDraftFields({ color: 'ivory' }).color).toBeNull()
   })
 
   it('subcategory validates against current_category when the category is not in the patch', () => {
