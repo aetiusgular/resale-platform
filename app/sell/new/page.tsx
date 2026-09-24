@@ -1,5 +1,5 @@
 /**
- * /sell/new — create-listing wizard (reference WizardView). `?draft=<id>`
+ * /sell/new — create-listing form (sell page redesign A). `?draft=<id>`
  * continues a draft (CONTINUE → / RELIST), `?edit=<id>` edits a live listing.
  * Same gates as before: session, and the seller ID-verification gate behind
  * VERIFICATION_ENABLED.
@@ -34,7 +34,7 @@ export default async function NewListingPage({ searchParams }: PageProps) {
 
   return (
     <AppShell username={g.viewer.username} displayName={g.viewer.display_name ?? undefined}>
-      <SellForm userId={user.id} sellerBps={g.seller_bps} welcomeSalesRemaining={g.welcome_sales_remaining} initial={g.initial} mode={g.mode} />
+      <SellForm userId={user.id} sellerBps={g.seller_bps} welcomeSalesRemaining={g.welcome_sales_remaining} shipsFrom={g.ships_from} initial={g.initial} mode={g.mode} />
     </AppShell>
   )
 }

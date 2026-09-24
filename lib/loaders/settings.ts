@@ -80,6 +80,8 @@ export interface SettingsData {
   addresses: SettingsAddress[]
   payoutsEnabled: boolean
   payoutOnboardingDone: boolean
+  /** Set by the payouts page when Stripe could not open an account in the seller's country. */
+  payoutError?: 'country' | null
   prefs: NotificationPrefs
   notificationsEnabled: boolean
   phoneVerificationEnabled: boolean

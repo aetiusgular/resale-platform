@@ -4,6 +4,7 @@
  * taxonomy, and anything unknown is dropped. PURE.
  */
 import { CATEGORIES, COLOR_LABELS, DEPARTMENTS, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
+import { cleanIntlShipping, type IntlShipping } from '@/lib/shipping-regions'
 
 export interface DraftFields {
   title?: string | null
@@ -20,11 +21,17 @@ export interface DraftFields {
   images?: string[]
   possession_photo_url?: string | null
   measurements?: Record<string, number>
+  /** Per-region seller rates (lib/shipping-regions), keyed for the seller's origin. */
+  intl_shipping?: IntlShipping
 }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : undefined)
 
-export function cleanDraftFields(body: Record<string, unknown>): DraftFields {
+/**
+ * `origin` is the seller's ship-from country (lib/listings/origin): it decides which region
+ * keys are valid (Canada for US sellers, North America for everyone else).
+ */
+export function cleanDraftFields(body: Record<string, unknown>, origin: string = 'US'): DraftFields {
   const out: DraftFields = {}
   const title = str(body.title, 120)
   if (title !== undefined) out.title = title || null
@@ -56,5 +63,6 @@ export function cleanDraftFields(body: Record<string, unknown>): DraftFields {
   const poss = str(body.possession_photo_url, 500)
   if (poss !== undefined) out.possession_photo_url = poss || null
   if (body.measurements !== undefined) out.measurements = normalizeMeasurements(body.measurements, cat)
+  if (body.intl_shipping !== undefined) out.intl_shipping = cleanIntlShipping(body.intl_shipping, origin)
   return out
 }

@@ -1,5 +1,6 @@
 /**
- * Address book (Settings → ADDRESS, option 2B). Multiple US addresses, one default;
+ * Address book (Settings → ADDRESS, option 2B). Multiple addresses (any supported country,
+ * lib/addresses + lib/countries), one default;
  * the default is mirrored into profiles.shipping_address by a DB trigger so checkout
  * and prepaid labels keep reading the same field.
  *
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     .from('addresses')
     .select('*')
     .eq('user_id', user.id)
-    .eq('name', a.name).eq('street1', a.street1).eq('city', a.city).eq('state', a.state).eq('zip', a.zip)
+    .eq('name', a.name).eq('street1', a.street1).eq('city', a.city).eq('state', a.state).eq('zip', a.zip).eq('country', a.country)
     .limit(5)
   const same = (existing ?? []).find((r) => ((r as { street2?: string | null }).street2 ?? '') === (a.street2 ?? ''))
   if (same) {

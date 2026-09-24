@@ -1,12 +1,12 @@
 /**
  * POST /api/settings/address — save the signed-in user's shipping (buyer) or ship-from
- * (seller return) address. G12: these feed prepaid-label purchase. Validates completeness
- * (a label needs name + street + city/state/zip). Body: { kind:'shipping'|'ship_from', address }.
+ * (seller return) address. G12: these feed prepaid-label purchase. Validates with
+ * cleanAddress (lib/addresses). Body: { kind:'shipping'|'ship_from', address }.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { isCompleteAddress, type LabelAddress } from '@/lib/shipping-labels'
+import { cleanAddress } from '@/lib/addresses'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -21,19 +21,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "kind must be 'shipping' or 'ship_from'" }, { status: 400 })
   }
 
-  const a = (body.address ?? {}) as Partial<LabelAddress>
-  const address = {
-    name:    String(a.name ?? '').trim().slice(0, 100),
-    street1: String(a.street1 ?? '').trim().slice(0, 200),
-    street2: (String(a.street2 ?? '').trim().slice(0, 200)) || null,
-    city:    String(a.city ?? '').trim().slice(0, 100),
-    state:   String(a.state ?? '').trim().toUpperCase().slice(0, 50),
-    zip:     String(a.zip ?? '').trim().slice(0, 20),
-    country: 'US',
+  // Same validation as the address book (lib/addresses): any supported country, strict
+  // state / postal checks where the country has them.
+  const cleaned = cleanAddress(body.address)
+  if ('error' in cleaned) {
+    return NextResponse.json({ error: cleaned.error, code: 'incomplete' }, { status: 400 })
   }
-  if (!isCompleteAddress(address)) {
-    return NextResponse.json({ error: 'Please fill in name, street, city, state, and ZIP.', code: 'incomplete' }, { status: 400 })
-  }
+  const address = cleaned.address
 
   const col = kind === 'shipping' ? 'shipping_address' : 'ship_from_address'
   const service = createServiceClientRaw()

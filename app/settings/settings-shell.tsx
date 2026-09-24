@@ -28,8 +28,8 @@ export function resolveSection(raw: string | undefined): SettingsSection {
 }
 
 export default async function SettingsShell({
-  section, payoutOnboardingDone = false, reviewOrderId = null,
-}: { section: SettingsSection; payoutOnboardingDone?: boolean; reviewOrderId?: string | null }) {
+  section, payoutOnboardingDone = false, reviewOrderId = null, payoutError = null,
+}: { section: SettingsSection; payoutOnboardingDone?: boolean; reviewOrderId?: string | null; payoutError?: 'country' | null }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/enter')
@@ -83,7 +83,7 @@ export default async function SettingsShell({
               a "← SETTINGS" back link (Crumb). The desktop hub body hides there. */}
           {section === 'hub' && <SettingsMenu data={data} activeOrders={activeOrders} stage={BRAND_STAGE} />}
           <div className={`settings-section${section === 'hub' ? ' settings-desk' : ''}`}>
-            <SettingsSections section={section} data={data} />
+            <SettingsSections section={section} data={{ ...data, payoutError }} />
           </div>
         </main>
       </div>

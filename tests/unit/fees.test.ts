@@ -4,6 +4,7 @@ import {
   FEE_TIERS,
   BASE_FEE_BPS,
   BUYER_FEE_BPS,
+  FIXED_FEE_CENTS,
   MIN_FEE_CENTS,
   SMALL_ORDER_THRESHOLD_CENTS,
   SMALL_ORDER_CAP_BPS,
@@ -115,11 +116,13 @@ describe('effectiveSellerBps — sub-$100 cap at 5%', () => {
   })
 })
 
-describe('MIN_FEE_CENTS floor ($0.30, seller side)', () => {
-  it('floors small seller fees; leaves larger untouched', () => {
-    expect(MIN_FEE_CENTS).toBe(30)
-    expect(sellerFeeAt(500, 500)).toBe(30)       // 5% of $5 = 25 → 30
-    expect(sellerFeeAt(100000, 800)).toBe(8000)  // above floor → unchanged
+describe('FIXED_FEE_CENTS ($0.30 per order, seller side)', () => {
+  it('adds 30¢ on top of the percentage at every size', () => {
+    expect(FIXED_FEE_CENTS).toBe(30)
+    expect(MIN_FEE_CENTS).toBe(FIXED_FEE_CENTS)   // deprecated alias
+    expect(sellerFeeAt(500, 500)).toBe(55)        // 5% of $5 = 25 + 30
+    expect(sellerFeeAt(100000, 800)).toBe(8030)   // 8% of $1,000 + 30¢
+    expect(sellerFeeAt(24000, 800)).toBe(1950)    // 8% of $240 + 30¢
   })
   it('feeAt itself stays raw (no floor)', () => {
     expect(feeAt(500, 500)).toBe(25)
@@ -140,34 +143,34 @@ describe('orderAmountsAt (v3: zero buyer fee, sub-$100 cap, platform-funded disc
     const a = orderAmountsAt(100000, 800, 1200)
     expect(a.item_cents).toBe(100000)
     expect(a.buyer_fee_cents).toBe(0)
-    expect(a.seller_fee_cents).toBe(8000)
+    expect(a.seller_fee_cents).toBe(8030) // 8% + 30¢
     expect(a.shipping_cents).toBe(1200)
     expect(a.discount_cents).toBe(0)
     expect(a.total_cents).toBe(101200)   // price + shipping, no buyer fee
-    expect(a.transfer_cents).toBe(92000) // price - seller fee
+    expect(a.transfer_cents).toBe(91970) // price - seller fee
   })
   it('$1,000 item at elite 3.5% seller rate', () => {
     const a = orderAmountsAt(100000, 350, 1200)
-    expect(a.seller_fee_cents).toBe(3500)
-    expect(a.transfer_cents).toBe(96500)
+    expect(a.seller_fee_cents).toBe(3530)
+    expect(a.transfer_cents).toBe(96470)
     expect(a.total_cents).toBe(101200)
   })
-  it('sub-$100 order is charged 5% (base seller) not 8%', () => {
+  it('sub-$100 order is charged 5% + 30¢ (base seller) not 8%', () => {
     const a = orderAmountsAt(5000, 800, 1200) // $50 item
-    expect(a.seller_fee_cents).toBe(250) // 5% of $50
-    expect(a.transfer_cents).toBe(4750)
+    expect(a.seller_fee_cents).toBe(280) // 5% of $50 + 30¢
+    expect(a.transfer_cents).toBe(4720)
     expect(a.total_cents).toBe(6200)     // 5000 + 1200
   })
   it('sub-$100 order for an elite seller keeps the lower 3.5%', () => {
     const a = orderAmountsAt(5000, 350, 1200)
-    expect(a.seller_fee_cents).toBe(175)
-    expect(a.transfer_cents).toBe(4825)
+    expect(a.seller_fee_cents).toBe(205)
+    expect(a.transfer_cents).toBe(4795)
   })
   it('buyer discount reduces only the buyer total, never the seller transfer', () => {
     const a = orderAmountsAt(100000, 800, 1200, 5000)
     expect(a.discount_cents).toBe(5000)
     expect(a.total_cents).toBe(96200)    // 101200 - 5000
-    expect(a.transfer_cents).toBe(92000) // unchanged — platform funds the discount
+    expect(a.transfer_cents).toBe(91970) // unchanged — platform funds the discount
   })
   it('discount is clamped to the gross (never negative total)', () => {
     const a = orderAmountsAt(1000, 800, 0, 99999)

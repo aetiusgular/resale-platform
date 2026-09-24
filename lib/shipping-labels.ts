@@ -9,8 +9,10 @@
  *
  * DORMANT until SHIPPING_LABELS_ENABLED=true AND SHIPPING_PROVIDER_API_KEY is set (see
  * easypostConfigured). Pure helpers below are network-free and unit-tested. The buy/refund/
- * verify calls only fire on the confirmed-sale path when the flag is on. US ground only —
- * international/customs is out of scope for G12.
+ * verify calls only fire on the confirmed-sale path when the flag is on. Prepaid labels are
+ * US → US ground only. International orders are 'seller' label mode (the seller buys their own
+ * label, lib/shipping-regions); createTracker() puts their tracking on the same EasyPost
+ * webhook so delivery scans still drive the order.
  */
 import crypto from 'node:crypto'
 import { easypostConfigured, GROUND_SERVICES } from '@/lib/shipping-easypost'
@@ -173,6 +175,45 @@ export async function buyShippingLabel(input: {
       rateCents: Math.round(parseFloat(bought.selected_rate?.rate ?? String(rate.cents / 100)) * 100),
       labelUrl: bought.postage_label?.label_url ?? null,
     }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * EasyPost carrier codes for the common names sellers type into MARK AS SHIPPED. Anything
+ * not listed is sent without a carrier and EasyPost auto-detects it from the number.
+ */
+const CARRIER_CODES: Record<string, string> = {
+  usps: 'USPS', ups: 'UPS', fedex: 'FedEx', dhl: 'DHLExpress', 'dhl express': 'DHLExpress',
+  'canada post': 'CanadaPost', canadapost: 'CanadaPost', 'royal mail': 'RoyalMail', royalmail: 'RoyalMail',
+  'australia post': 'AustraliaPost', auspost: 'AustraliaPost', purolator: 'Purolator',
+}
+
+/** Pure: carrier name as typed → EasyPost carrier code, or null to let EasyPost detect it. */
+export function easypostCarrierCode(carrier: string | null | undefined): string | null {
+  const k = (carrier ?? '').trim().toLowerCase()
+  return k ? CARRIER_CODES[k] ?? null : null
+}
+
+/**
+ * Register a tracker for a tracking number the SELLER entered (international orders, and any
+ * domestic order shipped without the prepaid label). EasyPost then posts status updates to
+ * /api/webhooks/easypost, which moves the order to delivered on the carrier's delivery scan —
+ * the same path prepaid labels use. Returns the tracker id or null. Never throws.
+ */
+export async function createTracker(trackingCode: string, carrier?: string | null): Promise<string | null> {
+  if (!easypostConfigured() || !trackingCode.trim()) return null
+  try {
+    const code = easypostCarrierCode(carrier)
+    const res = await fetch(`${EASYPOST_API}/trackers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader() },
+      body: JSON.stringify({ tracker: { tracking_code: trackingCode.trim(), ...(code ? { carrier: code } : {}) } }),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { id?: string }
+    return data.id ?? null
   } catch {
     return null
   }

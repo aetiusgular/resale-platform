@@ -98,6 +98,13 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
   const sellerHandle = d.seller.username
   const sellerInitials = d.seller.initials
   const shippingCents = d.listing.shipping_cents
+  // US sellers: automatic US shipping + any regions they priced. Sellers abroad: regions only.
+  const lanes = d.listing.shipping
+  const intlLine = lanes.regions.map((r) => `${r.label.toUpperCase()} ${r.cents ? formatCents(r.cents) : 'FREE'}`).join(' · ')
+  const shipHeadline = lanes.us_domestic ? `+ ${formatCents(shippingCents)} SHIPPING US` : `SHIPS FROM ${lanes.ships_from_name.toUpperCase()}`
+  const shipSpec = lanes.us_domestic
+    ? `${formatCents(shippingCents)} US${lanes.regions.length ? ` · +${lanes.regions.length} REGIONS` : ' ONLY'}`
+    : `FROM ${lanes.ships_from_name.toUpperCase()}`
   const crumbHref = d.listing.crumb.href
   const statusWord = d.listing.status_word
   const listedLine = d.listing.listed_line
@@ -248,14 +255,15 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
                   )}
                   {formatCents(listing.price_cents)}
                 </span>
-                <span className="pdp__ship">+ {formatCents(shippingCents)} SHIPPING US</span>
+                <span className="pdp__ship">{shipHeadline}</span>
               </div>
+              {intlLine && <div className="pdp__ship-intl" data-testid="listing-intl-shipping">{lanes.us_domestic ? 'ALSO SHIPS TO ' : 'SHIPS TO '}{intlLine}</div>}
             </div>
             {/* Spec rows, ≤960px only: SIZE / COLOR / SHIPPING */}
             <div className="pdp-specs">
               {listing.size && <div className="pdp-specs__row"><span className="pdp-specs__k">SIZE</span><span className="pdp-specs__v">{listing.size.toUpperCase()}</span></div>}
               {listing.color && <div className="pdp-specs__row"><span className="pdp-specs__k">COLOR</span><span className="pdp-specs__v">{listing.color.toUpperCase()}</span></div>}
-              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{formatCents(shippingCents)} US ONLY</span></div>
+              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{shipSpec}</span></div>
             </div>
 
             {/* BUYER CTAs — hidden ≤960 (the dock takes over). Shown to buyers, and to the
@@ -350,7 +358,7 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
               title={listing.title}
               spec={spec}
               priceDisplay={formatCents(listing.price_cents)}
-              shipDisplay={formatCents(shippingCents)}
+              shipDisplay={shipHeadline}
               buyNode={readerBuy}
               offerNode={readerOffer}
               messageNode={readerMsg}

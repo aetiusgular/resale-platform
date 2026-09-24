@@ -2,7 +2,7 @@
  * PATCH  /api/listings/[id] — edit your own listing.
  *   draft          → any field (partial), stays a draft.
  *   active/pending → title, description, price, size, colour, category tree,
- *                    measurements. Photos are locked once published (they are
+ *                    measurements, international shipping rates. Photos are locked once published (they are
  *                    hashed + possession-checked at publish time). A price CUT
  *                    notifies everyone who saved the item (price_drop) — the
  *                    price_history trigger records it either way.
@@ -17,6 +17,8 @@ import { isBanned } from '@/lib/auth/ban'
 import { lintListing } from '@/lib/antislop-lint'
 import { allImageUrlsAllowed, storageHost } from '@/lib/security/image-url'
 import { cleanDraftFields } from '@/lib/listings/draft-fields'
+import { sellerOrigin } from '@/lib/listings/origin'
+import { needsIntlRegion, type IntlShipping } from '@/lib/shipping-regions'
 import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
 import { loadListingDetail } from '@/lib/loaders/listing'
@@ -40,7 +42,7 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
   })
 }
 
-const PUBLISHED_EDITABLE = new Set(['title', 'description', 'price_cents', 'size', 'color', 'category', 'subcategory', 'department', 'measurements', 'condition_score', 'condition_notes'])
+const PUBLISHED_EDITABLE = new Set(['title', 'description', 'price_cents', 'size', 'color', 'category', 'subcategory', 'department', 'measurements', 'condition_score', 'condition_notes', 'intl_shipping'])
 
 export async function PATCH(request: NextRequest, { params }: Ctx) {
   const { id } = await params
@@ -57,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
 
   const { data: listing } = await service
     .from('listings')
-    .select('id, seller_id, status, title, brand, description, category, price_cents, measurements')
+    .select('id, seller_id, status, title, brand, description, category, price_cents, measurements, ships_from')
     .eq('id', id)
     .single()
   if (!listing || listing.seller_id !== user.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -65,7 +67,10 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: 'This listing can no longer be edited' }, { status: 409 })
   }
 
-  const fields = cleanDraftFields({ ...body, current_category: body.category ?? listing.category })
+  // A draft follows the seller's current ship-from country; a live listing keeps the one it
+  // was published with (its rates were priced for it).
+  const origin = listing.status === 'draft' ? await sellerOrigin(service, user.id) : ((listing.ships_from as string | null) ?? 'US')
+  const fields = cleanDraftFields({ ...body, current_category: body.category ?? listing.category }, origin)
   const patch: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(fields)) {
     if (v === undefined) continue
@@ -74,6 +79,10 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     patch[k] = v
   }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+  if (listing.status === 'draft' && origin !== listing.ships_from) patch.ships_from = origin
+  if (listing.status !== 'draft' && patch.intl_shipping !== undefined && needsIntlRegion(origin, patch.intl_shipping as IntlShipping)) {
+    return NextResponse.json({ error: 'Add at least one shipping region.', code: 'no_shipping_region' }, { status: 400 })
+  }
 
   if (listing.status !== 'draft') {
     // Anti-slop lint on the (new) copy — same bar as publishing.

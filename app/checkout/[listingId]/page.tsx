@@ -70,6 +70,7 @@ export default async function CheckoutPage({ params, searchParams }: PageProps) 
         listing={{ title: c.listing.title, brand: c.listing.brand, size: c.listing.size, image: c.listing.image }}
         preview={{ item_cents: preview.item_cents, shipping_cents: preview.shipping_cents, total_cents: preview.total_cents }}
         savedAddress={c.saved_address}
+        shipping={c.shipping}
       />
     </AppShell>
   )

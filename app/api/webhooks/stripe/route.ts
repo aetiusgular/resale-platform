@@ -25,6 +25,8 @@ import stripe, { constructWebhookEvent } from '@/lib/stripe'
 import { syncConnectAccount } from '@/lib/stripe-connect-sync'
 import { recsMarkSold, recsMarkRemoved } from '@/lib/recs/sync'
 import { redeemReservedReward } from '@/lib/rewards'
+import { transferCentsFor } from '@/lib/fees'
+import { regionForDestination } from '@/lib/shipping-regions'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { NOTIFICATIONS_ENABLED, COLLUSION_HOLD_ENABLED, IDENTITY_LOCKS_ENABLED, IDENTITY_CARD_MAX_OTHER_ACCOUNTS } from '@/lib/flags'
 import { notify } from '@/lib/notify'
@@ -135,7 +137,7 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
   // This prevents fee manipulation via Stripe Dashboard metadata edits.
   const { data: session } = await service
     .from('checkout_sessions')
-    .select('item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, discount_cents, reward_id, buyer_fee_bps, seller_fee_bps, buyer_id, seller_id, listing_id')
+    .select('item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, discount_cents, reward_id, buyer_fee_bps, seller_fee_bps, buyer_id, seller_id, listing_id, label_mode, shipping_region, ship_to_address')
     .eq('stripe_payment_intent_id', pi.id)
     .single()
 
@@ -164,7 +166,9 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
   }
 
   const { item_cents, buyer_fee_cents, seller_fee_cents, shipping_cents, total_cents, discount_cents, buyer_fee_bps, seller_fee_bps } = session
-  const transfer_cents = item_cents - seller_fee_cents
+  // International (seller-label) lanes pay the shipping line out with the item (lib/fees).
+  const label_mode: 'platform' | 'seller' = session.label_mode === 'seller' ? 'seller' : 'platform'
+  const transfer_cents = transferCentsFor({ itemCents: item_cents, sellerFeeCents: seller_fee_cents, shippingCents: shipping_cents, labelMode: label_mode })
   // G11: fee-model label snapshot. Money fields come from the validated session above;
   // fee_mode is descriptive and rides in immutable PI metadata set at checkout.
   const fee_mode = meta.fee_mode === 'welcome' ? 'welcome' : 'tier'
@@ -174,15 +178,30 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
     throw new Error(`PI amount mismatch: stripe=${pi.amount} session=${total_cents}`)
   }
 
-  // Fetch buyer's shipping address for order snapshot. The checkout client saves the typed
-  // address to the address book before confirming the card, so this is normally set; a
-  // null here is loud because the seller has nowhere to ship.
-  const { data: buyerProfile } = await service
-    .from('profiles')
-    .select('shipping_address')
-    .eq('id', session.buyer_id)
-    .single()
-  if (!buyerProfile?.shipping_address) {
+  // Ship-to snapshot: the destination checkout priced shipping for (checkout_sessions,
+  // international shipping), else the buyer's saved default (the checkout client saves the
+  // typed address to the address book before confirming the card). A null here is loud
+  // because the seller has nowhere to ship.
+  let shipTo = (session.ship_to_address ?? null) as Record<string, unknown> | null
+  // Hold the payout when the fallback address sits in a different shipping lane than the one
+  // the buyer paid for (e.g. priced as US, default address abroad): the seller would ship
+  // internationally without the shipping money. A moderator resolves it (release-hold).
+  let laneHold: string | null = null
+  if (!shipTo) {
+    const [{ data: buyerProfile }, { data: soldListing }] = await Promise.all([
+      service.from('profiles').select('shipping_address').eq('id', session.buyer_id).single(),
+      service.from('listings').select('ships_from').eq('id', session.listing_id).single(),
+    ])
+    shipTo = (buyerProfile?.shipping_address ?? null) as Record<string, unknown> | null
+    if (shipTo) {
+      const lane = regionForDestination((soldListing?.ships_from as string | null) ?? 'US', (shipTo.country as string | undefined) ?? 'US')
+      if (lane !== (session.shipping_region ?? 'domestic')) {
+        laneHold = 'shipping_lane_mismatch'
+        console.error(`[webhook] PI ${pi.id}: paid lane ${session.shipping_region ?? 'domestic'} but ship-to lane ${lane}; payout held`)
+      }
+    }
+  }
+  if (!shipTo) {
     console.warn(`[webhook] order for PI ${pi.id}: buyer ${session.buyer_id} has no shipping_address on file`)
   }
 
@@ -204,8 +223,11 @@ async function handlePaymentSucceeded(event: Stripe.Event, service: ServiceClien
       discount_cents,
       fee_mode,
       stripe_payment_intent_id: pi.id,
-      shipping_address:         buyerProfile?.shipping_address ?? null,
-      ship_to_address:          buyerProfile?.shipping_address ?? null, // G12: complete label recipient
+      shipping_address:         shipTo,
+      ship_to_address:          shipTo, // G12: complete label recipient
+      label_mode,
+      shipping_region:          session.shipping_region ?? 'domestic',
+      ...(laneHold ? { transfer_hold_reason: laneHold } : {}),
       state:                    'paid_held',
       paid_at:                  new Date().toISOString(),
     })

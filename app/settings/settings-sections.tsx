@@ -23,6 +23,8 @@ import type { NotificationPrefs } from '@/lib/notify/types'
 import { FEE_TIERS, formatCents } from '@/lib/fees'
 import { RATE_WORDS, REVIEW_MAX_BODY, REVIEW_MAX_PHOTOS, REVIEW_TAGS } from '@/lib/reviews/tags'
 import { STATE_LABELS, type OrderState } from '@/lib/orders'
+import { postalFieldLabel, regionFieldLabel, regionRequired } from '@/lib/addresses'
+import { COUNTRY_OPTIONS, countryName, isRestrictedCountry } from '@/lib/countries'
 import PhoneVerify from './phone-verify'
 import TierDashboard from './tier-dashboard'
 import SignOutLink from './sign-out-link'
@@ -509,7 +511,7 @@ function ReviewSection({ data }: { data: SettingsData }) {
 }
 
 // ─── Address ─────────────────────────────────────────────────────────────────
-const EMPTY_FORM = { name: '', street: '', unit: '', city: '', state: '', zip: '' }
+const EMPTY_FORM = { name: '', street: '', unit: '', city: '', state: '', zip: '', country: 'US' }
 
 function AddressSection({ data }: { data: SettingsData }) {
   const router = useRouter()
@@ -525,7 +527,7 @@ function AddressSection({ data }: { data: SettingsData }) {
   async function save() {
     if (!form.name.trim() || !form.street.trim() || !form.city.trim() || saving) return
     setSaving(true); setError('')
-    const address = { name: form.name, street1: form.street, street2: form.unit, city: form.city, state: form.state, zip: form.zip }
+    const address = { name: form.name, street1: form.street, street2: form.unit, city: form.city, state: form.state, zip: form.zip, country: form.country }
     const res = editingId
       ? await fetch(`/api/settings/addresses/${editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address, is_default: asDefault || undefined }) })
       : await fetch('/api/settings/addresses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address, is_default: asDefault }) })
@@ -554,7 +556,7 @@ function AddressSection({ data }: { data: SettingsData }) {
   function edit(a: SettingsAddress) {
     setEditingId(a.id)
     setAsDefault(a.is_default)
-    setForm({ name: a.name, street: a.street1, unit: a.street2 ?? '', city: a.city, state: a.state, zip: a.zip })
+    setForm({ name: a.name, street: a.street1, unit: a.street2 ?? '', city: a.city, state: a.state, zip: a.zip, country: a.country || 'US' })
     document.getElementById('addr-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -563,7 +565,7 @@ function AddressSection({ data }: { data: SettingsData }) {
       <Crumb trail={[{ label: 'ADDRESS' }]} title="SHIPPING ADDRESS" meta={addresses.length ? `${addresses.length} SAVED` : undefined} />
       <div className="page-head page-head--ruled">
         <h1 className="page-title">Shipping address</h1>
-        <span className="page-note">USED FOR PREPAID LABELS AND RETURNS</span>
+        <span className="page-note">YOUR DEFAULT IS WHERE YOU SHIP FROM AND TO</span>
       </div>
       {addresses.length > 0 ? (
         <div className="addr-grid">
@@ -579,8 +581,8 @@ function AddressSection({ data }: { data: SettingsData }) {
               </div>
               <div className="addr-card__lines">
                 <div>{[a.street1, a.street2].filter(Boolean).join(', ')}</div>
-                <div>{a.city}, {a.state} {a.zip}</div>
-                <div>United States</div>
+                <div>{[a.city, [a.state, a.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div>
+                <div>{countryName(a.country)}</div>
               </div>
               <div className="addr-card__foot">
                 <button type="button" className="link-underline link-underline--ink" onClick={() => edit(a)}>EDIT</button>
@@ -595,6 +597,15 @@ function AddressSection({ data }: { data: SettingsData }) {
 
       <div id="addr-form">
         <SectionHead label={editingId ? 'EDIT ADDRESS' : 'ADD NEW ADDRESS'} right={editingId ? <button type="button" className="link-underline" onClick={() => { setEditingId(null); setForm(EMPTY_FORM) }}>CANCEL</button> : undefined} />
+      </div>
+      <div className="field-block">
+        <div className="field-label">COUNTRY</div>
+        <span className="select-wrap">
+          <select className="select-row" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))} aria-label="Country" autoComplete="country" data-testid="address-country">
+            {COUNTRY_OPTIONS.filter((c) => !isRestrictedCountry(c.code)).map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
+          <span className="select-row__caret select-wrap__caret">▾</span>
+        </span>
       </div>
       <div className="field-block">
         <div className="field-label">FULL NAME</div>
@@ -616,12 +627,12 @@ function AddressSection({ data }: { data: SettingsData }) {
           <input className="input-sans" value={form.city} onChange={patch('city')} aria-label="City" autoComplete="address-level2" />
         </div>
         <div>
-          <div className="field-label">STATE</div>
-          <input className="input-sans" value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value.toUpperCase() }))} maxLength={2} aria-label="State" autoComplete="address-level1" />
+          <div className="field-label">{regionFieldLabel(form.country)}{regionRequired(form.country) ? '' : ' · OPTIONAL'}</div>
+          <input className="input-sans" value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value.toUpperCase() }))} maxLength={form.country === 'US' || form.country === 'CA' ? 2 : 50} aria-label={regionFieldLabel(form.country)} autoComplete="address-level1" />
         </div>
         <div>
-          <div className="field-label">ZIP</div>
-          <input className="input-sans" value={form.zip} onChange={patch('zip')} aria-label="ZIP code" autoComplete="postal-code" inputMode="numeric" />
+          <div className="field-label">{postalFieldLabel(form.country)}</div>
+          <input className="input-sans" value={form.zip} onChange={patch('zip')} aria-label={postalFieldLabel(form.country)} autoComplete="postal-code" inputMode={form.country === 'US' || form.country === 'AU' ? 'numeric' : 'text'} />
         </div>
       </div>
       {error && <div className="alert-line" role="alert">{error}</div>}
@@ -818,6 +829,11 @@ function PayoutsSection({ data }: { data: SettingsData }) {
         <h1 className="page-title">Payouts</h1>
         <span className="page-note">POWERED BY STRIPE EXPRESS</span>
       </div>
+      {data.payoutError === 'country' && (
+        <div className="push-banner" role="alert" style={{ borderColor: 'var(--alert)' }}>
+          <span>Stripe can’t open a payout account in your country yet. Payouts outside the US depend on Stripe’s cross-border support; check the country on your default address in Settings → Address.</span>
+        </div>
+      )}
       {data.payoutOnboardingDone && !data.payoutsEnabled && (
         <div className="push-banner">
           <span>Onboarding submitted — Stripe is reviewing your account. This page updates once payouts are enabled (usually minutes).</span>

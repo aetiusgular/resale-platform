@@ -17,6 +17,7 @@ import { createServiceClientRaw } from '@/lib/supabase/service'
 import { isBanned } from '@/lib/auth/ban'
 import { allImageUrlsAllowed, storageHost } from '@/lib/security/image-url'
 import { cleanDraftFields } from '@/lib/listings/draft-fields'
+import { sellerOrigin } from '@/lib/listings/origin'
 
 export const runtime = 'nodejs'
 
@@ -26,7 +27,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { data, error } = await supabase
     .from('listings')
-    .select('id, title, brand, category, department, subcategory, size, color, price_cents, images, possession_photo_url, description, condition_score, measurements, updated_at, created_at')
+    .select('id, title, brand, category, department, subcategory, size, color, price_cents, images, possession_photo_url, description, condition_score, measurements, ships_from, intl_shipping, updated_at, created_at')
     .eq('seller_id', user.id)
     .eq('status', 'draft')
     .order('updated_at', { ascending: false })
@@ -38,14 +39,16 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (await isBanned(createServiceClientRaw(), user.id)) {
+  const service = createServiceClientRaw()
+  if (await isBanned(service, user.id)) {
     return NextResponse.json({ error: 'Your account is suspended.', code: 'banned' }, { status: 403 })
   }
 
   let body: Record<string, unknown>
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
-  const fields = cleanDraftFields(body)
+  const origin = await sellerOrigin(service, user.id)
+  const fields = cleanDraftFields(body, origin)
   const host = storageHost()
   const urls = [...(fields.images ?? []), fields.possession_photo_url ?? ''].filter(Boolean)
   if (host && urls.length && !allImageUrlsAllowed(urls, host)) {
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('listings')
-    .insert({ seller_id: user.id, status: 'draft', ...fields })
+    .insert({ seller_id: user.id, status: 'draft', ships_from: origin, ...fields })
     .select('id')
     .single()
   if (error) {
