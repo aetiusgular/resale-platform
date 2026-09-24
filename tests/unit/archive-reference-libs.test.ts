@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { parseBrowseParams, applyBrowseWhere, applyBrowseOrder, applyCategoryWhere, browseSearchParams, isDiscoveryView, browseScope } from '../../lib/browse/filters'
 import {
   CATEGORIES, COLOR_LABELS, isValidSubcategory, measurementLabelsFor, normalizeMeasurements, formatMeasurement, subcategoriesOf,
+  measurementKindFor, measurementKindOf, measurementDisplayLabel,
   resolveCategorySelection, picksByCategory, categoryScopeLabel, departmentScopeLabel, subcatKey, parseSubcatKey,
 } from '../../lib/taxonomy'
 import { normalizeSizes, flattenSizes, sizesChipLabel, countSizes, sizeScaleFor, sizeKey } from '../../lib/sizes'
@@ -151,6 +152,21 @@ describe('lib/taxonomy', () => {
     expect(m).toEqual({ 'PIT TO PIT': 21.5, LENGTH: 27 })
     expect(formatMeasurement(21.5, 'in')).toBe('21.5"')
     expect(formatMeasurement(10, 'cm')).toBe('25.4 CM')
+  })
+
+  it('garments take TOPS or BOTTOMS measurements (the seller picks); the stored keys decide the labels', () => {
+    expect(measurementKindFor('Sportswear')).toBe('tops')
+    expect(measurementKindFor('Footwear')).toBe('footwear')
+    // A "Tops" listing measured as bottoms keeps the bottoms keys, and the page shows bottoms labels.
+    const bottoms = normalizeMeasurements({ WAIST: 32, INSEAM: 30 }, 'Tops')
+    expect(bottoms).toEqual({ WAIST: 32, INSEAM: 30 })
+    expect(measurementKindOf(bottoms)).toBe('bottoms')
+    expect(measurementLabelsFor('Tops', bottoms)).toEqual(['WAIST', 'INSEAM', 'RISE', 'LEG OPENING'])
+    expect(measurementLabelsFor('Tops', {})).toEqual(['PIT TO PIT', 'LENGTH', 'SHOULDER', 'SLEEVE'])
+    // Footwear never switches.
+    expect(normalizeMeasurements({ WAIST: 32, INSOLE: 11 }, 'Footwear')).toEqual({ INSOLE: 11 })
+    expect(measurementDisplayLabel('PIT TO PIT')).toBe('CHEST')
+    expect(measurementDisplayLabel('WAIST')).toBe('WAIST')
   })
 })
 

@@ -80,6 +80,19 @@ DO $$ BEGIN
 END $$;
 -- No index: nothing filters on these columns yet (a "ships to" browse filter would add one).
 
+-- ─── 2b. Listings: condition grade + possession photo are optional ──────────────
+-- The listing form (sell page redesign A) no longer asks for a condition grade or a
+-- possession proof photo. A published listing still needs title, brand, category, size and
+-- price. Looser than the constraint it replaces, so every existing row passes; added NOT
+-- VALID and validated in 20240101000051 like the rest.
+ALTER TABLE listings DROP CONSTRAINT IF EXISTS listings_published_complete_ck;
+ALTER TABLE listings ADD CONSTRAINT listings_published_complete_ck CHECK (
+  status = 'draft' OR (
+    title IS NOT NULL AND brand IS NOT NULL AND category IS NOT NULL AND size IS NOT NULL
+    AND price_cents IS NOT NULL
+  )
+) NOT VALID;
+
 -- ─── 3. Checkout sessions: the lane that was priced + where it goes ─────────────
 ALTER TABLE checkout_sessions
   ADD COLUMN IF NOT EXISTS label_mode      TEXT  NOT NULL DEFAULT 'platform',

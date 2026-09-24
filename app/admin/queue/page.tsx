@@ -119,7 +119,7 @@ export default async function AdminQueuePage() {
               <div key={listing.id} className={`admin-item${dupFlag ? ' admin-item--alert' : ''}`}>
                 <div className="admin-item__head">
                   <span className="admin-item__title"><Link href={`/listings/${listing.id}`}>{listing.title}</Link></span>
-                  <span className="admin-item__meta">{listing.brand.toUpperCase()} · {String(listing.category).toUpperCase()} · SIZE {String(listing.size).toUpperCase()} · CONDITION {listing.condition_score}/10</span>
+                  <span className="admin-item__meta">{listing.brand.toUpperCase()} · {String(listing.category).toUpperCase()} · SIZE {String(listing.size).toUpperCase()}{listing.condition_score ? ` · CONDITION ${listing.condition_score}/10` : ''}</span>
                   <span className="admin-item__meta" style={{ color: 'var(--ink)', fontWeight: 400 }}>{formatCents(listing.price_cents)}</span>
                   <div className="admin-item__right">
                     {dupFlag && <span className="tag tag--alert" data-testid="flag-duplicate">DUPLICATE SUSPECT</span>}

@@ -2,8 +2,8 @@
 
 /**
  * Create / edit a listing — sell page redesign A (single scroll, no step rail):
- * PHOTOS → TITLE / BRAND / CATEGORY / SIZE / COLOR / CONDITION / DESCRIPTION →
- * MEASUREMENTS → PRICE + SHIPPING beside the take-home breakdown → a sticky bar with
+ * PHOTOS → TITLE / BRAND / CATEGORY / SIZE / COLOR / DESCRIPTION → MEASUREMENTS (TOPS /
+ * BOTTOMS) → PRICE + SHIPPING beside the take-home breakdown → a sticky bar with
  * YOU RECEIVE and SAVE DRAFT / PUBLISH.
  *
  * The draft auto-saves as the seller types (POST /api/listings/drafts once, then debounced
@@ -12,27 +12,34 @@
  * published listing: copy, price, measurements, taxonomy and shipping regions are editable,
  * photos are locked (hashed at publish time).
  *
+ * Photos are free-ordered (./sell-photos): up to 5, the first is the cover. No condition
+ * grade and no possession photo: the design dropped both.
+ *
  * Fee math comes from lib/fees (sellerFeeBreakdown) — the same helpers checkout charges with.
  * US shipping is automatic (lib/shipping); international regions are the seller's
  * (lib/shipping-regions, ./sell-shipping).
  */
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { createBrowserClient } from '@supabase/ssr'
 import { sellerFeeBreakdown, FEE_TIERS, FIXED_FEE_CENTS, STRIPE_PCT_BPS, STRIPE_FIXED_CENTS, WELCOME_SALES } from '@/lib/fees'
 import { fmtRate } from '@/lib/tier-dashboard'
-import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
-import { COLORS, measurementLabelsFor } from '@/lib/taxonomy'
+import {
+  COLORS, measurementDisplayLabel, measurementKindFor, measurementKindIsChoice, measurementKindOf, measurementLabelsForKind,
+} from '@/lib/taxonomy'
 import { sizeScaleFor } from '@/lib/sizes'
 import { REGION_LABELS, needsIntlRegion } from '@/lib/shipping-regions'
 import { countryName } from '@/lib/countries'
-import { PlusIcon, XIcon } from '@/app/components/icons'
 import SellCategory from './sell-category'
+import SellPhotos from './sell-photos'
 import SellShipping, { regionDraftsFrom, intlFromDrafts, regionMissingPrice, type RegionDrafts } from './sell-shipping'
 
 export type { ListingInitial } from '@/lib/loaders/sell'
 import type { ListingInitial } from '@/lib/loaders/sell'
+
+/** Public photo slots on a listing (images[0..4]; the first is the cover). */
+export const MAX_PHOTOS = 5
 
 interface SellFormProps {
   userId: string
@@ -44,10 +51,6 @@ interface SellFormProps {
   initial?: ListingInitial | null
   mode?: 'new' | 'edit'
 }
-
-type SlotUploading = { [key: string]: boolean }
-type SlotUrls = { [key: string]: string }
-type SlotErrors = { [key: string]: string }
 
 async function resizeToJpeg(file: File, maxPx = 2000): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -89,8 +92,9 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const router = useRouter()
   const isEdit = mode === 'edit'
   const origin = initial?.ships_from ?? shipsFrom
-  // Storage path prefix: the row id when we have one, else a session id.
-  const pathId = useRef(initial?.id ?? (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2)))
+  // Storage path prefix: the row id when we have one, else an id for this form instance.
+  const instanceId = useId()
+  const pathId = useRef(initial?.id ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : instanceId.replace(/[^a-z0-9]/gi, '')))
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,15 +102,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   )
 
   // ── form state ──────────────────────────────────────────────────────────────
-  const initialSlots: SlotUrls = {}
-  if (initial) {
-    PHOTO_SLOTS.forEach((slot, i) => { const u = initial.images[i]; if (u) initialSlots[slot] = u })
-    if (initial.possession_photo_url) initialSlots.POSSESSION = initial.possession_photo_url
-  }
-  const [slotUrls, setSlotUrls]         = useState<SlotUrls>(initialSlots)
-  const [uploading, setUploading]       = useState<SlotUploading>({})
-  const [uploadErrors, setUploadErrors] = useState<SlotErrors>({})
-
+  const [photos, setPhotos]           = useState<string[]>(() => (initial?.images ?? []).filter(Boolean).slice(0, MAX_PHOTOS))
   const [title, setTitle]             = useState(initial?.title ?? '')
   const [brand, setBrand]             = useState(initial?.brand ?? '')
   const [department, setDepartment]   = useState(initial?.department ?? 'menswear')
@@ -114,10 +110,11 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const [subcategory, setSubcategory] = useState(initial?.subcategory ?? '')
   const [size, setSize]               = useState(initial?.size ?? '')
   const [color, setColor]             = useState(initial?.color ?? '')
-  const [conditionScore, setConditionScore] = useState<number | null>(initial?.condition_score ?? null)
   const [description, setDescription] = useState(initial?.description ?? '')
   const [meas, setMeas]               = useState<Record<string, string>>(() =>
     Object.fromEntries(Object.entries(initial?.measurements ?? {}).map(([k, v]) => [k, String(v)])))
+  // TOPS / BOTTOMS is the seller's call for garments; the category only sets the default.
+  const [measChoice, setMeasChoice]   = useState<'tops' | 'bottoms' | null>(() => measurementKindOf(initial?.measurements ?? null))
   const [priceRaw, setPriceRaw]       = useState(initial?.price_cents ? String(initial.price_cents / 100) : '')
   const [regions, setRegions]         = useState<RegionDrafts>(() => regionDraftsFrom(initial?.intl_shipping ?? {}))
 
@@ -136,7 +133,10 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const tierIdx      = FEE_TIERS.findIndex((t) => t.bps === sellerBps)
   const tierNumber   = tierIdx >= 0 ? FEE_TIERS.length - tierIdx : 1
   const saleNumber   = WELCOME_SALES - welcomeSalesRemaining + 1
-  const measLabels   = measurementLabelsFor(category || null)
+  const kindDefault  = measurementKindFor(category || null)
+  const kindChoice   = measurementKindIsChoice(category || null)
+  const measKind     = kindChoice ? (measChoice ?? kindDefault) : kindDefault
+  const measLabels   = measurementLabelsForKind(measKind)
   const measurements = Object.fromEntries(
     measLabels.map((l) => [l, parseFloat((meas[l] ?? '').replace(/[^0-9.]/g, ''))]).filter(([, v]) => Number.isFinite(v as number) && (v as number) > 0),
   ) as Record<string, number>
@@ -145,14 +145,15 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const hasIntl      = Object.keys(intlShipping).length > 0
 
   // ── draft auto-save (debounced) ─────────────────────────────────────────────
-  const fields = useCallback(() => ({
+  // The payload is rebuilt every render; the timer below always closes over the latest one
+  // because every edit re-arms it.
+  const draftFields = {
     title, brand, category: category || null, department, subcategory: subcategory || null, size: size || null,
-    color: color || null, description, condition_score: conditionScore, price_cents: priceCents > 0 ? priceCents : null,
-    images: PHOTO_SLOTS.slice(0, 5).map((slot) => (slotUrls[slot] ?? '').split('?')[0]),
-    possession_photo_url: slotUrls.POSSESSION ? slotUrls.POSSESSION.split('?')[0] : null,
+    color: color || null, description, price_cents: priceCents > 0 ? priceCents : null,
+    images: photos.map((u) => u.split('?')[0]),
     measurements,
     intl_shipping: intlShipping,
-  }), [title, brand, category, department, subcategory, size, color, description, conditionScore, priceCents, slotUrls, measurements, intlShipping])
+  }
 
   const dirtyRef = useRef(false)
   const saveTimer = useRef<number | null>(null)
@@ -160,12 +161,12 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const draftIdRef = useRef<string | null>(draftId)
   useEffect(() => { draftIdRef.current = draftId }, [draftId])
 
-  const persistDraft = useCallback(async (): Promise<string | null> => {
+  async function persistDraft(): Promise<string | null> {
     if (isEdit || savingRef.current) return draftIdRef.current
     savingRef.current = true
     setDraftState('saving')
     try {
-      const body = fields()
+      const body = draftFields
       if (draftIdRef.current) {
         const res = await fetch(`/api/listings/${draftIdRef.current}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         if (!res.ok && res.status !== 400) throw new Error('patch failed')
@@ -186,10 +187,12 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
     } finally {
       savingRef.current = false
     }
-  }, [fields, isEdit])
+  }
 
   // Any edit schedules a save 900ms later (first edit creates the draft row).
   const regionsKey = JSON.stringify(intlShipping)
+  const measKey = JSON.stringify(measurements)
+  const photosKey = photos.join('|')
   const firstRender = useRef(true)
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return }
@@ -199,42 +202,20 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
     saveTimer.current = window.setTimeout(() => { void persistDraft() }, 900)
     return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, brand, category, department, subcategory, size, color, description, conditionScore, priceCents, slotUrls, meas, regionsKey])
+  }, [title, brand, category, department, subcategory, size, color, description, priceCents, photosKey, measKey, regionsKey])
 
   // ── image upload ────────────────────────────────────────────────────────────
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
-
-  const handleSlotClick = (slot: string) => {
-    if (uploading[slot] || isEdit) return
-    fileInputRefs.current[slot]?.click()
-  }
-
-  const handleFileChange = useCallback(
-    async (slot: string, file: File | null) => {
-      if (!file) return
-      setUploading((u) => ({ ...u, [slot]: true }))
-      setUploadErrors((e) => ({ ...e, [slot]: '' }))
-      try {
-        const blob = await resizeToJpeg(file)
-        const path = `listings/${userId}/${pathId.current}/${slot.toLowerCase()}.jpg`
-        const { error } = await supabase.storage
-          .from('product-images')
-          .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
-        if (error) throw error
-        const { data } = supabase.storage.from('product-images').getPublicUrl(path)
-        setSlotUrls((u) => ({ ...u, [slot]: `${data.publicUrl}?v=${Date.now()}` }))
-      } catch (err) {
-        setUploadErrors((e) => ({ ...e, [slot]: err instanceof Error ? err.message : 'upload failed' }))
-      } finally {
-        setUploading((u) => ({ ...u, [slot]: false }))
-      }
-    },
-    [userId, supabase],
-  )
-
-  const removeSlot = (slot: string) => {
-    setSlotUrls((u) => { const n = { ...u }; delete n[slot]; return n })
-  }
+  const uploadPhoto = useCallback(async (file: File): Promise<string> => {
+    const blob = await resizeToJpeg(file)
+    const name = `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}.jpg`
+    const path = `listings/${userId}/${pathId.current}/${name}`
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+    if (error) throw new Error(error.message)
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+    return data.publicUrl
+  }, [userId, supabase])
 
   // ── save draft / publish / save edits ───────────────────────────────────────
   async function saveDraftNow() {
@@ -253,13 +234,11 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
 
   async function publish() {
     setSubmitError('')
-    if (!slotUrls.FRONT) { setSubmitError('Front photo is required.'); return }
-    if (!slotUrls.POSSESSION) { setSubmitError('Possession photo is required.'); return }
+    if (photos.length === 0) { setSubmitError('Add at least one photo.'); return }
     if (!title.trim()) { setSubmitError('Title is required.'); return }
     if (!brand.trim()) { setSubmitError('Brand is required.'); return }
     if (!category) { setSubmitError('Category is required.'); return }
     if (!size) { setSubmitError('Size is required.'); return }
-    if (!conditionScore) { setSubmitError('Condition grade is required.'); return }
     if (priceCents <= 0) { setSubmitError('Enter a valid price.'); return }
     const shipErr = shippingError()
     if (shipErr) { setSubmitError(shipErr); return }
@@ -280,11 +259,8 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
           size,
           color: color || null,
           description,
-          condition_score: conditionScore,
-          condition_notes: {},
           price_cents: priceCents,
-          images: PHOTO_SLOTS.map((slot) => (slotUrls[slot] ?? '').split('?')[0]),
-          possession_photo_url: (slotUrls.POSSESSION ?? '').split('?')[0],
+          images: photos.map((u) => u.split('?')[0]),
           measurements,
           intl_shipping: intlShipping,
           draft_id: id,
@@ -317,7 +293,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(), description, price_cents: priceCents, size, color: color || null,
-          category, subcategory: subcategory || null, department, measurements, condition_score: conditionScore,
+          category, subcategory: subcategory || null, department, measurements,
           intl_shipping: intlShipping,
         }),
       })
@@ -334,7 +310,6 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   }
 
   // ── labels ──────────────────────────────────────────────────────────────────
-  const filledCount = PHOTO_SLOTS.filter((s) => slotUrls[s]).length
   const draftLabel = isEdit
     ? 'LIVE · CHANGES APPLY IMMEDIATELY'
     : draftState === 'saving' ? 'SAVING…' : draftState === 'saved' ? 'DRAFT SAVED' : draftState === 'error' ? 'DRAFT NOT SAVED' : 'DRAFT AUTO-SAVES'
@@ -345,7 +320,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
 
   const onCategoryPick = (d: string, c: string, s: string) => {
     setDepartment(d || 'menswear'); setCategory(c); setSubcategory(s)
-    if (c !== category) setSize('')
+    if (c !== category) { setSize(''); setMeasChoice(null) }
   }
 
   return (
@@ -361,58 +336,10 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         <section className="sellx__sec">
           <div className="sellx__labelrow">
             <span className="sellx__label">PHOTOS</span>
-            <span className="sellx__meta">{filledCount} / {PHOTO_SLOTS.length}</span>
+            <span className="sellx__meta">{photos.length} / {MAX_PHOTOS}</span>
           </div>
-          <div className="sellx-photos" data-testid="sell-photo-grid">
-            {PHOTO_SLOTS.map((slot, i) => {
-              const url  = slotUrls[slot]
-              const busy = uploading[slot]
-              const err  = uploadErrors[slot]
-              return (
-                <div key={slot} className="sellx-photos__slot">
-                  {url ? (
-                    <span className="sellx-photos__img">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={slot} />
-                      {i === 0 && <span className="sellx-photos__cover">COVER</span>}
-                      {!isEdit && (
-                        <button type="button" className="card__unsave" aria-label={`Remove ${slot}`} onClick={() => removeSlot(slot)} style={{ top: 6, right: 6 }}>
-                          <XIcon size={9} />
-                        </button>
-                      )}
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className={`sellx-photos__add${err ? ' is-error' : ''}`}
-                      aria-label={`Add ${slot} photo`}
-                      onClick={() => handleSlotClick(slot)}
-                      disabled={busy || isEdit}
-                    >
-                      {busy ? <span className="sellx__meta">…</span> : <PlusIcon />}
-                    </button>
-                  )}
-                  <input
-                    ref={(el) => { fileInputRefs.current[slot] = el }}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    style={{ display: 'none' }}
-                    onChange={(e) => handleFileChange(slot, e.target.files?.[0] ?? null)}
-                    aria-label={`Upload ${slot} photo`}
-                  />
-                  <div className={`sellx-photos__label${url ? ' is-filled' : ''}`}>
-                    {slot}{slot === 'FRONT' || slot === 'POSSESSION' ? ' *' : ''}
-                  </div>
-                  {err && <div className="alert-line" style={{ paddingTop: 4 }}>{err.toUpperCase()}</div>}
-                </div>
-              )
-            })}
-          </div>
-          <p className="sellx__hint">
-            {isEdit
-              ? 'Photos are locked once a listing is live.'
-              : 'Include the tags. Possession = a handwritten tag with your username and today’s date, in frame with the item.'}
-          </p>
+          <SellPhotos photos={photos} max={MAX_PHOTOS} locked={isEdit} onChange={setPhotos} upload={uploadPhoto} />
+          <p className="sellx__hint">{isEdit ? 'Photos are locked once a listing is live.' : 'Drag to reorder. Include the tags.'}</p>
         </section>
 
         {/* ── DETAILS ── */}
@@ -431,7 +358,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
               <SellCategory department={department} category={category} subcategory={subcategory} onPick={onCategoryPick} />
             </div>
           </div>
-          <div className="sellx-grid sellx-grid--3">
+          <div className="sellx-grid sellx-grid--pair">
             <div className="sellx-field">
               <label className="sellx__label" htmlFor="sell-size">SIZE</label>
               <span className="select-wrap">
@@ -453,23 +380,10 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
                 <span className="select-row__caret select-wrap__caret">▾</span>
               </span>
             </div>
-            <div className="sellx-field">
-              <label className="sellx__label" htmlFor="sell-condition">CONDITION</label>
-              <span className="select-wrap">
-                <select id="sell-condition" className="sellx-input sellx-select" value={conditionScore ?? ''} onChange={(e) => setConditionScore(e.target.value ? Number(e.target.value) : null)} data-testid="sell-condition">
-                  <option value="" disabled>Grade 1–10</option>
-                  {Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => (
-                    <option key={n} value={n}>{n} / 10 — {CONDITION_DEFINITIONS[n]}</option>
-                  ))}
-                </select>
-                <span className="select-row__caret select-wrap__caret">▾</span>
-              </span>
-            </div>
           </div>
           <div className="sellx-field">
             <label className="sellx__label" htmlFor="sell-desc">DESCRIPTION</label>
             <textarea id="sell-desc" className="sellx-input sellx-textarea" maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Fit, wear, provenance" data-testid="sell-desc" />
-            <div className="sellx__count"><span>FLAWS AND PROVENANCE: BE SPECIFIC</span><span>{description.length} / 1000</span></div>
           </div>
         </section>
 
@@ -477,12 +391,22 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         <section className="sellx__sec">
           <div className="sellx__labelrow">
             <span className="sellx__label">MEASUREMENTS · IN</span>
-            <span className="sellx__meta">{category ? `FLAT · ${category.toUpperCase()}` : 'FLAT · PICK A CATEGORY'}</span>
+            {kindChoice ? (
+              <div className="sellx-seg" role="group" aria-label="Measurement type">
+                {(['tops', 'bottoms'] as const).map((k) => (
+                  <button key={k} type="button" className={`sellx-seg__opt${measKind === k ? ' is-on' : ''}`} aria-pressed={measKind === k} onClick={() => setMeasChoice(k)} data-testid={`meas-${k}`}>
+                    {k.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="sellx__meta">{category.toUpperCase()}</span>
+            )}
           </div>
           <div className="sellx-meas">
             {measLabels.map((label) => (
               <div key={label} className="sellx-field">
-                <label className="sellx__label sellx__label--sub" htmlFor={`meas-${label}`}>{label}</label>
+                <label className="sellx__label sellx__label--sub" htmlFor={`meas-${label}`}>{measurementDisplayLabel(label)}</label>
                 <input
                   id={`meas-${label}`}
                   className="sellx-input sellx-input--mono"
@@ -561,7 +485,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
           ) : (
             <>
               <button type="button" className="btn-ghost btn-ghost--inline sellx-bar__btn" onClick={() => void saveDraftNow()} disabled={draftState === 'saving'} data-testid="sell-save-draft">
-                {draftFlash ? 'SAVED ✓' : 'SAVE DRAFT'}
+                {draftFlash ? 'SAVED ✓' : <><span className="sellx-bar__long">SAVE DRAFT</span><span className="sellx-bar__short">SAVE</span></>}
               </button>
               <button type="button" className="btn-primary btn-primary--inline sellx-bar__btn sellx-bar__btn--primary" onClick={() => void publish()} disabled={submitting} data-testid="sell-submit">
                 {submitting ? 'PUBLISHING…' : pubFlash ? 'PUBLISHED ✓' : 'PUBLISH →'}

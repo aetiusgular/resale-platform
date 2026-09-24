@@ -4,7 +4,10 @@ Branch `feat/intl-shipping-sell-redesign`.
 
 ## What ships
 
-- **Sell page (redesign A).** One scroll, no step rail: photos (the 6 evidence slots, FRONT + POSSESSION required), title, brand, category typeahead, size / color / condition, description, measurements, then PRICE + SHIPPING on the left with the take-home breakdown beside them, and a sticky YOU RECEIVE bar. Mobile stacks it all. `app/sell/sell-form.tsx`, `sell-category.tsx`, `sell-shipping.tsx`, `.sellx-*` in `app/globals.css`.
+- **Sell page (redesign A).** One scroll, no step rail: photos, title, brand, category typeahead, size / color, description, measurements with a TOPS / BOTTOMS toggle, then PRICE + SHIPPING on the left with the take-home breakdown beside them, and a sticky YOU RECEIVE bar. Mobile stacks it all. `app/sell/sell-form.tsx`, `sell-photos.tsx`, `sell-category.tsx`, `sell-shipping.tsx`, `.sellx-*` in `app/globals.css`.
+  - **Photos:** up to 5 in the seller's order (drag to reorder; the first is the cover), at least one to publish. No fixed FRONT / BACK / TAG slots.
+  - **Dropped:** the condition grade (1–10) and the possession proof photo. Both are optional in `POST /api/listings` and in the DB (`listings_published_complete_ck` in migration 000050); existing listings keep their values. The proof-photo dedup across sellers still runs when a possession photo is present, which the form never sends now. The near-duplicate scan compares every stored photo hash against every new one, since photos are no longer positional.
+  - **Measurements:** garments are TOPS or BOTTOMS at the seller's choice (`lib/taxonomy` measurement kinds); footwear and accessories keep their own sets. Storage keys are unchanged (`PIT TO PIT`, `SHOULDER`); the UI prints CHEST and SHOULDERS.
 - **Fees** (`lib/fees.ts`):
   - First 10 sales: 2.9% + 30¢ on the item only.
   - After that: tier % + 30¢ (8% + 30¢ at the base tier).

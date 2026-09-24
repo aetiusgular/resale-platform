@@ -105,7 +105,7 @@ export async function loadSellCatalog(opts: { supabase: Client; user: User }): P
   const now = Date.now()
   const listings: SellerListing[] = all.map((r) => {
     const images: string[] = Array.isArray(r.images) ? r.images.filter(Boolean) : []
-    const photoCount = images.length + (r.possession_photo_url && !images.includes(r.possession_photo_url) ? 1 : 0)
+    const photoCount = images.length
     const payout = payoutMap.get(r.id)
     return {
       id: r.id,
@@ -116,7 +116,7 @@ export async function loadSellCatalog(opts: { supabase: Client; user: User }): P
       price_display: r.price_cents ? formatCents(r.price_cents) : '$ —',
       status: r.status,
       image: images[0] ?? null,
-      photo_count: Math.min(6, photoCount),
+      photo_count: Math.min(5, photoCount),
       created_at: r.created_at,
       updated_at: r.updated_at,
       saves_count: r.saves_count ?? 0,

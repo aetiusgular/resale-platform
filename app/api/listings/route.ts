@@ -92,18 +92,28 @@ export async function POST(request: NextRequest) {
   } = body
 
   // ── Basic validation ───────────────────────────────────────────────────────
+  // Photos: up to 5, in the seller's order (the first is the cover), at least one.
+  // Condition grade and the possession photo are optional (the listing form no longer
+  // asks for them); when a possession photo is sent it is still deduped across sellers.
+  const imageArr: string[] = Array.isArray(images)
+    ? images.filter((u): u is string => typeof u === 'string' && !!u.trim()).map((u) => u.trim()).slice(0, 5)
+    : []
+  const conditionClean: number | null = typeof condition_score === 'number' && Number.isInteger(condition_score) ? condition_score : null
+  const possessionClean: string | null = typeof possession_photo_url === 'string' && possession_photo_url.trim() ? possession_photo_url.trim() : null
   if (
     typeof title !== 'string' || !title.trim() ||
     typeof brand !== 'string' || !brand.trim() ||
     typeof category !== 'string' || !category.trim() ||
     typeof size !== 'string' || !size.trim() ||
-    typeof condition_score !== 'number' ||
-    condition_score < 1 || condition_score > 10 ||
+    (condition_score !== undefined && condition_score !== null && (conditionClean === null || conditionClean < 1 || conditionClean > 10)) ||
     typeof price_cents !== 'number' || price_cents <= 0 ||
     !Number.isInteger(price_cents) ||
-    typeof possession_photo_url !== 'string' || !possession_photo_url.trim()
+    (possession_photo_url !== undefined && possession_photo_url !== null && typeof possession_photo_url !== 'string')
   ) {
     return NextResponse.json({ error: 'Invalid listing data' }, { status: 400 })
+  }
+  if (imageArr.length === 0) {
+    return NextResponse.json({ error: 'Add at least one photo.', code: 'no_photos' }, { status: 400 })
   }
 
   // ── Taxonomy (lib/taxonomy): department, category tree, colour, measurements ──
@@ -180,18 +190,17 @@ export async function POST(request: NextRequest) {
 
   // ── Perceptual hashing ────────────────────────────────────────────────────
   // Computed before insert so we can check possession dedup pre-insert.
-  const imageArr: string[] = Array.isArray(images) ? images : []
 
   // ── Image-URL allowlist (security) — every stored image must be an HTTPS URL on our
   // Storage host, so nothing off-platform is hashed (SSRF) or later rendered in <img>.
   // Fail-OPEN only if the Storage host env is somehow unset (never block all listings on a
   // misconfiguration); otherwise reject off-host URLs.
   const imgHost = storageHost()
-  if (imgHost && !allImageUrlsAllowed([...imageArr, possession_photo_url.trim()], imgHost)) {
+  if (imgHost && !allImageUrlsAllowed([...imageArr, ...(possessionClean ? [possessionClean] : [])], imgHost)) {
     return NextResponse.json({ error: 'Images must be uploaded to the platform.', code: 'invalid_image_url' }, { status: 400 })
   }
 
-  const slotHashes = await hashAllSlots(imageArr, possession_photo_url.trim())
+  const slotHashes = await hashAllSlots(imageArr, possessionClean ?? '')
 
   const service = await createServiceClient()
 
@@ -252,11 +261,11 @@ export async function POST(request: NextRequest) {
       intl_shipping:   intlShippingClean,
       size:      size.trim().toUpperCase(),
       description: descClean,
-      condition_score,
+      condition_score: conditionClean,
       condition_notes: condition_notes ?? {},
       price_cents,
       images:    imageArr,
-      possession_photo_url: possession_photo_url.trim(),
+      possession_photo_url: possessionClean,
       status: 'pending_review',
     })
     .select('id, status')
@@ -347,18 +356,19 @@ export async function POST(request: NextRequest) {
         .in('listing_id', candidateIds)
         .limit(5000)
 
-      // Group by listing_id, compute per-slot Hamming distances
+      // Group by listing_id: photos are in the seller's own order (drag to reorder), so a
+      // stored photo counts as a match when it is close to ANY of the new photos, not
+      // only the one at the same position.
       const byListing = new Map<
         string,
         { slot: string; distance: number }[]
       >()
+      const newHashes = Object.values(slotHashes).filter((h): h is string => typeof h === 'string')
 
       for (const row of existingHashes ?? []) {
         const r = row as { listing_id: string; slot: string; hash: string }
-        const newHash = slotHashes[r.slot as keyof typeof slotHashes]
-        if (!newHash) continue
-
-        const dist = hammingDistance(newHash, r.hash)
+        let dist = Number.POSITIVE_INFINITY
+        for (const h of newHashes) dist = Math.min(dist, hammingDistance(h, r.hash))
         if (dist <= ANTISLOP.DUPLICATE_DISTANCE_THRESHOLD) {
           if (!byListing.has(r.listing_id)) byListing.set(r.listing_id, [])
           byListing.get(r.listing_id)!.push({ slot: r.slot, distance: dist })

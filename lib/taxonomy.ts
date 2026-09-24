@@ -142,36 +142,95 @@ export const COLORS: ReadonlyArray<{ label: string; swatch: string }> = [
 export const COLOR_LABELS = COLORS.map((c) => c.label)
 
 /**
- * Flat measurements (inches) the wizard asks for and the listing page shows,
- * by category. Stored on listings.measurements as { LABEL: inches }.
+ * Flat measurements (inches) the listing form asks for and the listing page shows.
+ * Stored on listings.measurements as { KEY: inches }; the keys below are the storage keys
+ * (existing rows use them), `measurementDisplayLabel` is what the UI prints.
+ *
+ * Garments (everything but footwear and accessories) come in two kinds, TOPS and BOTTOMS,
+ * and the seller picks the kind on the form: a "Sportswear" or "Other" listing can be
+ * either. The category only sets the default; the stored keys say which kind a listing has.
  */
 const TOP_MEAS    = ['PIT TO PIT', 'LENGTH', 'SHOULDER', 'SLEEVE'] as const
 const BOTTOM_MEAS = ['WAIST', 'INSEAM', 'RISE', 'LEG OPENING'] as const
 const SHOE_MEAS   = ['INSOLE', 'WIDTH', 'HEEL', 'SHAFT'] as const
 const ACC_MEAS    = ['LENGTH', 'WIDTH', 'HEIGHT', 'STRAP'] as const
 
-export function measurementLabelsFor(category: string | null | undefined): ReadonlyArray<string> {
+export type MeasurementKind = 'tops' | 'bottoms' | 'footwear' | 'accessories'
+
+const KIND_LABELS: Record<MeasurementKind, ReadonlyArray<string>> = {
+  tops: TOP_MEAS, bottoms: BOTTOM_MEAS, footwear: SHOE_MEAS, accessories: ACC_MEAS,
+}
+
+/** Storage key → what the form and the listing page print. */
+const DISPLAY_LABELS: Record<string, string> = { 'PIT TO PIT': 'CHEST', SHOULDER: 'SHOULDERS' }
+
+export function measurementDisplayLabel(key: string): string {
+  return DISPLAY_LABELS[key] ?? key
+}
+
+/** The kind a category defaults to. */
+export function measurementKindFor(category: string | null | undefined): MeasurementKind {
   switch (category) {
-    case 'Bottoms': return BOTTOM_MEAS
-    case 'Footwear': return SHOE_MEAS
-    case 'Accessories': return ACC_MEAS
-    default: return TOP_MEAS // tops, outerwear, knitwear, tailoring, sportswear, other
+    case 'Bottoms': return 'bottoms'
+    case 'Footwear': return 'footwear'
+    case 'Accessories': return 'accessories'
+    default: return 'tops' // tops, outerwear, knitwear, tailoring, sportswear, other
   }
+}
+
+/** True when the seller chooses TOPS / BOTTOMS for this category (garments). */
+export function measurementKindIsChoice(category: string | null | undefined): boolean {
+  const k = measurementKindFor(category)
+  return k === 'tops' || k === 'bottoms'
+}
+
+/** The kind a stored measurements object was taken as, from its keys; null when empty/unknown. */
+export function measurementKindOf(measurements: Record<string, unknown> | null | undefined): 'tops' | 'bottoms' | null {
+  const keys = Object.keys(measurements ?? {}).map((k) => k.trim().toUpperCase())
+  if (keys.some((k) => (BOTTOM_MEAS as ReadonlyArray<string>).includes(k))) return 'bottoms'
+  if (keys.some((k) => (TOP_MEAS as ReadonlyArray<string>).includes(k))) return 'tops'
+  return null
+}
+
+export function measurementLabelsForKind(kind: MeasurementKind): ReadonlyArray<string> {
+  return KIND_LABELS[kind]
+}
+
+/**
+ * Labels for a category. With `measurements`, a garment listing's stored keys decide
+ * TOPS vs BOTTOMS (the seller's choice); otherwise the category default.
+ */
+export function measurementLabelsFor(category: string | null | undefined, measurements?: Record<string, unknown> | null): ReadonlyArray<string> {
+  const kind = measurementKindFor(category)
+  if (measurements && (kind === 'tops' || kind === 'bottoms')) {
+    const stored = measurementKindOf(measurements)
+    if (stored) return KIND_LABELS[stored]
+  }
+  return KIND_LABELS[kind]
 }
 
 export const MEASUREMENT_MAX_INCHES = 200
 
 /**
- * Validate a client-supplied measurements object: known labels for the category,
- * finite positive inches (≤ 200), at most 8 entries. Returns the cleaned map.
+ * Validate a client-supplied measurements object: finite positive inches (≤ 200), at most
+ * 8 entries, known keys only. For garments the keys may be the TOPS set or the BOTTOMS set,
+ * never both: a payload that mixes them keeps the category's default kind. Returns the
+ * cleaned map.
  */
 export function normalizeMeasurements(raw: unknown, category: string | null | undefined): Record<string, number> {
   if (!raw || typeof raw !== 'object') return {}
-  const allowed = new Set(measurementLabelsFor(category))
+  const entries = Object.entries(raw as Record<string, unknown>).map(([k, v]) => [String(k).trim().toUpperCase(), v] as const)
+  const kind = measurementKindFor(category)
+  let allowed: ReadonlyArray<string> = KIND_LABELS[kind]
+  if (kind === 'tops' || kind === 'bottoms') {
+    const hasTop = entries.some(([k]) => (TOP_MEAS as ReadonlyArray<string>).includes(k))
+    const hasBottom = entries.some(([k]) => (BOTTOM_MEAS as ReadonlyArray<string>).includes(k))
+    if (hasTop !== hasBottom) allowed = hasBottom ? BOTTOM_MEAS : TOP_MEAS
+  }
+  const allowedSet = new Set(allowed)
   const out: Record<string, number> = {}
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    const label = String(k).trim().toUpperCase()
-    if (!allowed.has(label)) continue
+  for (const [label, v] of entries) {
+    if (!allowedSet.has(label)) continue
     const n = typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v.replace(/[^0-9.]/g, '')) : NaN
     if (!Number.isFinite(n) || n <= 0 || n > MEASUREMENT_MAX_INCHES) continue
     out[label] = Math.round(n * 10) / 10

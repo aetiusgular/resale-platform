@@ -231,7 +231,7 @@ export async function loadListingDetail(opts: {
     ? `SOLD ${formatTimeAgo(listing.updated_at ?? listing.created_at)} · ${listing.saves_count ?? 0} SAVED`
     : `LISTED ${formatTimeAgo(listing.created_at)} · ${listing.saves_count ?? 0} SAVED`
   const measurements = normalizeMeasurements(listing.measurements, listing.category)
-  const measLabels = measurementLabelsFor(listing.category)
+  const measLabels = measurementLabelsFor(listing.category, measurements)
   const spec = [listing.size?.toUpperCase(), listing.color?.toUpperCase()].filter(Boolean).join(' · ')
   const trustLine = sellerTrustLine(statsMap.get(listing.seller_id), verifiedSeller)
   // Any verified member can weigh in; moderators/admins always can. The

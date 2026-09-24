@@ -19,8 +19,8 @@ export function jsonLdString(data: object): string {
  * Google merchant listings accept New/Refurbished/Used only. 10 = "new with
  * tags" → New; 9 ("new without tags") and below are Used by resale convention.
  */
-export function schemaCondition(score: number): string {
-  return score >= 10
+export function schemaCondition(score: number | null | undefined): string {
+  return typeof score === 'number' && score >= 10
     ? 'https://schema.org/NewCondition'
     : 'https://schema.org/UsedCondition'
 }
@@ -67,7 +67,7 @@ type ProductListingInput = ListingMetaInput & {
   id: string
   category: string
   department: string
-  condition_score: number
+  condition_score: number | null
   shipping_cents: number | null
   images: unknown
   sellerUsername: string | null

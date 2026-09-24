@@ -6,6 +6,7 @@
 
 ALTER TABLE listings          VALIDATE CONSTRAINT listings_ships_from_check;
 ALTER TABLE listings          VALIDATE CONSTRAINT listings_intl_shipping_check;
+ALTER TABLE listings          VALIDATE CONSTRAINT listings_published_complete_ck;
 ALTER TABLE checkout_sessions VALIDATE CONSTRAINT checkout_sessions_label_mode_check;
 ALTER TABLE checkout_sessions VALIDATE CONSTRAINT checkout_sessions_shipping_region_check;
 ALTER TABLE orders            VALIDATE CONSTRAINT orders_label_mode_check;
