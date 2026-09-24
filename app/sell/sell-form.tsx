@@ -82,6 +82,15 @@ function useFlash(): [boolean, () => void] {
 }
 
 /** Take-home money is shown to the cent: $240.00, −$19.50. */
+type MeasUnit = 'in' | 'cm'
+const CM_PER_IN = 2.54
+
+const toInches   = (n: number, unit: MeasUnit) => (unit === 'in' ? n : n / CM_PER_IN)
+const fromInches = (inches: number, unit: MeasUnit) => (unit === 'in' ? inches : inches * CM_PER_IN)
+/** What goes in a box after a unit switch: 1 dp for cm, 2 dp for inches, no trailing zeros. */
+const measText = (n: number, unit: MeasUnit) => String(Number(n.toFixed(unit === 'cm' ? 1 : 2)))
+const measNumber = (text: string) => parseFloat(text.replace(/[^0-9.]/g, ''))
+
 function money(cents: number): string {
   return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -109,8 +118,12 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const [size, setSize]               = useState(initial?.size ?? '')
   const [color, setColor]             = useState(initial?.color ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
+  // The boxes hold text in `measUnit`; `measIn` keeps each value as unrounded inches (what is
+  // stored, lib/taxonomy), so switching IN ↔ CM rewrites the boxes without drifting the numbers.
   const [meas, setMeas]               = useState<Record<string, string>>(() =>
     Object.fromEntries(Object.entries(initial?.measurements ?? {}).map(([k, v]) => [k, String(v)])))
+  const [measIn, setMeasIn]           = useState<Record<string, number>>(() => ({ ...(initial?.measurements ?? {}) }))
+  const [measUnit, setMeasUnit]       = useState<MeasUnit>('in')
   // TOPS / BOTTOMS is the seller's call for garments; the category only sets the default.
   const [measChoice, setMeasChoice]   = useState<'tops' | 'bottoms' | null>(() => measurementKindOf(initial?.measurements ?? null))
   const [priceRaw, setPriceRaw]       = useState(initial?.price_cents ? String(initial.price_cents / 100) : '')
@@ -136,8 +149,25 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const measKind     = kindChoice ? (measChoice ?? kindDefault) : kindDefault
   const measLabels   = measurementLabelsForKind(measKind)
   const measurements = Object.fromEntries(
-    measLabels.map((l) => [l, parseFloat((meas[l] ?? '').replace(/[^0-9.]/g, ''))]).filter(([, v]) => Number.isFinite(v as number) && (v as number) > 0),
+    measLabels
+      .filter((l) => Number.isFinite(measIn[l]) && measIn[l] > 0)
+      .map((l) => [l, Math.round(measIn[l] * 100) / 100]),
   ) as Record<string, number>
+  const editMeas = (label: string, text: string) => {
+    setMeas((m) => ({ ...m, [label]: text }))
+    const n = measNumber(text)
+    setMeasIn((m) => {
+      const next = { ...m }
+      if (Number.isFinite(n) && n > 0) next[label] = toInches(n, measUnit)
+      else delete next[label]
+      return next
+    })
+  }
+  const switchUnit = (next: MeasUnit) => {
+    if (next === measUnit) return
+    setMeas((m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, typeof measIn[k] === 'number' ? measText(fromInches(measIn[k], next), next) : v])))
+    setMeasUnit(next)
+  }
   const intlShipping = intlFromDrafts(regions, origin)
   const hasIntl      = Object.keys(intlShipping).length > 0
 
@@ -372,7 +402,16 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         {/* ── MEASUREMENTS ── */}
         <section className="sellx__sec">
           <div className="sellx__labelrow">
-            <span className="sellx__label">MEASUREMENTS · IN</span>
+            <span className="sellx__labelgroup">
+              <span className="sellx__label">MEASUREMENTS</span>
+              <span className="unit-toggle" role="group" aria-label="Measurement unit">
+                {(['in', 'cm'] as const).map((u) => (
+                  <button key={u} type="button" className={measUnit === u ? 'is-on' : ''} aria-pressed={measUnit === u} onClick={() => switchUnit(u)} data-testid={`meas-unit-${u}`}>
+                    {u.toUpperCase()}
+                  </button>
+                ))}
+              </span>
+            </span>
             {kindChoice ? (
               <div className="sellx-seg" role="group" aria-label="Measurement type">
                 {(['tops', 'bottoms'] as const).map((k) => (
@@ -394,7 +433,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
                   className="sellx-input sellx-input--mono"
                   inputMode="decimal"
                   value={meas[label] ?? ''}
-                  onChange={(e) => setMeas((m) => ({ ...m, [label]: e.target.value }))}
+                  onChange={(e) => editMeas(label, e.target.value)}
                   placeholder="—"
                 />
               </div>

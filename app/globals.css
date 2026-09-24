@@ -1904,6 +1904,8 @@ a.btn-primary--inline { display: inline-flex; }
 .sellx__fields { gap: 20px; }
 .sellx__labelrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 32px; }
 .sellx__label { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--ink); text-transform: uppercase; }
+/* A section label with its IN / CM toggle (the listing page's .unit-toggle) beside it. */
+.sellx__labelgroup { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
 .sellx__label--sub { color: var(--sub); }
 .sellx__meta { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; }
 .sellx__hint { margin: 0; font: 300 13px/1.5 var(--font-sans); color: var(--sub); }
