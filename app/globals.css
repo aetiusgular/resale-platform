@@ -1942,17 +1942,25 @@ a.btn-primary--inline { display: inline-flex; }
 .sellx-seg__opt.is-on { background: var(--ink); color: var(--on-ink); }
 
 .sellx-combo { position: relative; }
-.sellx-combo.is-open .sellx-input { border-color: var(--ink); }
 .sellx-combo__meta { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; }
-/* The pick's department / category sits inside the field (right), so nothing below shifts. */
-.sellx-combo__field { position: relative; }
-.sellx-combo__picked { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-.sellx-combo__input--picked { padding-right: 190px; }
+/* The field is the bordered box; the input and the pick's meta ("MENSWEAR / BOTTOMS", "TAILORING")
+   share it as flex siblings, so the meta never covers the value and nothing below shifts. */
+.sellx-combo__field { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 14px; box-sizing: border-box; border: 1px solid var(--line); }
+.sellx-combo__field:hover { border-color: var(--line-mid); }
+.sellx-combo__field:focus-within, .sellx-combo.is-open .sellx-combo__field { border-color: var(--ink); }
+.sellx-combo__input { flex: 1 1 60px; min-width: 0; min-height: 46px; margin: 0; padding: 0; background: transparent; border: none; border-radius: 0; outline: none; font: 300 15px var(--font-sans); color: var(--ink); }
+.sellx-combo__input::placeholder { color: var(--faint); }
+.sellx-combo__picked { flex: 0 1 auto; min-width: 0; max-width: 60%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 /* Overlays the fields below (never pushes them); the dropdown in the Paper mock pushes only because Paper can't float. */
 .sellx-combo__list { position: absolute; left: 0; right: 0; top: 48px; z-index: 30; margin: 0; padding: 0; list-style: none; background: var(--bg); border: 1px solid var(--ink); border-top: none; max-height: 320px; overflow-y: auto; }
 .sellx-combo__opt { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: var(--control-h); padding: 0 14px; border-top: 1px solid var(--line-row); font: 300 15px var(--font-sans); color: var(--ink); cursor: pointer; }
 .sellx-combo__opt:first-child { border-top: none; }
+.sellx-combo__opt > span:first-child { flex-shrink: 0; }
+.sellx-combo__opt > .sellx-combo__meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sellx-combo__opt.is-active { background: var(--hover); }
+/* SIZE: the MY SIZES modal's cells, inside the same overlay panel. */
+.sellx-combo__list--grid { display: grid; gap: 6px; padding: 12px 14px 14px; }
+.sellx-combo__list--grid .size-cell { padding: 9px 0; font-size: 11px; cursor: pointer; }
 
 .sellx-pricing { flex-direction: row; align-items: flex-start; gap: 40px; }
 .sellx-pricing__fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }

@@ -5,7 +5,7 @@ import {
   measurementKindFor, measurementKindOf, measurementDisplayLabel,
   resolveCategorySelection, picksByCategory, categoryScopeLabel, departmentScopeLabel, subcatKey, parseSubcatKey,
 } from '../../lib/taxonomy'
-import { normalizeSizes, flattenSizes, sizesChipLabel, countSizes, sizeScaleFor, sizeKey } from '../../lib/sizes'
+import { normalizeSizes, flattenSizes, sizesChipLabel, countSizes, sizeScaleFor, sizeOptionsFor, sizeKey } from '../../lib/sizes'
 import { cleanAddress, addressLines } from '../../lib/addresses'
 import { cleanDraftFields } from '../../lib/listings/draft-fields'
 import { usernameFromEmail, passwordProblem } from '../../lib/auth/username'
@@ -193,6 +193,21 @@ describe('lib/sizes', () => {
     expect(sizeScaleFor('womenswear', 'Tops')).toContain('M/6-8/42-44')
     expect(sizeScaleFor(null, 'Footwear')).toContain('9.5')
     expect(sizeScaleFor('menswear', 'Accessories')).toEqual(['ONE SIZE'])
+  })
+
+  it('the SIZE typeahead lists every section of the department, category section first, each label once', () => {
+    const rows = sizeOptionsFor('menswear', 'Bottoms')
+    expect(rows[0]).toEqual({ label: '26', sections: ['Bottoms'] })
+    const labels = rows.map((r) => r.label)
+    expect(labels).toContain('M')
+    expect(labels).toContain('9.5')
+    expect(labels).toContain('34S')
+    expect(labels).toContain('ONE SIZE')
+    expect(labels.filter((l) => l === 'M')).toHaveLength(1)
+    expect(rows.find((r) => r.label === 'M')?.sections).toEqual(['Tops', 'Outerwear'])
+    expect(rows.filter((r) => r.label.startsWith('34')).map((r) => r.label)).toEqual(['34', '34S', '34R'])
+    expect(sizeOptionsFor('womenswear', 'Tops')[0].label).toBe('XXS/00/34')
+    expect(sizeOptionsFor('womenswear', 'Tops').find((r) => r.label === 'M/6-8/42-44')?.sections).toEqual(['Tops', 'Dresses', 'Outerwear'])
   })
 })
 

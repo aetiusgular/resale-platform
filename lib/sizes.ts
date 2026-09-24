@@ -122,16 +122,57 @@ export function countSizes(sizes: UserSizes): number {
   return Object.values(sizes).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0)
 }
 
-/** Wizard SIZE select: the scale that fits a department + category (falls back to alpha). */
+/** The size department a listing department maps to (unisex sizes on the menswear scales). */
+export function sizeDeptFor(dept: string | null | undefined): SizeDept {
+  return dept === 'womenswear' ? 'womenswear' : 'menswear'
+}
+
+/** The MY SIZES section a listing category defaults to. */
+export function sizeSectionFor(dept: string | null | undefined, category: string | null | undefined): SizeSectionId {
+  const d = sizeDeptFor(dept)
+  return category === 'Bottoms' ? 'bottoms'
+    : category === 'Footwear' ? 'footwear'
+      : category === 'Accessories' ? 'accessories'
+        : category === 'Tailoring' ? (d === 'menswear' ? 'tailoring' : 'tops')
+          : category === 'Outerwear' ? 'outerwear'
+            : 'tops'
+}
+
+/** The scale that fits a department + category (falls back to alpha). */
 export function sizeScaleFor(dept: string | null | undefined, category: string | null | undefined): string[] {
-  const d: SizeDept = dept === 'womenswear' ? 'womenswear' : 'menswear'
-  const section: SizeSectionId =
-    category === 'Bottoms' ? 'bottoms'
-      : category === 'Footwear' ? 'footwear'
-        : category === 'Accessories' ? 'accessories'
-          : category === 'Tailoring' ? (d === 'menswear' ? 'tailoring' : 'tops')
-            : category === 'Outerwear' ? 'outerwear'
-              : 'tops'
+  const d = sizeDeptFor(dept)
+  const section = sizeSectionFor(dept, category)
   const found = SIZE_SECTIONS[d].find((s) => s.id === section) ?? SIZE_SECTIONS[d][0]
   return [...found.scale]
+}
+
+export interface SizeOption {
+  /** The stored value (listings.size), exactly as MY SIZES stores it. */
+  label: string
+  /** Section names the size belongs to, e.g. ['Tops', 'Outerwear']. */
+  sections: string[]
+}
+
+/**
+ * Every size a listing in this department can carry — all MY SIZES sections, the
+ * category's own section first, each label once (Tops and Outerwear share a scale, so "M"
+ * lists as Tops · Outerwear). The listing form's SIZE typeahead searches this list, so a
+ * seller can type "34" and get the waist 34 and the 34S / 34R tailoring sizes.
+ */
+export function sizeOptionsFor(dept: string | null | undefined, category: string | null | undefined): SizeOption[] {
+  const d = sizeDeptFor(dept)
+  const first = sizeSectionFor(dept, category)
+  const sections = [...SIZE_SECTIONS[d]].sort((a, b) => Number(b.id === first) - Number(a.id === first))
+  const out: SizeOption[] = []
+  const seen = new Map<string, SizeOption>()
+  for (const s of sections) {
+    for (const label of s.scale) {
+      const row = seen.get(label)
+      if (row) { row.sections.push(s.label); continue }
+      const fresh = { label, sections: [s.label] }
+      seen.set(label, fresh)
+      out.push(fresh)
+    }
+  }
+  return out
 }

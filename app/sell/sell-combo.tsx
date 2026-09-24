@@ -6,6 +6,8 @@
  * (department / category, scale) sits inside the field on the right. `search('')` decides
  * what shows on focus before anything is typed (the whole size scale; nothing for
  * categories). On blur, a query that exactly matches one row is taken as that pick.
+ * `layout: 'grid'` lays the rows out as size cells (the MY SIZES modal's .size-grid /
+ * .size-cell), `cols` wide; arrows move across and down the grid.
  */
 import { useId, useRef, useState } from 'react'
 
@@ -26,9 +28,12 @@ interface Props {
   search: (query: string) => ComboOption[]
   onPick: (key: string) => void
   testId?: string
+  /** 'list' (default): one row per option with its meta. 'grid': size cells, `cols` wide. */
+  layout?: 'list' | 'grid'
+  cols?: number
 }
 
-export default function SellCombo({ id, value, valueMeta = '', placeholder, listLabel, search, onPick, testId }: Props) {
+export default function SellCombo({ id, value, valueMeta = '', placeholder, listLabel, search, onPick, testId, layout = 'list', cols = 5 }: Props) {
   const listId = useId()
   const [query, setQuery] = useState<string | null>(null) // null = idle, showing the current pick
   const [active, setActive] = useState(0)
@@ -60,7 +65,7 @@ export default function SellCombo({ id, value, valueMeta = '', placeholder, list
         <input
           ref={inputRef}
           id={id}
-          className={`sellx-input${idle && valueMeta ? ' sellx-combo__input--picked' : ''}`}
+          className="sellx-combo__input"
           role="combobox"
           aria-expanded={open}
           aria-controls={listId}
@@ -69,20 +74,48 @@ export default function SellCombo({ id, value, valueMeta = '', placeholder, list
           autoComplete="off"
           value={query ?? value}
           placeholder={placeholder}
-          onFocus={(e) => { if (query === null) { setQuery(''); setActive(0); e.currentTarget.select() } }}
+          onFocus={(e) => {
+            if (query !== null) return
+            // Open on the current pick when it is in the list, so the highlighted row is what is set.
+            const rows = search('')
+            const at = rows.findIndex((r) => r.key === value || r.label === value)
+            setQuery(''); setActive(at >= 0 ? at : 0); e.currentTarget.select()
+          }}
           onChange={(e) => { setQuery(e.target.value); setActive(0) }}
           onBlur={() => window.setTimeout(close, 120)}
           onKeyDown={(e) => {
-            if (e.key === 'ArrowDown' && open) { e.preventDefault(); setActive((i) => Math.min(i + 1, results.length - 1)) }
-            else if (e.key === 'ArrowUp' && open) { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)) }
-            else if (e.key === 'Enter' && open) { e.preventDefault(); pick(results[active]) }
+            if (!open) { if (e.key === 'Escape') { setQuery(null); inputRef.current?.blur() }; return }
+            const step = (d: number) => { e.preventDefault(); setActive((i) => Math.max(0, Math.min(results.length - 1, i + d))) }
+            const grid = layout === 'grid'
+            if (e.key === 'ArrowDown') step(grid ? cols : 1)
+            else if (e.key === 'ArrowUp') step(grid ? -cols : -1)
+            else if (e.key === 'ArrowRight' && grid && e.currentTarget.selectionStart === e.currentTarget.value.length) step(1)
+            else if (e.key === 'ArrowLeft' && grid && e.currentTarget.selectionEnd === 0) step(-1)
+            else if (e.key === 'Enter') { e.preventDefault(); pick(results[active]) }
             else if (e.key === 'Escape') { setQuery(null); inputRef.current?.blur() }
           }}
           data-testid={testId}
         />
         {idle && valueMeta && <span className="sellx-combo__meta sellx-combo__picked" aria-hidden="true">{valueMeta.toUpperCase()}</span>}
       </div>
-      {open && (
+      {open && layout === 'grid' && (
+        <ul id={listId} className="sellx-combo__list sellx-combo__list--grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }} role="listbox" aria-label={listLabel}>
+          {results.map((o, i) => (
+            <li
+              key={o.key}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+              className={`size-cell${i === active ? ' is-on' : ''}`}
+              onMouseDown={(e) => { e.preventDefault(); pick(o) }}
+              onMouseEnter={() => setActive(i)}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && layout === 'list' && (
         <ul id={listId} className="sellx-combo__list" role="listbox" aria-label={listLabel}>
           {results.map((o, i) => (
             <li

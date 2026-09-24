@@ -1,12 +1,15 @@
 'use client'
 
 /**
- * SIZE typeahead (sell page redesign A): same field as CATEGORY (./sell-combo). Focus shows
- * the whole scale for the department + category (lib/sizes sizeScaleFor); typing narrows it,
- * sizes that start with the typed text first. Only sizes on the scale can be picked, so the
- * browse MY SIZES filter keeps matching.
+ * SIZE typeahead (sell page redesign A): same field as CATEGORY (./sell-combo). It searches
+ * every MY SIZES section of the listing's department (lib/sizes sizeOptionsFor): tops,
+ * bottoms, outerwear, footwear, tailoring, accessories. Focus lists them all, the category's
+ * own section first; typing narrows them, sizes that start with the typed text first. Each
+ * row names its section ("34 · BOTTOMS", "34S · TAILORING", "M · TOPS · OUTERWEAR"). Only
+ * sizes on a scale can be picked, so the browse MY SIZES filter keeps matching.
  */
-import { sizeScaleFor } from '@/lib/sizes'
+import { useMemo } from 'react'
+import { sizeOptionsFor } from '@/lib/sizes'
 import SellCombo, { type ComboOption } from './sell-combo'
 
 interface Props {
@@ -17,20 +20,26 @@ interface Props {
 }
 
 export default function SellSize({ department, category, size, onPick }: Props) {
-  const scale = sizeScaleFor(department, category)
+  const rows = useMemo<ComboOption[]>(
+    () => sizeOptionsFor(department, category).map((o) => ({ key: o.label, label: o.label, meta: o.sections.join(' · ') })),
+    [department, category],
+  )
+  const picked = rows.find((r) => r.label === size)
+
   const search = (q: string): ComboOption[] => {
     const t = q.trim().toLowerCase()
-    const rows = t ? scale.filter((s) => s.toLowerCase().includes(t)) : scale
+    if (!t) return rows
     return rows
-      .slice()
-      .sort((a, b) => (t ? Number(!a.toLowerCase().startsWith(t)) - Number(!b.toLowerCase().startsWith(t)) : 0))
-      .map((s) => ({ key: s, label: s }))
+      .filter((r) => r.label.toLowerCase().includes(t))
+      .sort((a, b) => Number(!a.label.toLowerCase().startsWith(t)) - Number(!b.label.toLowerCase().startsWith(t)))
   }
+
   return (
     <SellCombo
       id="sell-size"
       value={size}
-      placeholder={category ? 'Select' : 'Pick a category first'}
+      valueMeta={picked?.meta ?? ''}
+      placeholder="Select"
       listLabel="Sizes"
       search={search}
       onPick={onPick}
