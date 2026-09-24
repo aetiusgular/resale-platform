@@ -1944,7 +1944,10 @@ a.btn-primary--inline { display: inline-flex; }
 .sellx-combo { position: relative; }
 .sellx-combo.is-open .sellx-input { border-color: var(--ink); }
 .sellx-combo__meta { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; }
-.sellx-combo__picked { padding-top: 6px; }
+/* The pick's department / category sits inside the field (right), so nothing below shifts. */
+.sellx-combo__field { position: relative; }
+.sellx-combo__picked { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.sellx-combo__input--picked { padding-right: 190px; }
 /* Overlays the fields below (never pushes them); the dropdown in the Paper mock pushes only because Paper can't float. */
 .sellx-combo__list { position: absolute; left: 0; right: 0; top: 48px; z-index: 30; margin: 0; padding: 0; list-style: none; background: var(--bg); border: 1px solid var(--ink); border-top: none; max-height: 320px; overflow-y: auto; }
 .sellx-combo__opt { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: var(--control-h); padding: 0 14px; border-top: 1px solid var(--line-row); font: 300 15px var(--font-sans); color: var(--ink); cursor: pointer; }

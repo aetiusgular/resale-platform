@@ -57,7 +57,7 @@ export default function SellCategory({ department, category, subcategory, onPick
         <input
           ref={inputRef}
           id="sell-category"
-          className="sellx-input"
+          className={`sellx-input${query === null && currentMeta ? ' sellx-combo__input--picked' : ''}`}
           role="combobox"
           aria-expanded={open}
           aria-controls={listId}
@@ -77,8 +77,8 @@ export default function SellCategory({ department, category, subcategory, onPick
           }}
           data-testid="sell-category"
         />
+        {query === null && currentMeta && <span className="sellx-combo__meta sellx-combo__picked" aria-hidden="true">{currentMeta.toUpperCase()}</span>}
       </div>
-      {currentMeta && <div className="sellx-combo__meta sellx-combo__picked">{currentMeta.toUpperCase()}</div>}
       {open && (
         <ul id={listId} className="sellx-combo__list" role="listbox" aria-label="Categories">
           {results.map((o, i) => (
