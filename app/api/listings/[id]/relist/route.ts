@@ -20,7 +20,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
 
   const { data: src } = await supabase
     .from('listings')
-    .select('seller_id, status, title, brand, category, department, subcategory, size, color, description, condition_score, condition_notes, price_cents, images, possession_photo_url, measurements')
+    .select('seller_id, status, title, brand, category, department, subcategory, size, color, description, condition_score, condition_notes, price_cents, images, possession_photo_url, measurements, ships_from, intl_shipping')
     .eq('id', id)
     .single()
   if (!src || src.seller_id !== user.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -35,6 +35,8 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
       condition_score: src.condition_score, condition_notes: src.condition_notes ?? {},
       price_cents: src.price_cents, images: src.images ?? [], possession_photo_url: src.possession_photo_url,
       measurements: src.measurements ?? {},
+      // Shipping lanes carry over; the draft re-keys them if the seller has since moved.
+      ships_from: src.ships_from ?? 'US', intl_shipping: src.intl_shipping ?? {},
     })
     .select('id')
     .single()

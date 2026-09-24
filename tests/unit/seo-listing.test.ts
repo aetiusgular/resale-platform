@@ -38,13 +38,23 @@ describe('schemaCondition', () => {
 })
 
 describe('schemaImages', () => {
-  it('drops empty slots and NEVER includes index 5 (possession proof)', () => {
+  it('passes the ordered photo list through, up to 15, cover first', () => {
+    const photos = Array.from({ length: 15 }, (_, i) => `p${i + 1}.jpg`)
+    expect(schemaImages(photos)).toEqual(photos)
+    expect(schemaImages([...photos, 'p16.jpg'])).toEqual(photos)
+    expect(schemaImages(['a.jpg', 'a.jpg', 'b.jpg'])).toEqual(['a.jpg', 'b.jpg'])
+  })
+  it('never includes the possession proof it is told about', () => {
+    const out = schemaImages(['front.jpg', POSSESSION, 'back.jpg'], POSSESSION)
+    expect(out).toEqual(['front.jpg', 'back.jpg'])
+  })
+  it('legacy six-slot rows: drops empty slots and NEVER includes index 5 (possession proof)', () => {
     const out = schemaImages(baseListing.images)
     expect(out).toEqual(['front.jpg', 'back.jpg', 'detail.jpg'])
     expect(out).not.toContain(POSSESSION)
   })
-  it('excludes index 5 even when all six slots are filled', () => {
-    const out = schemaImages(['f', 'b', 't', 'd', 'fl', POSSESSION])
+  it('legacy six-slot rows: excludes index 5 when all six slots are filled and the proof is known', () => {
+    const out = schemaImages(['f', 'b', 't', 'd', 'fl', POSSESSION], POSSESSION)
     expect(out).toEqual(['f', 'b', 't', 'd', 'fl'])
   })
   it('returns [] for non-arrays', () => {
@@ -123,7 +133,7 @@ describe('productJsonLd', () => {
   it('maps condition and excludes the possession photo', () => {
     expect(p.itemCondition).toBe('https://schema.org/UsedCondition')
     expect(p.image).not.toContain(POSSESSION)
-    expect(p.image.length).toBeLessThanOrEqual(5)
+    expect(p.image).toEqual(['front.jpg', 'back.jpg', 'detail.jpg'])
   })
   it('carries seller + shippingDetails, and never a return policy', () => {
     expect(p.offers.seller).toEqual({ '@type': 'Person', name: 'tony' })

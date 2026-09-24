@@ -4,6 +4,8 @@
  * taxonomy, and anything unknown is dropped. PURE.
  */
 import { CATEGORIES, COLOR_LABELS, DEPARTMENTS, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
+import { cleanIntlShipping, type IntlShipping } from '@/lib/shipping-regions'
+import { MAX_PHOTOS } from '@/lib/listings/images'
 
 export interface DraftFields {
   title?: string | null
@@ -20,11 +22,17 @@ export interface DraftFields {
   images?: string[]
   possession_photo_url?: string | null
   measurements?: Record<string, number>
+  /** Per-region seller rates (lib/shipping-regions), keyed for the seller's origin. */
+  intl_shipping?: IntlShipping
 }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : undefined)
 
-export function cleanDraftFields(body: Record<string, unknown>): DraftFields {
+/**
+ * `origin` is the seller's ship-from country (lib/listings/origin): it decides which region
+ * keys are valid (Canada for US sellers, North America for everyone else).
+ */
+export function cleanDraftFields(body: Record<string, unknown>, origin: string = 'US'): DraftFields {
   const out: DraftFields = {}
   const title = str(body.title, 120)
   if (title !== undefined) out.title = title || null
@@ -52,9 +60,10 @@ export function cleanDraftFields(body: Record<string, unknown>): DraftFields {
     const n = Number(body.price_cents)
     out.price_cents = Number.isInteger(n) && n > 0 && n <= 100_000_000 ? n : null
   }
-  if (Array.isArray(body.images)) out.images = body.images.filter((u): u is string => typeof u === 'string').slice(0, 6)
+  if (Array.isArray(body.images)) out.images = Array.from(new Set(body.images.filter((u): u is string => typeof u === 'string' && !!u.trim()).map((u) => u.trim()))).slice(0, MAX_PHOTOS)
   const poss = str(body.possession_photo_url, 500)
   if (poss !== undefined) out.possession_photo_url = poss || null
   if (body.measurements !== undefined) out.measurements = normalizeMeasurements(body.measurements, cat)
+  if (body.intl_shipping !== undefined) out.intl_shipping = cleanIntlShipping(body.intl_shipping, origin)
   return out
 }

@@ -32,11 +32,13 @@ export async function buyLabelForOrder(
   try {
     const { data: order } = await service
       .from('orders')
-      .select('id, seller_id, listing_id, shipping_cents, ship_to_address, easypost_shipment_id, state')
+      .select('id, seller_id, listing_id, shipping_cents, ship_to_address, easypost_shipment_id, state, label_mode')
       .eq('id', orderId)
       .single()
     if (!order) return { bought: false, reason: 'order_not_found' }
     if (order.easypost_shipment_id) return { bought: false, reason: 'already_bought' }
+    // International lanes: the seller was paid the shipping and buys their own label.
+    if (order.label_mode === 'seller') return { bought: false, reason: 'seller_label' }
 
     const [{ data: listing }, { data: seller }] = await Promise.all([
       service.from('listings').select('category').eq('id', order.listing_id).single(),
@@ -47,6 +49,8 @@ export async function buyLabelForOrder(
     const from = ((seller?.ship_from_address ?? null) as Partial<LabelAddress> | null)
     if (!isCompleteAddress(to)) return { bought: false, reason: 'incomplete_to_address' }
     if (!isCompleteAddress(from)) return { bought: false, reason: 'incomplete_from_address' }
+    // Prepaid labels are US → US ground only (a legacy row with no country is US).
+    if ((to.country || 'US') !== 'US' || (from.country || 'US') !== 'US') return { bought: false, reason: 'not_domestic' }
 
     const preset = presetFor((listing?.category as string) ?? 'Other')
     const label = await buyShippingLabel({ from, to, preset })

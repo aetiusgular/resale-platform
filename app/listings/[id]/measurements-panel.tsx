@@ -14,7 +14,7 @@
  */
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { formatMeasurement } from '@/lib/taxonomy'
+import { formatMeasurement, measurementDisplayLabel } from '@/lib/taxonomy'
 import { useAuthModal } from '@/app/components/auth-modal-provider'
 
 /** The note follows the label set (lib/taxonomy measurementLabelsFor), so it never describes a measurement the panel doesn't list. */
@@ -86,7 +86,7 @@ export default function MeasurementsPanel({
         <div className="pdp-meas__grid">
           {labels.map((label) => (
             <div key={label} className="pdp-meas__row">
-              <span className="pdp-meas__label">{label}</span>
+              <span className="pdp-meas__label">{measurementDisplayLabel(label)}</span>
               <span className="pdp-meas__val">{typeof values[label] === 'number' ? formatMeasurement(values[label], unit) : '—'}</span>
             </div>
           ))}

@@ -20,7 +20,7 @@
  */
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { formatCents } from '@/lib/fees'
-import { PUBLIC_IMAGE_SLOTS, publicImages } from '@/lib/listings/images'
+import { publicImages } from '@/lib/listings/images'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any>
@@ -157,7 +157,7 @@ export async function loadMoreLots(opts: {
       price_cents: l.price_cents,
       saves_count: l.saves_count,
       is_price_dropped: l.is_price_dropped,
-      images: publicImages(Array.isArray(l.images) ? l.images.slice(0, PUBLIC_IMAGE_SLOTS) : []),
+      images: publicImages(l.images),
       created_at: l.created_at,
       seller: l.profiles,
       authentication_status: l.authentication_status,

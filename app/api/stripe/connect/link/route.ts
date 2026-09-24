@@ -23,6 +23,7 @@ export async function POST(_request: NextRequest) {
       refreshUrl: `${appBaseUrl()}/api/stripe/connect/refresh?client=ios`,
       returnUrl: `${appBaseUrl()}/api/stripe/connect/return?client=ios`,
     })
+    if (!link.ok && link.reason === 'country_unsupported') throw new ApiError(422, 'Payouts aren’t available in your country yet.', 'country_unsupported')
     if (!link.ok) throw new ApiError(403, 'Identity verification is required before payouts can be set up.', 'verification_required')
     return { url: link.url }
   })

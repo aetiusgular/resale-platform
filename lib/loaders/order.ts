@@ -34,6 +34,8 @@ export const ORDER_DETAIL_SELECT = `
       shipping_label_url,
       shipping_address,
       ship_to_address,
+      label_mode,
+      shipping_region,
       stripe_transfer_id,
       paid_at,
       seller_confirmed_at,
@@ -64,6 +66,10 @@ export type OrderRow = {
   /** Buyer address snapshots taken at payment; rendered to the SELLER only (ShipToPanel). */
   shipping_address: ShipToAddress | null
   ship_to_address: ShipToAddress | null
+  /** 'platform' = prepaid EasyPost label (US → US); 'seller' = seller buys the label (international). */
+  label_mode: 'platform' | 'seller'
+  /** 'domestic' or a lib/shipping-regions key. */
+  shipping_region: string | null
   stripe_transfer_id: string | null
   paid_at: string | null
   seller_confirmed_at: string | null

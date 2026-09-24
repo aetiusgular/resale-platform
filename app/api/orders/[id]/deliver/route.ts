@@ -31,7 +31,7 @@ export async function POST(
 
   const { data: order } = await service
     .from('orders')
-    .select('id, buyer_id, seller_id, listing_id, state, transfer_cents, stripe_payment_intent_id, stripe_transfer_id, shipping_address')
+    .select('id, buyer_id, seller_id, listing_id, state, transfer_cents, stripe_payment_intent_id, stripe_transfer_id, shipping_address, transfer_hold_reason')
     .eq('id', orderId)
     .single()
 
@@ -110,6 +110,10 @@ export async function POST(
   if (freshOrder?.stripe_transfer_id) {
     return NextResponse.json({ ok: true })
   }
+
+  // A payout already on hold (e.g. shipping_lane_mismatch set at payment) waits for a moderator
+  // (release-hold), same as the cron sweep which skips held orders.
+  if (order.transfer_hold_reason) return NextResponse.json({ ok: true, held: true })
 
   // Collusion pre-payout hold (Branch 4): if buyer/seller look like the same person, hold.
   if (COLLUSION_HOLD_ENABLED) {

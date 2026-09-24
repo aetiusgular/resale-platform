@@ -26,6 +26,7 @@ export default function ListingDescription({
   title: string
   spec: string
   priceDisplay: string
+  /** Full shipping headline, e.g. "+ $17 SHIPPING US" or "SHIPS FROM JAPAN". */
   shipDisplay: string
   /** Dock BUY NOW control (server-composed: link / guest gate / disabled). */
   buyNode?: ReactNode
@@ -86,7 +87,7 @@ export default function ListingDescription({
       </div>
       {(buyNode || offerNode) && (
         <div className="pdp-reader__dock">
-          <span className="pdp-reader__price">{priceDisplay}<span className="pdp-reader__ship">+ {shipDisplay} SHIPPING US</span></span>
+          <span className="pdp-reader__price">{priceDisplay}<span className="pdp-reader__ship">{shipDisplay}</span></span>
           <div className="pdp-reader__actions">{buyNode}{offerNode}</div>
         </div>
       )}

@@ -37,6 +37,10 @@ export interface OrderData {
    *  recipient record; shipping_address the older mirror. Either may be null. */
   ship_to_address?: ShipToAddress | null
   shipping_address?: ShipToAddress | null
+  /** 'platform' = prepaid EasyPost label (US → US); 'seller' = the seller buys the label (international). */
+  label_mode?: 'platform' | 'seller'
+  /** 'domestic' or a lib/shipping-regions key. */
+  shipping_region?: string | null
 }
 
 export type ListingSnap = { title: string; brand: string; size: string; images: string[] }
@@ -175,7 +179,7 @@ export function ShipToPanel({ order }: { order: OrderData }) {
       {complete && a ? (
         <div className="mono-note" style={{ paddingTop: 4, lineHeight: 1.6 }}>
           {a.name && <div style={{ color: 'var(--ink)' }}>{a.name.toUpperCase()}</div>}
-          {addressLines({ street1: a.street1 ?? '', street2: a.street2 ?? null, city: a.city ?? '', state: a.state ?? '', zip: a.zip ?? '' }).map((line, i) => (
+          {addressLines({ street1: a.street1 ?? '', street2: a.street2 ?? null, city: a.city ?? '', state: a.state ?? '', zip: a.zip ?? '', country: a.country }).map((line, i) => (
             <div key={i}>{line.toUpperCase()}</div>
           ))}
         </div>

@@ -13,6 +13,7 @@ import { formatTimeAgo } from '@/app/components/listing-card'
 
 export type { SellerListing } from '@/lib/loaders/sell'
 import type { SellerListing } from '@/lib/loaders/sell'
+import { MAX_PHOTOS } from '@/lib/listings/images'
 
 type Tab = 'active' | 'draft' | 'sold'
 
@@ -122,7 +123,7 @@ export default function SellCatalog({
             const meta = sold
               ? `SOLD ${monthDay(l.sold_at)}${l.payout_display ? ` · PAID OUT ${l.payout_display}` : ''}`
               : draft
-                ? `${l.photo_count} OF 6 PHOTOS · ${l.price_cents ? `PRICE ${l.price_display}` : 'NO PRICE SET'}`
+                ? `${l.photo_count} OF ${MAX_PHOTOS} PHOTOS · ${l.price_cents ? `PRICE ${l.price_display}` : 'NO PRICE SET'}`
                 : removed
                   ? (l.rejection_reason ? `REJECTED — ${l.rejection_reason.toUpperCase()}` : 'REJECTED')
                   : `${l.view_count} VIEWS · ${l.saves_count} SAVES${l.open_offers > 0 ? ` · ${l.open_offers} ${l.open_offers === 1 ? 'OFFER' : 'OFFERS'}` : ''} · LISTED ${short(l.created_at)}`

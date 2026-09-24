@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { formatCents } from '@/lib/fees'
-import { PHOTO_SLOTS } from '@/lib/condition'
+import { photoIndexForSlot, photoLabel, publicImages, POSSESSION_SLOT } from '@/lib/listings/images'
 import AdminFrame from '../admin-frame'
 import AdminActions from './admin-actions'
 import CommentActions from './comment-actions'
@@ -14,13 +14,62 @@ interface ListingFlag {
   type: 'duplicate' | 'keyword_stuffing'
   evidence: {
     matched_listing_ids?: string[]
-    per_slot_distances?: { listing_id: string; slot: string; distance: number }[]
+    /** `slot` is the matched listing's image_hashes.slot; `new_slot` the flagged one's (absent on
+     *  flags written by the old fixed-slot scan, which only compared like slots). */
+    per_slot_distances?: { listing_id: string; slot: string; new_slot?: string; distance: number }[]
     violations?: { code: string; message: string }[]
   }
 }
 
-function slotLabel(slot: string): string {
-  return slot.toUpperCase()
+/** Admin label for a photo index: COVER, PHOTO 2 …; the possession cell is labelled apart. */
+function slotLabel(index: number): string {
+  return photoLabel(index).toUpperCase()
+}
+
+/** Which photo indexes an image_hashes.slot list points at (legacy names map to 0 … 4). */
+function matchedIndexes(slots: Iterable<string>): { photos: Set<number>; possession: boolean } {
+  const photos = new Set<number>()
+  let possession = false
+  for (const slot of slots) {
+    if (slot === POSSESSION_SLOT) { possession = true; continue }
+    const i = photoIndexForSlot(slot)
+    if (i !== null) photos.add(i)
+  }
+  return { photos, possession }
+}
+
+function PhotoCell({ url, label, match, dim, check }: { url: string | null; label: string; match?: boolean; dim?: boolean; check?: boolean }) {
+  return (
+    <div>
+      <div className={`admin-photo${dim ? ' admin-photo--dim' : ''}${match ? ' is-match' : ''}`}>
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={label.toLowerCase()} />
+        ) : (
+          <span className="admin-photo__blank">—</span>
+        )}
+        {check && url && <span className="admin-photo__check" aria-label="Possession photo present">✓</span>}
+      </div>
+      <span className={`admin-photo__label${match ? ' is-match' : ''}`}>{label}{match ? ' ⚠' : ''}</span>
+    </div>
+  )
+}
+
+/** One listing's photo strip: every public photo in order, then the possession cell. */
+function PhotoStrip({ images, possession, matched, dim }: {
+  images: string[]
+  possession: string | null
+  matched?: { photos: Set<number>; possession: boolean }
+  dim?: boolean
+}) {
+  return (
+    <div className="admin-photos">
+      {images.map((url, i) => (
+        <PhotoCell key={`${i}-${url}`} url={url} label={slotLabel(i)} match={matched?.photos.has(i)} dim={dim} />
+      ))}
+      <PhotoCell url={possession} label="POSSESSION" match={matched?.possession} dim={dim} check />
+    </div>
+  )
 }
 
 export default async function AdminQueuePage() {
@@ -82,7 +131,7 @@ export default async function AdminQueuePage() {
   // Use service client to read matched listings' images (no RLS restriction needed here;
   // the admin's session could read active listings via public policy, but service client
   // avoids ambiguity for pending listings that are the match target).
-  const matchedImages: Record<string, { title: string; images: string[]; possession_photo_url: string }> = {}
+  const matchedImages: Record<string, { title: string; images: string[]; possession_photo_url: string | null }> = {}
   if (allMatchedIds.size > 0) {
     const { data: matchedListings } = await service
       .from('listings')
@@ -92,8 +141,8 @@ export default async function AdminQueuePage() {
     for (const ml of matchedListings ?? []) {
       matchedImages[ml.id] = {
         title: ml.title,
-        images: Array.isArray(ml.images) ? ml.images : [],
-        possession_photo_url: ml.possession_photo_url,
+        images: publicImages(ml.images, ml.possession_photo_url),
+        possession_photo_url: ml.possession_photo_url ?? null,
       }
     }
   }
@@ -109,7 +158,8 @@ export default async function AdminQueuePage() {
         <div className="admin-list">
           {items.map((listing) => {
             const seller = (listing.profiles as unknown) as { username: string } | null
-            const images: string[] = Array.isArray(listing.images) ? listing.images : []
+            const possession: string | null = listing.possession_photo_url ?? null
+            const images: string[] = publicImages(listing.images, possession)
             const ago = new Date(listing.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()
             const flags = (listing.listing_flags ?? []) as ListingFlag[]
             const dupFlag = flags.find(f => f.type === 'duplicate')
@@ -119,7 +169,7 @@ export default async function AdminQueuePage() {
               <div key={listing.id} className={`admin-item${dupFlag ? ' admin-item--alert' : ''}`}>
                 <div className="admin-item__head">
                   <span className="admin-item__title"><Link href={`/listings/${listing.id}`}>{listing.title}</Link></span>
-                  <span className="admin-item__meta">{listing.brand.toUpperCase()} · {String(listing.category).toUpperCase()} · SIZE {String(listing.size).toUpperCase()} · CONDITION {listing.condition_score}/10</span>
+                  <span className="admin-item__meta">{listing.brand.toUpperCase()} · {String(listing.category).toUpperCase()} · SIZE {String(listing.size).toUpperCase()}{listing.condition_score ? ` · CONDITION ${listing.condition_score}/10` : ''}</span>
                   <span className="admin-item__meta" style={{ color: 'var(--ink)', fontWeight: 400 }}>{formatCents(listing.price_cents)}</span>
                   <div className="admin-item__right">
                     {dupFlag && <span className="tag tag--alert" data-testid="flag-duplicate">DUPLICATE SUSPECT</span>}
@@ -137,26 +187,7 @@ export default async function AdminQueuePage() {
                 )}
 
                 <div className="admin-item__body">
-                  <div className="admin-photos">
-                    {PHOTO_SLOTS.map((slot, idx) => {
-                      const url = images[idx]
-                      const isPossession = slot === 'POSSESSION'
-                      return (
-                        <div key={slot}>
-                          <div className="admin-photo">
-                            {url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={url} alt={slot} />
-                            ) : (
-                              <span className="admin-photo__blank">—</span>
-                            )}
-                            {isPossession && url && <span className="admin-photo__check" aria-label="Possession photo present">✓</span>}
-                          </div>
-                          <span className="admin-photo__label">{slotLabel(slot)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <PhotoStrip images={images} possession={possession} />
                 </div>
 
                 {dupFlag && dupFlag.evidence?.matched_listing_ids && (
@@ -167,45 +198,20 @@ export default async function AdminQueuePage() {
                     {dupFlag.evidence.matched_listing_ids.map(matchedId => {
                       const matched = matchedImages[matchedId]
                       if (!matched) return null
-                      const matchedImgs: string[] = matched.images
-                      const matchedSlots = new Set(
-                        (dupFlag.evidence?.per_slot_distances ?? [])
-                          .filter(d => d.listing_id === matchedId)
-                          .map(d => d.slot)
-                      )
+                      const dists = (dupFlag.evidence?.per_slot_distances ?? []).filter(d => d.listing_id === matchedId)
+                      // Photo orders differ between the two posts, so each strip flags its own
+                      // matched photos: the new post by `new_slot`, the existing one by `slot`.
+                      const newMatched = matchedIndexes(dists.map(d => d.new_slot ?? d.slot))
+                      const oldMatched = matchedIndexes(dists.map(d => d.slot))
                       return (
                         <div key={matchedId} className="admin-compare__body">
                           <div className="admin-compare__vs">VS <Link href={`/listings/${matchedId}`} style={{ textDecoration: 'underline', textUnderlineOffset: 2 }}>{matched.title}</Link> ({matchedId.slice(0, 8)}) — NEW ABOVE, EXISTING BELOW</div>
-                          <div className="admin-photos">
-                            {PHOTO_SLOTS.map((slot, idx) => {
-                              const thisUrl = images[idx]
-                              const otherUrl = slot === 'POSSESSION' ? matched.possession_photo_url : matchedImgs[idx]
-                              const isMatch = matchedSlots.has(slot)
-                              return (
-                                <div key={slot} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  <span className={`admin-photo__label${isMatch ? ' is-match' : ''}`} style={{ paddingTop: 0 }}>{slotLabel(slot)}{isMatch ? ' ⚠' : ''}</span>
-                                  <div className={`admin-photo${isMatch ? ' is-match' : ''}`}>
-                                    {thisUrl ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img src={thisUrl} alt={`new-${slot}`} />
-                                    ) : (
-                                      <span className="admin-photo__blank">—</span>
-                                    )}
-                                  </div>
-                                  <div className={`admin-photo admin-photo--dim${isMatch ? ' is-match' : ''}`}>
-                                    {otherUrl ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img src={otherUrl} alt={`existing-${slot}`} />
-                                    ) : (
-                                      <span className="admin-photo__blank">—</span>
-                                    )}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                          {(dupFlag.evidence?.per_slot_distances ?? []).filter(d => d.listing_id === matchedId).map(d => (
-                            <span key={`${d.listing_id}-${d.slot}`} className="admin-compare__dist">{d.slot.toUpperCase()} · DIST {d.distance}</span>
+                          <PhotoStrip images={images} possession={possession} matched={newMatched} />
+                          <PhotoStrip images={matched.images} possession={matched.possession_photo_url} matched={oldMatched} dim />
+                          {dists.map(d => (
+                            <span key={`${d.listing_id}-${d.slot}-${d.new_slot ?? ''}`} className="admin-compare__dist">
+                              {(d.new_slot ?? d.slot).toUpperCase()} → {d.slot.toUpperCase()} · DIST {d.distance}
+                            </span>
                           ))}
                         </div>
                       )

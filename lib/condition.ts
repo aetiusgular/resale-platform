@@ -12,10 +12,6 @@ export const CONDITION_DEFINITIONS: Record<number, string> = {
   1:  'for parts only.',
 }
 
-/** Photo slot labels in order (matches images[] array positions 0–5). */
-export const PHOTO_SLOTS = ['FRONT', 'BACK', 'TAG', 'DETAIL', 'FLAW', 'POSSESSION'] as const
-export type PhotoSlot = typeof PHOTO_SLOTS[number]
-
 /** Damage flags shown in the condition checklist. */
 export const DAMAGE_FLAGS = ['stains', 'repairs', 'fading', 'odor'] as const
 export type DamageFlag = typeof DAMAGE_FLAGS[number]

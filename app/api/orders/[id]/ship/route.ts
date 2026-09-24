@@ -6,8 +6,9 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { NOTIFICATIONS_ENABLED } from '@/lib/flags'
+import { NOTIFICATIONS_ENABLED, SHIPPING_LABELS_ENABLED } from '@/lib/flags'
 import { notify } from '@/lib/notify'
+import { createTracker } from '@/lib/shipping-labels'
 
 export async function POST(
   request: NextRequest,
@@ -32,7 +33,7 @@ export async function POST(
 
   const { data: order } = await service
     .from('orders')
-    .select('seller_id, buyer_id, listing_id, state, carrier, tracking_number')
+    .select('seller_id, buyer_id, listing_id, state, carrier, tracking_number, easypost_tracker_id')
     .eq('id', orderId)
     .single()
 
@@ -66,6 +67,19 @@ export async function POST(
     .from('orders')
     .update({ carrier: useCarrier, tracking_number: useTracking })
     .eq('id', orderId)
+
+  // Seller-entered tracking (international orders, or a domestic order shipped without the
+  // prepaid label): register an EasyPost tracker so the carrier's delivery scan reaches
+  // /api/webhooks/easypost and moves the order to delivered, same as a prepaid label.
+  // Fail-soft; the auto-deliver cron is the fallback.
+  if (SHIPPING_LABELS_ENABLED && !order.easypost_tracker_id) {
+    after(async () => {
+      const trackerId = await createTracker(useTracking, useCarrier)
+      if (trackerId) {
+        await service.from('orders').update({ easypost_tracker_id: trackerId }).eq('id', orderId).is('easypost_tracker_id', null)
+      }
+    })
+  }
 
   if (NOTIFICATIONS_ENABLED) {
     after(async () => {

@@ -1,48 +1,56 @@
 'use client'
 
 /**
- * Create-listing wizard (reference WizardView): steps rail on the left (01 PHOTOS
- * · 02 DETAILS · 03 MEASUREMENTS · 04 PRICING · 05 REVIEW with live meta), one
- * long form on the right. The draft auto-saves as the seller types
- * (POST /api/listings/drafts once, then debounced PATCH /api/listings/[id]);
- * PUBLISH LISTING → posts the full listing to /api/listings (anti-slop, pHash,
- * prohibited scan) with `draft_id` so the draft is consumed. `mode: 'edit'`
- * re-opens a published listing: copy, price, measurements and taxonomy are
- * editable, photos are locked (hashed at publish time).
+ * Create / edit a listing — sell page redesign A (single scroll, no step rail):
+ * PHOTOS → TITLE / BRAND / CATEGORY / SIZE / COLOR / DESCRIPTION → MEASUREMENTS (TOPS /
+ * BOTTOMS) → PRICE + SHIPPING beside the take-home breakdown → a sticky bar with
+ * SAVE DRAFT / PUBLISH. CATEGORY, SIZE and COLOR are typeaheads (./sell-combo).
+ *
+ * The draft auto-saves as the seller types (POST /api/listings/drafts once, then debounced
+ * PATCH /api/listings/[id]); PUBLISH → posts the full listing to /api/listings (anti-slop,
+ * pHash, prohibited scan) with `draft_id` so the draft is consumed. `mode: 'edit'` re-opens a
+ * published listing: copy, price, measurements, taxonomy and shipping regions are editable,
+ * photos are locked (hashed at publish time).
+ *
+ * Photos are free-ordered (./sell-photos): up to MAX_PHOTOS, at least MIN_PHOTOS to publish,
+ * the first is the cover. No condition grade and no possession photo: the design dropped both.
+ *
+ * Fee math comes from lib/fees (sellerFeeBreakdown) — the same helpers checkout charges with.
+ * US shipping is automatic (lib/shipping); international regions are the seller's
+ * (lib/shipping-regions, ./sell-shipping).
  */
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { createBrowserClient } from '@supabase/ssr'
-import { sellerFeeAt, formatCents, welcomeSellerFeeCents, FEE_TIERS } from '@/lib/fees'
-import { floorShippingCents } from '@/lib/shipping'
+import { sellerFeeBreakdown, FEE_TIERS, STRIPE_PCT_BPS, STRIPE_FIXED_CENTS, WELCOME_SALES } from '@/lib/fees'
 import { fmtRate } from '@/lib/tier-dashboard'
-import { CONDITION_DEFINITIONS, PHOTO_SLOTS } from '@/lib/condition'
-import { CATEGORY_TREE, COLORS, DEPARTMENTS, measurementLabelsFor } from '@/lib/taxonomy'
-import { sizeScaleFor } from '@/lib/sizes'
-import { PlusIcon, XIcon } from '@/app/components/icons'
-
-const SLOT_LABELS: Record<string, string> = {
-  FRONT: 'FRONT', BACK: 'BACK', TAG: 'TAG', DETAIL: 'DETAIL', FLAW: 'FLAW', POSSESSION: 'POSSESSION',
-}
-const WIZARD_STEPS = ['01 PHOTOS', '02 DETAILS', '03 MEASUREMENTS', '04 PRICING', '05 REVIEW']
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+import {
+  measurementDisplayLabel, measurementKindFor, measurementKindIsChoice, measurementKindOf, measurementLabelsForKind,
+} from '@/lib/taxonomy'
+import { REGION_LABELS, needsIntlRegion } from '@/lib/shipping-regions'
+import { countryName } from '@/lib/countries'
+import SellCategory from './sell-category'
+import SellSize from './sell-size'
+import SellColor from './sell-color'
+import SellPhotos from './sell-photos'
+import SellShipping, { regionDraftsFrom, intlFromDrafts, regionMissingPrice, type RegionDrafts } from './sell-shipping'
 
 export type { ListingInitial } from '@/lib/loaders/sell'
 import type { ListingInitial } from '@/lib/loaders/sell'
+
+import { MAX_PHOTOS, MIN_PHOTOS } from '@/lib/listings/images'
 
 interface SellFormProps {
   userId: string
   sellerBps: number
   welcomeSalesRemaining?: number
+  /** The seller's ship-from country now (drafts follow it; a live listing keeps its own). */
+  shipsFrom?: string
   /** Existing row: a draft to continue, or a published listing to edit. */
   initial?: ListingInitial | null
   mode?: 'new' | 'edit'
 }
-
-type SlotUploading = { [key: string]: boolean }
-type SlotUrls = { [key: string]: string }
-type SlotErrors = { [key: string]: string }
 
 async function resizeToJpeg(file: File, maxPx = 2000): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -68,28 +76,32 @@ async function resizeToJpeg(file: File, maxPx = 2000): Promise<Blob> {
   })
 }
 
-function SectionLabel({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <div className="review-label" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-      <span>{children}</span>
-      {right && <em>{right}</em>}
-    </div>
-  )
-}
-
 function useFlash(): [boolean, () => void] {
   const [on, setOn] = useState(false)
   return [on, () => { setOn(true); window.setTimeout(() => setOn(false), 1400) }]
 }
 
-/** Category select value: "menswear|Tops|Short-sleeve tees" — dept / category / subcategory. */
-const catValue = (dept: string, cat: string, sub: string) => [dept, cat, sub].join('|')
+/** Take-home money is shown to the cent: $240.00, −$19.50. */
+type MeasUnit = 'in' | 'cm'
+const CM_PER_IN = 2.54
 
-export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0, initial = null, mode = 'new' }: SellFormProps) {
+const toInches   = (n: number, unit: MeasUnit) => (unit === 'in' ? n : n / CM_PER_IN)
+const fromInches = (inches: number, unit: MeasUnit) => (unit === 'in' ? inches : inches * CM_PER_IN)
+/** What goes in a box after a unit switch: 1 dp for cm, 2 dp for inches, no trailing zeros. */
+const measText = (n: number, unit: MeasUnit) => String(Number(n.toFixed(unit === 'cm' ? 1 : 2)))
+const measNumber = (text: string) => parseFloat(text.replace(/[^0-9.]/g, ''))
+
+function money(cents: number): string {
+  return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0, shipsFrom = 'US', initial = null, mode = 'new' }: SellFormProps) {
   const router = useRouter()
   const isEdit = mode === 'edit'
-  // Storage path prefix: the row id when we have one, else a session id.
-  const pathId = useRef(initial?.id ?? (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2)))
+  const origin = initial?.ships_from ?? shipsFrom
+  // Storage path prefix: the row id when we have one, else an id for this form instance.
+  const instanceId = useId()
+  const pathId = useRef(initial?.id ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : instanceId.replace(/[^a-z0-9]/gi, '')))
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,15 +109,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   )
 
   // ── form state ──────────────────────────────────────────────────────────────
-  const initialSlots: SlotUrls = {}
-  if (initial) {
-    PHOTO_SLOTS.forEach((slot, i) => { const u = initial.images[i]; if (u) initialSlots[slot] = u })
-    if (initial.possession_photo_url) initialSlots.POSSESSION = initial.possession_photo_url
-  }
-  const [slotUrls, setSlotUrls]         = useState<SlotUrls>(initialSlots)
-  const [uploading, setUploading]       = useState<SlotUploading>({})
-  const [uploadErrors, setUploadErrors] = useState<SlotErrors>({})
-
+  const [photos, setPhotos]           = useState<string[]>(() => (initial?.images ?? []).filter(Boolean).slice(0, MAX_PHOTOS))
   const [title, setTitle]             = useState(initial?.title ?? '')
   const [brand, setBrand]             = useState(initial?.brand ?? '')
   const [department, setDepartment]   = useState(initial?.department ?? 'menswear')
@@ -113,11 +117,17 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const [subcategory, setSubcategory] = useState(initial?.subcategory ?? '')
   const [size, setSize]               = useState(initial?.size ?? '')
   const [color, setColor]             = useState(initial?.color ?? '')
-  const [conditionScore, setConditionScore] = useState<number | null>(initial?.condition_score ?? null)
   const [description, setDescription] = useState(initial?.description ?? '')
+  // The boxes hold text in `measUnit`; `measIn` keeps each value as unrounded inches (what is
+  // stored, lib/taxonomy), so switching IN ↔ CM rewrites the boxes without drifting the numbers.
   const [meas, setMeas]               = useState<Record<string, string>>(() =>
     Object.fromEntries(Object.entries(initial?.measurements ?? {}).map(([k, v]) => [k, String(v)])))
+  const [measIn, setMeasIn]           = useState<Record<string, number>>(() => ({ ...(initial?.measurements ?? {}) }))
+  const [measUnit, setMeasUnit]       = useState<MeasUnit>('in')
+  // TOPS / BOTTOMS is the seller's call for garments; the category only sets the default.
+  const [measChoice, setMeasChoice]   = useState<'tops' | 'bottoms' | null>(() => measurementKindOf(initial?.measurements ?? null))
   const [priceRaw, setPriceRaw]       = useState(initial?.price_cents ? String(initial.price_cents / 100) : '')
+  const [regions, setRegions]         = useState<RegionDrafts>(() => regionDraftsFrom(initial?.intl_shipping ?? {}))
 
   const [draftId, setDraftId]         = useState<string | null>(initial && initial.status === 'draft' ? initial.id : null)
   const [draftState, setDraftState]   = useState<'idle' | 'saving' | 'saved' | 'error'>(initial ? 'saved' : 'idle')
@@ -130,27 +140,47 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const priceDollars = parseFloat(priceRaw.replace(/[^0-9.]/g, ''))
   const priceCents   = Number.isFinite(priceDollars) ? Math.round(priceDollars * 100) : 0
   const inWelcome    = welcomeSalesRemaining > 0
-  const estShipping  = floorShippingCents(category || 'Other')
-  const tierFee      = priceCents > 0 ? sellerFeeAt(priceCents, sellerBps) : 0
-  const cardCost     = priceCents > 0 && inWelcome ? welcomeSellerFeeCents(priceCents, estShipping) : 0
-  const feeAmount    = inWelcome ? cardCost : tierFee
-  const payoutAmount = priceCents > 0 ? priceCents - feeAmount : 0
+  const fees         = sellerFeeBreakdown(priceCents, sellerBps, inWelcome ? 'welcome' : 'tier')
   const tierIdx      = FEE_TIERS.findIndex((t) => t.bps === sellerBps)
   const tierNumber   = tierIdx >= 0 ? FEE_TIERS.length - tierIdx : 1
-  const measLabels   = measurementLabelsFor(category || null)
+  const saleNumber   = WELCOME_SALES - welcomeSalesRemaining + 1
+  const kindDefault  = measurementKindFor(category || null)
+  const kindChoice   = measurementKindIsChoice(category || null)
+  const measKind     = kindChoice ? (measChoice ?? kindDefault) : kindDefault
+  const measLabels   = measurementLabelsForKind(measKind)
   const measurements = Object.fromEntries(
-    measLabels.map((l) => [l, parseFloat((meas[l] ?? '').replace(/[^0-9.]/g, ''))]).filter(([, v]) => Number.isFinite(v as number) && (v as number) > 0),
+    measLabels
+      .filter((l) => Number.isFinite(measIn[l]) && measIn[l] > 0)
+      .map((l) => [l, Math.round(measIn[l] * 100) / 100]),
   ) as Record<string, number>
-  const sizeOptions  = sizeScaleFor(department, category)
+  const editMeas = (label: string, text: string) => {
+    setMeas((m) => ({ ...m, [label]: text }))
+    const n = measNumber(text)
+    setMeasIn((m) => {
+      const next = { ...m }
+      if (Number.isFinite(n) && n > 0) next[label] = toInches(n, measUnit)
+      else delete next[label]
+      return next
+    })
+  }
+  const switchUnit = (next: MeasUnit) => {
+    if (next === measUnit) return
+    setMeas((m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, typeof measIn[k] === 'number' ? measText(fromInches(measIn[k], next), next) : v])))
+    setMeasUnit(next)
+  }
+  const intlShipping = intlFromDrafts(regions, origin)
+  const hasIntl      = Object.keys(intlShipping).length > 0
 
   // ── draft auto-save (debounced) ─────────────────────────────────────────────
-  const fields = useCallback(() => ({
+  // The payload is rebuilt every render; the timer below always closes over the latest one
+  // because every edit re-arms it.
+  const draftFields = {
     title, brand, category: category || null, department, subcategory: subcategory || null, size: size || null,
-    color: color || null, description, condition_score: conditionScore, price_cents: priceCents > 0 ? priceCents : null,
-    images: PHOTO_SLOTS.slice(0, 5).map((slot) => (slotUrls[slot] ?? '').split('?')[0]),
-    possession_photo_url: slotUrls.POSSESSION ? slotUrls.POSSESSION.split('?')[0] : null,
+    color: color || null, description, price_cents: priceCents > 0 ? priceCents : null,
+    images: photos.map((u) => u.split('?')[0]),
     measurements,
-  }), [title, brand, category, department, subcategory, size, color, description, conditionScore, priceCents, slotUrls, measurements])
+    intl_shipping: intlShipping,
+  }
 
   const dirtyRef = useRef(false)
   const saveTimer = useRef<number | null>(null)
@@ -158,12 +188,12 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const draftIdRef = useRef<string | null>(draftId)
   useEffect(() => { draftIdRef.current = draftId }, [draftId])
 
-  const persistDraft = useCallback(async (): Promise<string | null> => {
+  async function persistDraft(): Promise<string | null> {
     if (isEdit || savingRef.current) return draftIdRef.current
     savingRef.current = true
     setDraftState('saving')
     try {
-      const body = fields()
+      const body = draftFields
       if (draftIdRef.current) {
         const res = await fetch(`/api/listings/${draftIdRef.current}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         if (!res.ok && res.status !== 400) throw new Error('patch failed')
@@ -184,9 +214,12 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
     } finally {
       savingRef.current = false
     }
-  }, [fields, isEdit])
+  }
 
   // Any edit schedules a save 900ms later (first edit creates the draft row).
+  const regionsKey = JSON.stringify(intlShipping)
+  const measKey = JSON.stringify(measurements)
+  const photosKey = photos.join('|')
   const firstRender = useRef(true)
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return }
@@ -196,42 +229,20 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
     saveTimer.current = window.setTimeout(() => { void persistDraft() }, 900)
     return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, brand, category, department, subcategory, size, color, description, conditionScore, priceCents, slotUrls, meas])
+  }, [title, brand, category, department, subcategory, size, color, description, priceCents, photosKey, measKey, regionsKey])
 
   // ── image upload ────────────────────────────────────────────────────────────
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
-
-  const handleSlotClick = (slot: string) => {
-    if (uploading[slot] || isEdit) return
-    fileInputRefs.current[slot]?.click()
-  }
-
-  const handleFileChange = useCallback(
-    async (slot: string, file: File | null) => {
-      if (!file) return
-      setUploading((u) => ({ ...u, [slot]: true }))
-      setUploadErrors((e) => ({ ...e, [slot]: '' }))
-      try {
-        const blob = await resizeToJpeg(file)
-        const path = `listings/${userId}/${pathId.current}/${slot.toLowerCase()}.jpg`
-        const { error } = await supabase.storage
-          .from('product-images')
-          .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
-        if (error) throw error
-        const { data } = supabase.storage.from('product-images').getPublicUrl(path)
-        setSlotUrls((u) => ({ ...u, [slot]: `${data.publicUrl}?v=${Date.now()}` }))
-      } catch (err) {
-        setUploadErrors((e) => ({ ...e, [slot]: err instanceof Error ? err.message : 'upload failed' }))
-      } finally {
-        setUploading((u) => ({ ...u, [slot]: false }))
-      }
-    },
-    [userId, supabase],
-  )
-
-  const removeSlot = (slot: string) => {
-    setSlotUrls((u) => { const n = { ...u }; delete n[slot]; return n })
-  }
+  const uploadPhoto = useCallback(async (file: File): Promise<string> => {
+    const blob = await resizeToJpeg(file)
+    const name = `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}.jpg`
+    const path = `listings/${userId}/${pathId.current}/${name}`
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+    if (error) throw new Error(error.message)
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+    return data.publicUrl
+  }, [userId, supabase])
 
   // ── save draft / publish / save edits ───────────────────────────────────────
   async function saveDraftNow() {
@@ -240,16 +251,24 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
     flashDraft()
   }
 
+  /** Shipping checks shared by publish and save-edits; returns an error or ''. */
+  function shippingError(): string {
+    const missing = regionMissingPrice(regions, origin)
+    if (missing) return `Set a shipping cost for ${REGION_LABELS[missing]}, or switch it off.`
+    if (needsIntlRegion(origin, intlShipping)) return `You ship from ${countryName(origin)}: switch on at least one shipping region.`
+    return ''
+  }
+
   async function publish() {
     setSubmitError('')
-    if (!slotUrls.FRONT) { setSubmitError('Front photo is required.'); return }
-    if (!slotUrls.POSSESSION) { setSubmitError('Possession photo is required.'); return }
+    if (photos.length < MIN_PHOTOS) { setSubmitError(`Add at least ${MIN_PHOTOS} photos.`); return }
+    if (!title.trim()) { setSubmitError('Title is required.'); return }
     if (!brand.trim()) { setSubmitError('Brand is required.'); return }
     if (!category) { setSubmitError('Category is required.'); return }
     if (!size) { setSubmitError('Size is required.'); return }
-    if (!title.trim()) { setSubmitError('Title is required.'); return }
-    if (!conditionScore) { setSubmitError('Condition grade is required.'); return }
     if (priceCents <= 0) { setSubmitError('Enter a valid price.'); return }
+    const shipErr = shippingError()
+    if (shipErr) { setSubmitError(shipErr); return }
 
     setSubmitting(true)
     try {
@@ -267,12 +286,10 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
           size,
           color: color || null,
           description,
-          condition_score: conditionScore,
-          condition_notes: {},
           price_cents: priceCents,
-          images: PHOTO_SLOTS.map((slot) => (slotUrls[slot] ?? '').split('?')[0]),
-          possession_photo_url: (slotUrls.POSSESSION ?? '').split('?')[0],
+          images: photos.map((u) => u.split('?')[0]),
           measurements,
+          intl_shipping: intlShipping,
           draft_id: id,
         }),
       })
@@ -294,6 +311,8 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
     if (!initial) return
     setSubmitError('')
     if (priceCents <= 0) { setSubmitError('Enter a valid price.'); return }
+    const shipErr = shippingError()
+    if (shipErr) { setSubmitError(shipErr); return }
     setSubmitting(true)
     try {
       const res = await fetch(`/api/listings/${initial.id}`, {
@@ -301,7 +320,8 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(), description, price_cents: priceCents, size, color: color || null,
-          category, subcategory: subcategory || null, department, measurements, condition_score: conditionScore,
+          category, subcategory: subcategory || null, department, measurements,
+          intl_shipping: intlShipping,
         }),
       })
       if (!res.ok) {
@@ -316,222 +336,120 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
     }
   }
 
-  // ── rail meta ───────────────────────────────────────────────────────────────
-  const filledCount = PHOTO_SLOTS.filter((s) => slotUrls[s]).length
-  const detailsDone = !!(brand.trim() && category && size && title.trim() && conditionScore)
-  const measCount = Object.keys(measurements).length
-  const stepDone = [
-    !!slotUrls.FRONT && !!slotUrls.POSSESSION,
-    detailsDone,
-    measCount > 0,
-    priceCents > 0,
-    false,
-  ]
-  const stepMeta = [`${filledCount}/6`, detailsDone ? '✓' : '', measCount > 0 ? `${measCount} SET` : '', priceCents > 0 ? `$${Math.round(priceCents / 100)}` : '—', '']
-  const currentStep = Math.max(0, stepDone.findIndex((d) => !d))
-  const draftLabel = isEdit ? 'EDITING' : draftState === 'saving' ? 'SAVING…' : draftState === 'saved' ? 'DRAFT ✓' : draftState === 'error' ? 'NOT SAVED' : 'DRAFT'
-  const headNote = isEdit
-    ? `LIVE LISTING · CHANGES APPLY IMMEDIATELY`
-    : `${draftState === 'saved' ? 'DRAFT AUTO-SAVED' : draftState === 'saving' ? 'SAVING DRAFT…' : draftState === 'error' ? 'DRAFT NOT SAVED' : 'DRAFT AUTO-SAVES'} · STEP ${currentStep + 1} OF 5`
+  // ── labels ──────────────────────────────────────────────────────────────────
+  const draftLabel = isEdit
+    ? 'LIVE · CHANGES APPLY IMMEDIATELY'
+    : draftState === 'saving' ? 'SAVING…' : draftState === 'saved' ? 'DRAFT SAVED' : draftState === 'error' ? 'DRAFT NOT SAVED' : 'DRAFT AUTO-SAVES'
+  // The row prints the tier rate only; the 30¢ fixed part is inside the amount (lib/fees).
+  const tierLabel = `TIER ${tierNumber} FEE · ${fmtRate(fees.tierBps)}`
 
-  const categoryValue = category ? catValue(department, category, subcategory) : ''
-  const onCategoryChange = (v: string) => {
-    const [d, c, s] = v.split('|')
-    setDepartment(d || 'menswear'); setCategory(c || ''); setSubcategory(s || '')
-    if (c !== category) setSize('')
+  const onCategoryPick = (d: string, c: string, s: string) => {
+    setDepartment(d || 'menswear'); setCategory(c); setSubcategory(s)
+    if (c !== category) { setSize(''); setMeasChoice(null) }
   }
 
   return (
-    <div className="layout">
-      <aside className="rail">
-        <div className="rail__top">
-          <span className="rail__title">{isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</span>
-          <span className="rail__handle" data-testid="draft-state">{draftLabel}</span>
+    <div className="sellx-page">
+      <main className="sellx">
+        <div className="crumb"><PrefetchLink href="/sell">SELL</PrefetchLink> / {isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</div>
+        <div className="sellx__head">
+          <h1 className="sellx__title">{isEdit ? 'Edit listing' : 'New listing'}</h1>
+          <span className="sellx__state" data-testid="draft-state">{draftLabel}</span>
         </div>
-        {WIZARD_STEPS.map((s, i) => {
-          const on = i === currentStep
-          return (
-            <div key={s} className={`side-link${i === WIZARD_STEPS.length - 1 ? ' side-link--last' : ''}`}>
-              <span className="side-link__left">
-                <span className={`dot${on || stepDone[i] ? ' is-on' : ''}`} />
-                <span className={`side-link__label${on ? ' is-on' : ''}`}>{s}</span>
-              </span>
-              {stepMeta[i] && <span className="side-link__meta">{stepMeta[i]}</span>}
-            </div>
-          )
-        })}
-        <div className="wizard-rail-note">
-          TIER {tierNumber} SELLER<br />
-          FEE {fmtRate(sellerBps)}{inWelcome ? ` · RAMP −${fmtRate(sellerBps)}` : ''}<br />
-          {isEdit ? 'PHOTOS ARE LOCKED ONCE LIVE' : 'FIRST BUMP FREE ON PUBLISH'}
-        </div>
-      </aside>
 
-      <main className="main main--settings">
-        <div className="settings-body">
-          {/* Mobile web (15): step bar under the web header, progress segments, STEP n OF 5 —
-              the crumb + page head are the desktop head. */}
-          <div className="wizard-mbar">
-            <PrefetchLink href="/sell" className="wizard-mbar__back" aria-label="Back to sell">‹</PrefetchLink>
-            <span className="wizard-mbar__title">{isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</span>
-            <span className="wizard-mbar__state" data-testid="draft-state-m">{draftLabel}</span>
+        {/* ── PHOTOS ── */}
+        <section className="sellx__sec">
+          <div className="sellx__labelrow">
+            <span className="sellx__label">PHOTOS</span>
+            <span className="sellx__meta">{photos.length} / {MAX_PHOTOS}</span>
           </div>
-          <div className="wizard-progress" aria-hidden="true">
-            {WIZARD_STEPS.map((s, i) => <span key={s} className={`wizard-progress__seg${i <= currentStep || stepDone[i] ? ' is-on' : ''}`} />)}
-          </div>
-          <div className="wizard-step">STEP {currentStep + 1} OF 5 — {WIZARD_STEPS[currentStep].slice(3)}</div>
-          <div className="crumb crumb--wizard"><PrefetchLink href="/sell">SELL</PrefetchLink> / {isEdit ? 'EDIT LISTING' : 'NEW LISTING'}</div>
-          <div className="page-head page-head--ruled">
-            <h1 className="page-title">{isEdit ? 'Edit listing' : 'New listing'}</h1>
-            <span className="page-note">{headNote}</span>
-          </div>
+          <SellPhotos photos={photos} max={MAX_PHOTOS} locked={isEdit} onChange={setPhotos} upload={uploadPhoto} />
+          <p className="sellx__hint">{isEdit ? 'Photos are locked once a listing is live.' : 'Drag to reorder. Include the tags.'}</p>
+        </section>
 
-          {/* ── 01 PHOTOS ── */}
-          <SectionLabel right={`${filledCount} / 6 · FRONT + POSSESSION REQUIRED · DUPLICATE CHECK (PHASH) ON UPLOAD`}>01 — PHOTOS</SectionLabel>
-          <div className="slots" data-testid="sell-photo-grid">
-            {PHOTO_SLOTS.map((slot) => {
-              const url  = slotUrls[slot]
-              const busy = uploading[slot]
-              const err  = uploadErrors[slot]
-              return (
-                <div key={slot}>
-                  {url ? (
-                    <span className="slot__img" style={{ display: 'block', position: 'relative', overflow: 'hidden' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={slot} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      {!isEdit && (
-                        <button type="button" className="card__unsave" aria-label={`Remove ${slot}`} onClick={() => removeSlot(slot)} style={{ top: 6, right: 6 }}>
-                          <XIcon size={9} />
-                        </button>
-                      )}
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="slot__add"
-                      style={{ borderStyle: err ? 'dashed' : 'solid', borderColor: err ? 'var(--alert)' : undefined }}
-                      aria-label={`Add ${slot} photo`}
-                      onClick={() => handleSlotClick(slot)}
-                      disabled={busy || isEdit}
-                    >
-                      {busy ? <span className="mono-note">…</span> : <PlusIcon />}
-                    </button>
-                  )}
-                  <input
-                    ref={(el) => { fileInputRefs.current[slot] = el }}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    style={{ display: 'none' }}
-                    onChange={(e) => handleFileChange(slot, e.target.files?.[0] ?? null)}
-                    aria-label={`Upload ${slot} photo`}
-                  />
-                  <div className={`slot__label${url ? ' is-filled' : ''}`}>{SLOT_LABELS[slot]}{url ? ' ✓' : ''}</div>
-                  {err && <div className="alert-line" style={{ paddingTop: 4 }}>{err.toUpperCase()}</div>}
-                </div>
-              )
-            })}
+        {/* ── DETAILS ── */}
+        <section className="sellx__sec sellx__fields">
+          <div className="sellx-field">
+            <label className="sellx__label" htmlFor="sell-title">TITLE</label>
+            <input id="sell-title" className="sellx-input" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 1998 painter-dyed tee" data-testid="sell-title" />
           </div>
-          <div className="settings-note" style={{ paddingTop: 12 }}>
-            POSSESSION = a handwritten tag with your username and today&rsquo;s date, in frame with the item. Tag and flaw photos are archived as evidence.
+          <div className="sellx-grid">
+            <div className="sellx-field">
+              <label className="sellx__label" htmlFor="sell-brand">BRAND</label>
+              <input id="sell-brand" className="sellx-input" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Designer or label" data-testid="sell-brand" />
+            </div>
+            <div className="sellx-field">
+              <label className="sellx__label" htmlFor="sell-category">CATEGORY</label>
+              <SellCategory department={department} category={category} subcategory={subcategory} onPick={onCategoryPick} />
+            </div>
           </div>
+          <div className="sellx-grid sellx-grid--pair">
+            <div className="sellx-field">
+              <label className="sellx__label" htmlFor="sell-size">SIZE</label>
+              <SellSize department={department} category={category} size={size} onPick={setSize} />
+            </div>
+            <div className="sellx-field">
+              <label className="sellx__label" htmlFor="sell-color">COLOR</label>
+              <SellColor color={color} onPick={setColor} />
+            </div>
+          </div>
+          <div className="sellx-field">
+            <label className="sellx__label" htmlFor="sell-desc">DESCRIPTION</label>
+            <textarea id="sell-desc" className="sellx-input sellx-textarea" maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Fit, wear, provenance" data-testid="sell-desc" />
+          </div>
+        </section>
 
-          {/* ── 02 DETAILS ── */}
-          <SectionLabel>02 — DETAILS</SectionLabel>
-          <div className="field-grid" style={{ paddingTop: 0 }}>
-            <div>
-              <label className="field-label" htmlFor="sell-title">TITLE</label>
-              <input id="sell-title" className="input-sans" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 1998 painter-dyed tee" data-testid="sell-title" />
-            </div>
-            <div>
-              <label className="field-label" htmlFor="sell-brand">BRAND</label>
-              <input id="sell-brand" className="input-sans" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Designer or label" data-testid="sell-brand" />
-            </div>
-            <div>
-              <label className="field-label" htmlFor="sell-category">CATEGORY</label>
-              <span className="select-wrap">
-                <select id="sell-category" className="select-row" value={categoryValue} onChange={(e) => onCategoryChange(e.target.value)} data-testid="sell-category">
-                  <option value="" disabled>Department / Category</option>
-                  {DEPARTMENTS.map((d) => (
-                    <optgroup key={d} label={cap(d)}>
-                      {CATEGORY_TREE.flatMap((node) => [
-                        <option key={catValue(d, node.label, '')} value={catValue(d, node.label, '')}>{cap(d)} / {node.label}</option>,
-                        ...node.children.map((sub) => (
-                          <option key={catValue(d, node.label, sub)} value={catValue(d, node.label, sub)}>{cap(d)} / {node.label} / {sub}</option>
-                        )),
-                      ])}
-                    </optgroup>
-                  ))}
-                </select>
-                <span className="select-row__caret select-wrap__caret">▾</span>
+        {/* ── MEASUREMENTS ── */}
+        <section className="sellx__sec">
+          <div className="sellx__labelrow">
+            <span className="sellx__labelgroup">
+              <span className="sellx__label">MEASUREMENTS</span>
+              <span className="unit-toggle" role="group" aria-label="Measurement unit">
+                {(['in', 'cm'] as const).map((u) => (
+                  <button key={u} type="button" className={measUnit === u ? 'is-on' : ''} aria-pressed={measUnit === u} onClick={() => switchUnit(u)} data-testid={`meas-unit-${u}`}>
+                    {u.toUpperCase()}
+                  </button>
+                ))}
               </span>
-            </div>
-            <div>
-              <label className="field-label" htmlFor="sell-size">SIZE</label>
-              <span className="select-wrap">
-                <select id="sell-size" className="select-row" value={size} onChange={(e) => setSize(e.target.value)} data-testid="sell-size">
-                  <option value="" disabled>{category ? 'Choose a size' : 'Pick a category first'}</option>
-                  {size && !sizeOptions.includes(size) && <option value={size}>{size}</option>}
-                  {sizeOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <span className="select-row__caret select-wrap__caret">▾</span>
-              </span>
-            </div>
-            <div>
-              <label className="field-label" htmlFor="sell-color">COLOR</label>
-              <span className="select-wrap">
-                <select id="sell-color" className="select-row" value={color} onChange={(e) => setColor(e.target.value)}>
-                  <option value="">Not set</option>
-                  {COLORS.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
-                </select>
-                <span className="select-row__caret select-wrap__caret">▾</span>
-              </span>
-            </div>
-            <div>
-              <label className="field-label" htmlFor="sell-condition">CONDITION</label>
-              <span className="select-wrap">
-                <select id="sell-condition" className="select-row" value={conditionScore ?? ''} onChange={(e) => setConditionScore(e.target.value ? Number(e.target.value) : null)} data-testid="sell-condition">
-                  <option value="" disabled>Grade 1–10</option>
-                  {Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => (
-                    <option key={n} value={n}>{n} / 10 — {CONDITION_DEFINITIONS[n]}</option>
-                  ))}
-                </select>
-                <span className="select-row__caret select-wrap__caret">▾</span>
-              </span>
-            </div>
+            </span>
+            {kindChoice ? (
+              <div className="sellx-seg" role="group" aria-label="Measurement type">
+                {(['tops', 'bottoms'] as const).map((k) => (
+                  <button key={k} type="button" className={`sellx-seg__opt${measKind === k ? ' is-on' : ''}`} aria-pressed={measKind === k} onClick={() => setMeasChoice(k)} data-testid={`meas-${k}`}>
+                    {k.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="sellx__meta">{category.toUpperCase()}</span>
+            )}
           </div>
-          <div className="field-block">
-            <label className="field-label" htmlFor="sell-desc">DESCRIPTION</label>
-            <textarea id="sell-desc" className="review-text" maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provenance, fit, wear —" data-testid="sell-desc" />
-            <div className="review-count"><span>CONDITION, FLAWS AND PROVENANCE — BE SPECIFIC</span><span>{description.length} / 1000</span></div>
-          </div>
-
-          {/* ── 03 MEASUREMENTS ── */}
-          <SectionLabel right="FLAT · INCHES — SHOWN ON THE LISTING">03 — MEASUREMENTS</SectionLabel>
-          <div className="meas-grid">
+          <div className="sellx-meas">
             {measLabels.map((label) => (
-              <div key={label}>
-                <div className="field-label">{label}</div>
+              <div key={label} className="sellx-field">
+                <label className="sellx__label sellx__label--sub" htmlFor={`meas-${label}`}>{measurementDisplayLabel(label)}</label>
                 <input
-                  className="input-mono"
+                  id={`meas-${label}`}
+                  className="sellx-input sellx-input--mono"
                   inputMode="decimal"
                   value={meas[label] ?? ''}
-                  onChange={(e) => setMeas((m) => ({ ...m, [label]: e.target.value }))}
-                  placeholder={'—"'}
-                  aria-label={label}
+                  onChange={(e) => editMeas(label, e.target.value)}
+                  placeholder="—"
                 />
               </div>
             ))}
           </div>
+        </section>
 
-          {/* ── 04 PRICING ── */}
-          <SectionLabel>04 — PRICING</SectionLabel>
-          <div className="price-flex">
-            <div className="price-flex__fields field-grid" style={{ padding: 0 }}>
-              <div>
-                <label className="field-label" htmlFor="sell-price">PRICE — USD</label>
+        {/* ── PRICE + SHIPPING beside the take-home ── */}
+        <section className="sellx__sec sellx-pricing">
+          <div className="sellx-pricing__fields">
+            <div className="sellx-field">
+              <label className="sellx__label" htmlFor="sell-price">PRICE</label>
+              <div className="sellx-money">
+                <span aria-hidden="true">$</span>
                 <input
                   id="sell-price"
-                  className="input-mono"
                   inputMode="decimal"
                   value={priceRaw}
                   onChange={(e) => setPriceRaw(e.target.value.replace(/[^0-9.]/g, ''))}
@@ -540,67 +458,59 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
                   data-testid="sell-price"
                 />
               </div>
-              <div>
-                <div className="field-label">SHIPPING</div>
-                <div className="select-row" style={{ cursor: 'default' }} title="Calculated by item type — prepaid label">
-                  Buyer pays — {formatCents(estShipping)} flat
-                  <span className="select-row__caret">▾</span>
-                </div>
-              </div>
             </div>
-            <div className="fee-box" data-testid="fee-box">
-              <div className="fee-box__title">FEE MATH — LIVE</div>
-              <div className="fee-row"><span>ITEM PRICE</span><span>{formatCents(priceCents)}</span></div>
-              <div className="fee-row"><span>TIER {tierNumber} FEE — {fmtRate(sellerBps)}</span><span>−{formatCents(tierFee)}</span></div>
-              {inWelcome && (
-                <>
-                  <div className="fee-row"><span>WELCOME RAMP −{fmtRate(sellerBps)}</span><span>+{formatCents(tierFee)}</span></div>
-                  <div className="fee-row"><span>CARD PROCESSING (EST.)</span><span>−{formatCents(cardCost)}</span></div>
-                </>
-              )}
-              <div className="fee-row fee-row--total"><span>YOU RECEIVE</span><span>{formatCents(payoutAmount)}</span></div>
+            <div className="sellx-field">
+              <span className="sellx__label" id="sell-shipping-label">SHIPPING</span>
+              <SellShipping origin={origin} drafts={regions} onChange={setRegions} defaultOpen={origin !== 'US' && !hasIntl} />
             </div>
           </div>
 
-          {/* ── 05 REVIEW ── */}
-          {submitError && <div className="alert-line" role="alert" style={{ paddingTop: 16 }}>{submitError.toUpperCase()}</div>}
-          <div className="save-row save-row--left wizard-foot">
-            {isEdit ? (
+          <div className="sellx-fee" data-testid="fee-box">
+            <div className="sellx-fee__row"><span>ITEM PRICE</span><span>{money(priceCents)}</span></div>
+            <div className="sellx-fee__row"><span>{tierLabel}</span><span>−{money(fees.tierFeeCents)}</span></div>
+            {inWelcome && (
               <>
-                <PrefetchLink href="/sell" className="btn-ghost btn-ghost--inline">CANCEL</PrefetchLink>
-                <button type="button" className="btn-primary btn-primary--inline" onClick={() => void saveEdits()} disabled={submitting} data-testid="sell-submit">
-                  {submitting ? 'SAVING…' : pubFlash ? 'SAVED ✓' : 'SAVE CHANGES →'}
-                </button>
-                <span className="page-note">A PRICE CUT NOTIFIES EVERYONE WHO SAVED IT</span>
-              </>
-            ) : (
-              <>
-                <button type="button" className="btn-ghost btn-ghost--inline" onClick={() => void saveDraftNow()} disabled={draftState === 'saving'} data-testid="sell-save-draft">
-                  {draftFlash ? 'DRAFT SAVED ✓' : 'SAVE DRAFT'}
-                </button>
-                <button type="button" className="btn-primary btn-primary--inline" onClick={() => void publish()} disabled={submitting} data-testid="sell-submit">
-                  {submitting ? 'PUBLISHING…' : pubFlash ? 'PUBLISHED ✓' : 'PUBLISH LISTING →'}
-                </button>
-                <span className="page-note">PUBLISHING TRIGGERS YOUR FREE FIRST BUMP</span>
+                <div className="sellx-fee__row"><span>WELCOME RAMP · SALE {saleNumber} OF {WELCOME_SALES}</span><span>+{money(fees.waivedCents)}</span></div>
+                <div className="sellx-fee__row"><span>CARD PROCESSING · {fmtRate(STRIPE_PCT_BPS)} + {STRIPE_FIXED_CENTS}¢</span><span>−{money(fees.processingCents)}</span></div>
               </>
             )}
+            <div className="sellx-fee__row sellx-fee__row--total"><span>YOU RECEIVE</span><span data-testid="fee-payout">{money(fees.payoutCents)}</span></div>
+            <p className="sellx-fee__note">
+              Buyer pays shipping on top.{' '}
+              {inWelcome
+                ? `Commission is waived for your first ${WELCOME_SALES} sales; you cover card processing only.`
+                : 'The fee includes card processing.'}
+              {hasIntl && ' International shipping is added to your payout; you buy that label.'}
+            </p>
           </div>
-        </div>
-        {/* Mobile web (15): SAVE DRAFT | PUBLISH → bar in the flow after the form (footer below). */}
-        <div className="wizard-bar">
+        </section>
+
+        {submitError && <div className="alert-line" role="alert" style={{ paddingTop: 20 }}>{submitError.toUpperCase()}</div>}
+      </main>
+
+      {/* Sticky actions (desktop: right-aligned; ≤720px: two full-width buttons). The take-home
+          lives in the fee box above. */}
+      <div className="sellx-bar">
+        <div className="sellx-bar__actions">
           {isEdit ? (
             <>
-              <PrefetchLink href="/sell" className="btn-ink">CANCEL</PrefetchLink>
-              <button type="button" className="btn-primary" onClick={() => void saveEdits()} disabled={submitting}>{submitting ? 'SAVING…' : pubFlash ? 'SAVED ✓' : 'SAVE →'}</button>
+              <PrefetchLink href="/sell" className="btn-ghost btn-ghost--inline sellx-bar__btn">CANCEL</PrefetchLink>
+              <button type="button" className="btn-primary btn-primary--inline sellx-bar__btn sellx-bar__btn--primary" onClick={() => void saveEdits()} disabled={submitting} data-testid="sell-submit">
+                {submitting ? 'SAVING…' : pubFlash ? 'SAVED ✓' : 'SAVE CHANGES →'}
+              </button>
             </>
           ) : (
             <>
-              <button type="button" className="btn-ink" onClick={() => void saveDraftNow()}>{draftFlash ? 'SAVED ✓' : 'SAVE DRAFT'}</button>
-              <button type="button" className="btn-primary" onClick={() => void publish()} disabled={submitting}>{submitting ? 'PUBLISHING…' : pubFlash ? 'PUBLISHED ✓' : 'PUBLISH →'}</button>
+              <button type="button" className="btn-ghost btn-ghost--inline sellx-bar__btn" onClick={() => void saveDraftNow()} disabled={draftState === 'saving'} data-testid="sell-save-draft">
+                {draftFlash ? 'SAVED ✓' : <><span className="sellx-bar__long">SAVE DRAFT</span><span className="sellx-bar__short">SAVE</span></>}
+              </button>
+              <button type="button" className="btn-primary btn-primary--inline sellx-bar__btn sellx-bar__btn--primary" onClick={() => void publish()} disabled={submitting} data-testid="sell-submit">
+                {submitting ? 'PUBLISHING…' : pubFlash ? 'PUBLISHED ✓' : 'PUBLISH →'}
+              </button>
             </>
           )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }

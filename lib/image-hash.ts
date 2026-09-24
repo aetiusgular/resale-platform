@@ -5,7 +5,7 @@
 import sharp from 'sharp'
 import { blockhash16 } from './phash'
 import { isAllowedImageUrl, storageHost } from './security/image-url'
-import { PHOTO_SLOTS, type PhotoSlot } from './condition'
+import { MAX_PHOTOS, photoSlotName, POSSESSION_SLOT } from './listings/images'
 
 /**
  * Validate that a URL is safe to fetch for image hashing.
@@ -51,31 +51,27 @@ export async function hashImageUrl(url: string): Promise<string | null> {
   }
 }
 
+export { photoSlotName, POSSESSION_SLOT } from './listings/images'
+
 /**
- * Hash all image slots for a listing.
- * @param images   6-element array of image URLs (empty string = unfilled slot)
- * @param possessionUrl  possession photo URL (maps to POSSESSION slot)
- * @returns Map from slot name to hash string (only slots that successfully hashed)
+ * Hash every photo of a listing, plus the possession proof when there is one.
+ * @param images   the seller's ordered public photos (up to MAX_PHOTOS)
+ * @param possessionUrl  possession proof URL ('' when none)
+ * @returns image_hashes.slot → hash (only the images that hashed). Rows written by the old
+ *   six-slot form used FRONT / BACK / TAG / DETAIL / FLAW; the near-duplicate scan is
+ *   slot-agnostic, so both namings compare.
  */
 export async function hashAllSlots(
   images: string[],
   possessionUrl: string,
-): Promise<Partial<Record<PhotoSlot, string>>> {
-  const results: Partial<Record<PhotoSlot, string>> = {}
+): Promise<Record<string, string>> {
+  const results: Record<string, string> = {}
+  const list = images.slice(0, MAX_PHOTOS)
+  const hashes = await Promise.all(list.map((u) => hashImageUrl(u ?? '')))
+  hashes.forEach((h, i) => { if (h) results[photoSlotName(i)] = h })
 
-  // Hash regular slots (indices 0–4: FRONT, BACK, TAG, DETAIL, FLAW)
-  const regularSlots = PHOTO_SLOTS.slice(0, 5) as PhotoSlot[]
-  const regularHashes = await Promise.all(
-    regularSlots.map((_, i) => hashImageUrl(images[i] ?? ''))
-  )
-  for (let i = 0; i < regularSlots.length; i++) {
-    const h = regularHashes[i]
-    if (h) results[regularSlots[i]] = h
-  }
-
-  // Hash possession slot from its dedicated URL
   const possHash = await hashImageUrl(possessionUrl)
-  if (possHash) results['POSSESSION'] = possHash
+  if (possHash) results[POSSESSION_SLOT] = possHash
 
   return results
 }

@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { parseBrowseParams, applyBrowseWhere, applyBrowseOrder, applyCategoryWhere, browseSearchParams, isDiscoveryView, browseScope } from '../../lib/browse/filters'
 import {
   CATEGORIES, COLOR_LABELS, isValidSubcategory, measurementLabelsFor, normalizeMeasurements, formatMeasurement, subcategoriesOf,
+  measurementKindFor, measurementKindOf, measurementDisplayLabel,
   resolveCategorySelection, picksByCategory, categoryScopeLabel, departmentScopeLabel, subcatKey, parseSubcatKey,
 } from '../../lib/taxonomy'
-import { normalizeSizes, flattenSizes, sizesChipLabel, countSizes, sizeScaleFor, sizeKey } from '../../lib/sizes'
+import { normalizeSizes, flattenSizes, sizesChipLabel, countSizes, sizeScaleFor, sizeOptionsFor, sizeKey } from '../../lib/sizes'
 import { cleanAddress, addressLines } from '../../lib/addresses'
 import { cleanDraftFields } from '../../lib/listings/draft-fields'
 import { usernameFromEmail, passwordProblem } from '../../lib/auth/username'
@@ -152,6 +153,21 @@ describe('lib/taxonomy', () => {
     expect(formatMeasurement(21.5, 'in')).toBe('21.5"')
     expect(formatMeasurement(10, 'cm')).toBe('25.4 CM')
   })
+
+  it('garments take TOPS or BOTTOMS measurements (the seller picks); the stored keys decide the labels', () => {
+    expect(measurementKindFor('Sportswear')).toBe('tops')
+    expect(measurementKindFor('Footwear')).toBe('footwear')
+    // A "Tops" listing measured as bottoms keeps the bottoms keys, and the page shows bottoms labels.
+    const bottoms = normalizeMeasurements({ WAIST: 32, INSEAM: 30 }, 'Tops')
+    expect(bottoms).toEqual({ WAIST: 32, INSEAM: 30 })
+    expect(measurementKindOf(bottoms)).toBe('bottoms')
+    expect(measurementLabelsFor('Tops', bottoms)).toEqual(['WAIST', 'INSEAM', 'RISE', 'LEG OPENING'])
+    expect(measurementLabelsFor('Tops', {})).toEqual(['PIT TO PIT', 'LENGTH', 'SHOULDER', 'SLEEVE'])
+    // Footwear never switches.
+    expect(normalizeMeasurements({ WAIST: 32, INSOLE: 11 }, 'Footwear')).toEqual({ INSOLE: 11 })
+    expect(measurementDisplayLabel('PIT TO PIT')).toBe('CHEST')
+    expect(measurementDisplayLabel('WAIST')).toBe('WAIST')
+  })
 })
 
 describe('lib/sizes', () => {
@@ -177,6 +193,21 @@ describe('lib/sizes', () => {
     expect(sizeScaleFor('womenswear', 'Tops')).toContain('M/6-8/42-44')
     expect(sizeScaleFor(null, 'Footwear')).toContain('9.5')
     expect(sizeScaleFor('menswear', 'Accessories')).toEqual(['ONE SIZE'])
+  })
+
+  it('the SIZE typeahead lists every section of the department, category section first, each label once', () => {
+    const rows = sizeOptionsFor('menswear', 'Bottoms')
+    expect(rows[0]).toEqual({ label: '26', sections: ['Bottoms'] })
+    const labels = rows.map((r) => r.label)
+    expect(labels).toContain('M')
+    expect(labels).toContain('9.5')
+    expect(labels).toContain('34S')
+    expect(labels).toContain('ONE SIZE')
+    expect(labels.filter((l) => l === 'M')).toHaveLength(1)
+    expect(rows.find((r) => r.label === 'M')?.sections).toEqual(['Tops', 'Outerwear'])
+    expect(rows.filter((r) => r.label.startsWith('34')).map((r) => r.label)).toEqual(['34', '34S', '34R'])
+    expect(sizeOptionsFor('womenswear', 'Tops')[0].label).toBe('XXS/00/34')
+    expect(sizeOptionsFor('womenswear', 'Tops').find((r) => r.label === 'M/6-8/42-44')?.sections).toEqual(['Tops', 'Dresses', 'Outerwear'])
   })
 })
 

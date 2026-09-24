@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { lintListing } from '@/lib/antislop-lint'
 import { ANTISLOP } from '@/lib/antislop-config'
-import { hashAllSlots } from '@/lib/image-hash'
+import { hashAllSlots, POSSESSION_SLOT } from '@/lib/image-hash'
+import { MAX_PHOTOS, MIN_PHOTOS } from '@/lib/listings/images'
 import { hammingDistance } from '@/lib/phash'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { VERIFICATION_ENABLED, AUTH_BADGE_ENABLED } from '@/lib/flags'
@@ -15,6 +16,9 @@ import { createServiceClientRaw } from '@/lib/supabase/service'
 import { quoteShippingCents } from '@/lib/shipping'
 import { makeEasypostRater } from '@/lib/shipping-easypost'
 import { CATEGORIES, COLOR_LABELS, DEPARTMENTS, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
+import { sellerShipFrom } from '@/lib/listings/origin'
+import { cleanIntlShipping, needsIntlRegion } from '@/lib/shipping-regions'
+import { countryName, isRestrictedCountry, normalizeCountry } from '@/lib/countries'
 
 // Explicitly use Node.js runtime — sharp requires native bindings not on Edge
 export const runtime = 'nodejs'
@@ -84,22 +88,39 @@ export async function POST(request: NextRequest) {
     subcategory,
     color,
     measurements,
+    intl_shipping,
     draft_id,
   } = body
 
   // ── Basic validation ───────────────────────────────────────────────────────
+  // Photos: up to MAX_PHOTOS in the seller's order (the first is the cover), at least
+  // MIN_PHOTOS. Condition grade and the possession photo are optional (the listing form no
+  // longer asks for them); when a possession photo is sent it is still deduped across sellers.
+  const possessionClean: string | null = typeof possession_photo_url === 'string' && possession_photo_url.trim() ? possession_photo_url.trim() : null
+  // The proof is never a public photo, even when an old client repeats it inside `images`.
+  const imageArr: string[] = Array.isArray(images)
+    ? Array.from(new Set(
+        images
+          .filter((u): u is string => typeof u === 'string' && !!u.trim())
+          .map((u) => u.trim())
+          .filter((u) => u !== possessionClean),
+      )).slice(0, MAX_PHOTOS)
+    : []
+  const conditionClean: number | null = typeof condition_score === 'number' && Number.isInteger(condition_score) ? condition_score : null
   if (
     typeof title !== 'string' || !title.trim() ||
     typeof brand !== 'string' || !brand.trim() ||
     typeof category !== 'string' || !category.trim() ||
     typeof size !== 'string' || !size.trim() ||
-    typeof condition_score !== 'number' ||
-    condition_score < 1 || condition_score > 10 ||
+    (condition_score !== undefined && condition_score !== null && (conditionClean === null || conditionClean < 1 || conditionClean > 10)) ||
     typeof price_cents !== 'number' || price_cents <= 0 ||
     !Number.isInteger(price_cents) ||
-    typeof possession_photo_url !== 'string' || !possession_photo_url.trim()
+    (possession_photo_url !== undefined && possession_photo_url !== null && typeof possession_photo_url !== 'string')
   ) {
     return NextResponse.json({ error: 'Invalid listing data' }, { status: 400 })
+  }
+  if (imageArr.length < MIN_PHOTOS) {
+    return NextResponse.json({ error: `Add at least ${MIN_PHOTOS} photos.`, code: 'too_few_photos' }, { status: 400 })
   }
 
   // ── Taxonomy (lib/taxonomy): department, category tree, colour, measurements ──
@@ -115,6 +136,17 @@ export async function POST(request: NextRequest) {
   const colorClean: string | null = typeof color === 'string' && COLOR_LABELS.includes(color.trim()) ? color.trim() : null
   const measurementsClean = normalizeMeasurements(measurements, categoryClean)
   const draftId: string | null = typeof draft_id === 'string' && /^[0-9a-f-]{36}$/i.test(draft_id) ? draft_id : null
+
+  // ── Shipping lanes (lib/shipping-regions): where the seller ships from decides which
+  // region keys apply. A seller outside the US has no automatic lane, so needs one region.
+  const shipFrom = await sellerShipFrom(createServiceClientRaw(), user.id)
+  if (isRestrictedCountry(shipFrom.country) || !normalizeCountry(shipFrom.country)) {
+    return NextResponse.json({ error: `Selling from ${countryName(shipFrom.country)} isn’t supported.`, code: 'origin_unsupported' }, { status: 403 })
+  }
+  const intlShippingClean = cleanIntlShipping(intl_shipping, shipFrom.country)
+  if (needsIntlRegion(shipFrom.country, intlShippingClean)) {
+    return NextResponse.json({ error: 'Add at least one shipping region.', code: 'no_shipping_region' }, { status: 400 })
+  }
 
   // Titles keep the seller's casing (reference cards: "1998 painter-dyed tee");
   // brand + size are normalised upper-case for filtering.
@@ -165,23 +197,22 @@ export async function POST(request: NextRequest) {
 
   // ── Perceptual hashing ────────────────────────────────────────────────────
   // Computed before insert so we can check possession dedup pre-insert.
-  const imageArr: string[] = Array.isArray(images) ? images : []
 
   // ── Image-URL allowlist (security) — every stored image must be an HTTPS URL on our
   // Storage host, so nothing off-platform is hashed (SSRF) or later rendered in <img>.
   // Fail-OPEN only if the Storage host env is somehow unset (never block all listings on a
   // misconfiguration); otherwise reject off-host URLs.
   const imgHost = storageHost()
-  if (imgHost && !allImageUrlsAllowed([...imageArr, possession_photo_url.trim()], imgHost)) {
+  if (imgHost && !allImageUrlsAllowed([...imageArr, ...(possessionClean ? [possessionClean] : [])], imgHost)) {
     return NextResponse.json({ error: 'Images must be uploaded to the platform.', code: 'invalid_image_url' }, { status: 400 })
   }
 
-  const slotHashes = await hashAllSlots(imageArr, possession_photo_url.trim())
+  const slotHashes = await hashAllSlots(imageArr, possessionClean ?? '')
 
   const service = await createServiceClient()
 
   // ── Possession-photo dedup: reject if exact match from a DIFFERENT seller ─
-  const possessionHash = slotHashes['POSSESSION']
+  const possessionHash = slotHashes[POSSESSION_SLOT]
   if (possessionHash) {
     const { data: existingPoss } = await service
       .from('image_hashes')
@@ -189,7 +220,7 @@ export async function POST(request: NextRequest) {
         listing_id,
         listing:listing_id (seller_id, status)
       `)
-      .eq('slot', 'POSSESSION')
+      .eq('slot', POSSESSION_SLOT)
       .eq('hash', possessionHash)
       .limit(10)
 
@@ -213,12 +244,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── System-derived shipping (sellers cannot set it) ───────────────────────
-  // Category → parcel preset → max(worst-zone quote, floor) + $2. The EasyPost rater is
-  // dormant (returns null → floor) while SHIPPING_LABELS_ENABLED=false. TODO: pass the
-  // seller's ship-from ZIP into makeEasypostRater(...) when label infra is enabled so the
-  // live worst-zone quote replaces the floor.
-  const shipping = await quoteShippingCents(categoryClean, makeEasypostRater(null))
+  // ── System-derived US shipping (sellers cannot set it) ────────────────────
+  // Category → parcel preset → max(worst-zone quote, floor) + $2. The EasyPost rater quotes
+  // from the seller's ship-from ZIP; it is dormant (returns null → floor) while
+  // SHIPPING_LABELS_ENABLED=false or when the seller is outside the US (no domestic lane).
+  const shipping = await quoteShippingCents(categoryClean, makeEasypostRater(shipFrom.country === 'US' ? shipFrom.zip : null))
 
   // ── Insert listing ────────────────────────────────────────────────────────
   const { data, error } = await supabase
@@ -234,13 +264,15 @@ export async function POST(request: NextRequest) {
       measurements: measurementsClean,
       shipping_cents:  shipping.cents,
       shipping_source: shipping.source,
+      ships_from:      shipFrom.country,
+      intl_shipping:   intlShippingClean,
       size:      size.trim().toUpperCase(),
       description: descClean,
-      condition_score,
+      condition_score: conditionClean,
       condition_notes: condition_notes ?? {},
       price_cents,
       images:    imageArr,
-      possession_photo_url: possession_photo_url.trim(),
+      possession_photo_url: possessionClean,
       status: 'pending_review',
     })
     .select('id, status')
@@ -331,26 +363,31 @@ export async function POST(request: NextRequest) {
         .in('listing_id', candidateIds)
         .limit(5000)
 
-      // Group by listing_id, compute per-slot Hamming distances
+      // Group by listing_id: photos are in the seller's own order (drag to reorder), so a
+      // stored photo counts as a match when it is close to ANY of the new photos, not
+      // only the one at the same position.
       const byListing = new Map<
         string,
-        { slot: string; distance: number }[]
+        { slot: string; new_slot: string; distance: number }[]
       >()
+      const newHashes = Object.entries(slotHashes)
 
       for (const row of existingHashes ?? []) {
         const r = row as { listing_id: string; slot: string; hash: string }
-        const newHash = slotHashes[r.slot as keyof typeof slotHashes]
-        if (!newHash) continue
-
-        const dist = hammingDistance(newHash, r.hash)
+        let dist = Number.POSITIVE_INFINITY
+        let newSlot = ''
+        for (const [slot, h] of newHashes) {
+          const d = hammingDistance(h, r.hash)
+          if (d < dist) { dist = d; newSlot = slot }
+        }
         if (dist <= ANTISLOP.DUPLICATE_DISTANCE_THRESHOLD) {
           if (!byListing.has(r.listing_id)) byListing.set(r.listing_id, [])
-          byListing.get(r.listing_id)!.push({ slot: r.slot, distance: dist })
+          byListing.get(r.listing_id)!.push({ slot: r.slot, new_slot: newSlot, distance: dist })
         }
       }
 
       // Listings with >= MIN_SLOT_MATCHES close matches are duplicate suspects
-      const duplicates: { listing_id: string; matches: { slot: string; distance: number }[] }[] = []
+      const duplicates: { listing_id: string; matches: { slot: string; new_slot: string; distance: number }[] }[] = []
       for (const [lid, matches] of byListing) {
         if (matches.length >= ANTISLOP.DUPLICATE_MIN_SLOT_MATCHES) {
           duplicates.push({ listing_id: lid, matches })
@@ -366,7 +403,7 @@ export async function POST(request: NextRequest) {
             evidence: {
               matched_listing_ids: duplicates.map(d => d.listing_id),
               per_slot_distances: duplicates.flatMap(d =>
-                d.matches.map(m => ({ listing_id: d.listing_id, slot: m.slot, distance: m.distance }))
+                d.matches.map(m => ({ listing_id: d.listing_id, slot: m.slot, new_slot: m.new_slot, distance: m.distance }))
               ),
             },
           })

@@ -9,6 +9,8 @@ import PrefetchLink from '@/app/components/prefetch-link'
 import { formatCents } from '@/lib/fees'
 import { autoReleaseAt, SHIPPED_AUTO_DELIVER_DAYS, STATE_LABELS, type OrderState } from '@/lib/orders'
 import { Timeline, SummaryPanel, ProtectedPanel, ShipToPanel, countdown, orderNumber, type OrderData, type ListingSnap } from './order-frame'
+import { countryName } from '@/lib/countries'
+import { normalizeShipTo } from '@/lib/addresses'
 
 interface BuyerStats {
   username: string | null
@@ -41,6 +43,9 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
   const releaseDate = order.delivered_at ? autoReleaseAt(new Date(order.delivered_at)) : null
   const sold = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
   const buyer = buyerStats?.username ?? 'buyer'
+  // International lanes: the seller was paid the shipping and buys their own tracked label.
+  const sellerLabel = order.label_mode === 'seller'
+  const destCountry = countryName(normalizeShipTo(order.ship_to_address ?? order.shipping_address ?? null)?.country)
   const headline =
     state === 'paid_held' ? 'Sold — confirm to start.'
     : state === 'seller_confirmed' ? 'Ship it.'
@@ -91,7 +96,7 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
                 <button type="button" className="btn-primary btn-primary--lg" onClick={handleConfirm} disabled={loading} data-testid="confirm-order">
                   {loading ? 'CONFIRMING…' : 'CONFIRM ORDER →'}
                 </button>
-                <div className="mono-note" style={{ paddingTop: 10 }}>CONFIRMING UNLOCKS THE PREPAID LABEL · SHIP WITHIN 3 DAYS</div>
+                <div className="mono-note" style={{ paddingTop: 10 }}>{sellerLabel ? `CONFIRM, THEN SHIP TO ${destCountry.toUpperCase()} WITH ANY TRACKED CARRIER · SHIP WITHIN 3 DAYS` : 'CONFIRMING UNLOCKS THE PREPAID LABEL · SHIP WITHIN 3 DAYS'}</div>
               </>
             )}
             {state === 'seller_confirmed' && (
@@ -104,11 +109,16 @@ export default function OrderSellerView({ order, listing, buyerStats, reviewProm
                 </form>
               ) : (
                 <form onSubmit={handleShip}>
-                  <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">MARK AS SHIPPED</span></div>
+                  <div className="sec-head" style={{ marginTop: 0 }}><span className="sec-head__label">{sellerLabel ? `SHIP TO ${destCountry.toUpperCase()}` : 'MARK AS SHIPPED'}</span></div>
+                  {sellerLabel && (
+                    <div className="settings-note" style={{ paddingBottom: 6 }} data-testid="seller-label-note">
+                      The buyer paid {formatCents(order.shipping_cents)} for shipping, and it&rsquo;s included in your payout. Buy a tracked label with any carrier, include a customs form with the item&rsquo;s value, then enter the tracking number. Carrier scans update this order automatically.
+                    </div>
+                  )}
                   <div className="field-grid">
                     <div>
                       <label className="field-label" htmlFor="ship-carrier">CARRIER</label>
-                      <input id="ship-carrier" className="input-sans" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="USPS, UPS, FedEx" required />
+                      <input id="ship-carrier" className="input-sans" value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder={sellerLabel ? 'USPS, DHL, FedEx, UPS' : 'USPS, UPS, FedEx'} required />
                     </div>
                     <div>
                       <label className="field-label" htmlFor="ship-tracking">TRACKING NUMBER</label>

@@ -47,10 +47,13 @@ export async function POST(req: NextRequest) {
   if (ev.status === 'delivered' && ev.trackingCode) {
     const { data: order } = await service
       .from('orders')
-      .select('id, state')
+      .select('id, state, shipped_at')
       .eq('tracking_number', ev.trackingCode)
       .maybeSingle()
-    if (order && order.state === 'shipped') {
+    // A seller-entered tracking number (international / manual shipping) could belong to a
+    // parcel delivered before this order shipped: only a scan after shipped_at counts.
+    const scanBeforeShip = !!(order?.shipped_at && ev.deliveredAt && new Date(ev.deliveredAt).getTime() < new Date(order.shipped_at).getTime())
+    if (order && order.state === 'shipped' && !scanBeforeShip) {
       await service.rpc('transition_order', {
         p_order_id: order.id,
         p_to_state: 'delivered',

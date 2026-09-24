@@ -8,9 +8,10 @@
  *   - SELLER → trailing-365d SALES volume + order count set the rate:
  *       base 8.0%  ·  ≥$3k & 3 orders 7.0%  ·  ≥$10k & 10 orders 5.5%  ·  ≥$25k & 15 orders 3.5%
  *     A tier requires BOTH volume AND completed orders (anti wash-trading). The seller
- *     rate is INCLUSIVE of Stripe/PayPal processing (the platform absorbs it). Orders
- *     under $100 are capped at a 5% seller fee. A $0.30 floor (MIN_FEE_CENTS) protects
- *     against a loss after fixed processor cost on micro-items.
+ *     rate is INCLUSIVE of Stripe/PayPal percentage processing (the platform absorbs it).
+ *     Every seller fee also carries a fixed $0.30 per order (FIXED_FEE_CENTS): 8% + 30¢,
+ *     7% + 30¢ and so on. Orders under $100 are capped at a 5% (+ 30¢) seller fee.
+ *   - Sellers never pay shipping: fees are charged on the item price only.
  * The tier is resolved SERVER-SIDE at checkout (lib/fee-tier.ts + tier-progress.ts) and
  * snapshotted into the order — never trust the client, never recompute a historical fee.
  */
@@ -33,10 +34,13 @@ export const FEE_TIERS: ReadonlyArray<{ minVolumeCents: number; minOrders: numbe
 export const BASE_FEE_BPS = 800
 
 /**
- * Platform floor: minimum fee charged per side ($0.30). Insulates the platform
- * against a net loss after the fixed payment-processor cost on micro-items.
+ * Fixed per-order seller fee ($0.30), added on top of the percentage in every fee mode.
+ * Covers the payment processor's fixed per-transaction cost.
  */
-export const MIN_FEE_CENTS = 30
+export const FIXED_FEE_CENTS = 30
+
+/** @deprecated Alias of FIXED_FEE_CENTS (it is also the smallest possible seller fee). */
+export const MIN_FEE_CENTS = FIXED_FEE_CENTS
 
 /**
  * Buyer platform fee — ZERO under Fee Model v3. Buyers pay item + shipping only;
@@ -91,13 +95,12 @@ export function feeAt(priceCents: number, bps: number): number {
 }
 
 /**
- * Seller fee at an explicit (tier-resolved) rate. Floored at MIN_FEE_CENTS, then
- * CAPPED at the item price so the fee can never exceed what the item sold for —
- * this guarantees a non-negative seller payout even on sub-$0.30 items where the
- * floor would otherwise be larger than the price.
+ * Seller fee at an explicit (tier-resolved) rate: percentage of the item price plus the
+ * fixed FIXED_FEE_CENTS, then CAPPED at the item price so the fee can never exceed what
+ * the item sold for (a non-negative seller payout even on sub-$0.30 items).
  */
 export function sellerFeeAt(priceCents: number, bps: number): number {
-  return Math.min(priceCents, Math.max(feeAt(priceCents, bps), MIN_FEE_CENTS))
+  return Math.min(priceCents, feeAt(priceCents, bps) + FIXED_FEE_CENTS)
 }
 
 /**
@@ -121,8 +124,10 @@ export function buyerTotalAt(priceCents: number, buyerBps: number): number {
 /**
  * Full money breakdown for an order (Fee Model v3).
  *  - Buyer pays item + shipping, minus any loyalty-reward discount. NO buyer fee.
- *  - Seller pays a tier-resolved fee (8→3.5%), capped at 5% on sub-$100 orders,
- *    floored at MIN_FEE_CENTS. That fee is inclusive of payment processing.
+ *  - Seller pays a tier-resolved fee (8→3.5%, capped at 5% on sub-$100 orders) plus the
+ *    fixed FIXED_FEE_CENTS. That fee is inclusive of payment processing.
+ *  - transfer_cents here is item − seller fee. International (seller-bought label)
+ *    orders also pay the shipping line out to the seller: see transferCentsFor().
  *  - A buyer-reward discount reduces what the BUYER pays; the seller's transfer is
  *    unaffected (the platform funds the discount out of its own fee).
  * Call server-side at PaymentIntent creation; snapshot the result into the order.
@@ -190,14 +195,71 @@ export function resolveFeeMode(priorOrderCount: number): 'welcome' | 'tier' {
 }
 
 /**
- * Welcome-phase seller fee: the seller absorbs only the estimated Stripe processing cost
- * on (item + shipping) — 2.9% + $0.30 — so platform commission is 0%. Capped at the item
- * price (never a negative payout) and floored at MIN_FEE_CENTS, mirroring sellerFeeAt. The
- * platform keeps the shipping line to fund the label + its margin and nets ~$0 on processing.
+ * Welcome-phase seller fee: the seller covers only the Stripe processing cost on the ITEM
+ * price — 2.9% + $0.30 — so platform commission is 0%. Sellers never pay shipping, so the
+ * shipping line is not part of the base (the second argument is accepted for call-site
+ * compatibility and ignored). Capped at the item price (never a negative payout).
  */
-export function welcomeSellerFeeCents(itemCents: number, shippingCents: number): number {
+export function welcomeSellerFeeCents(itemCents: number, _shippingCents?: number): number {
   const item = Math.max(0, Math.round(itemCents))
-  const ship = Math.max(0, Math.round(shippingCents))
-  const est  = feeAt(item + ship, STRIPE_PCT_BPS) + STRIPE_FIXED_CENTS
-  return Math.min(item, Math.max(est, MIN_FEE_CENTS))
+  return Math.min(item, feeAt(item, STRIPE_PCT_BPS) + STRIPE_FIXED_CENTS)
+}
+
+/**
+ * Seller payout for an order. Platform-label (US domestic) orders keep the shipping line on
+ * the platform to pay the prepaid label; seller-label (international) orders pass the
+ * shipping the buyer paid straight through to the seller, who buys their own label.
+ */
+export function transferCentsFor(o: {
+  itemCents: number
+  sellerFeeCents: number
+  shippingCents: number
+  labelMode: 'platform' | 'seller'
+}): number {
+  const base = Math.max(0, o.itemCents - o.sellerFeeCents)
+  return o.labelMode === 'seller' ? base + Math.max(0, o.shippingCents) : base
+}
+
+/**
+ * Buyer charge when only the shipping line changes (checkout re-pricing for a new address):
+ * item + buyer fee + shipping, minus the reward discount clamped to that gross. Same rule as
+ * orderAmountsAt; the seller fee does not depend on shipping.
+ */
+export function buyerChargeCents(o: {
+  itemCents: number
+  buyerFeeCents: number
+  shippingCents: number
+  discountCents: number
+}): { totalCents: number; discountCents: number } {
+  const gross = Math.max(0, o.itemCents) + Math.max(0, o.buyerFeeCents) + Math.max(0, o.shippingCents)
+  const discountCents = Math.max(0, Math.min(Math.round(o.discountCents), gross))
+  return { totalCents: gross - discountCents, discountCents }
+}
+
+/** What the listing form's take-home box shows — the same helpers checkout charges with. */
+export interface SellerFeeBreakdown {
+  mode: 'welcome' | 'tier'
+  /** Effective tier rate for this price (the sub-$100 cap applied). */
+  tierBps: number
+  /** Tier percentage + fixed fee: the fee outside the welcome ramp. */
+  tierFeeCents: number
+  /** Welcome only: the tier fee the ramp waives (0 in tier mode). */
+  waivedCents: number
+  /** Welcome only: 2.9% + 30¢ processing on the item (0 in tier mode). */
+  processingCents: number
+  /** What is actually charged. */
+  feeCents: number
+  /** Item price − fee. Shipping is never the seller's cost. */
+  payoutCents: number
+}
+
+export function sellerFeeBreakdown(priceCents: number, tierBps: number, mode: 'welcome' | 'tier'): SellerFeeBreakdown {
+  const price = Math.max(0, Math.round(priceCents))
+  const eff = effectiveSellerBps(tierBps, price)
+  const tierFeeCents = price > 0 ? sellerFeeAt(price, eff) : 0
+  if (mode === 'welcome') {
+    const processingCents = price > 0 ? welcomeSellerFeeCents(price) : 0
+    return { mode, tierBps: eff, tierFeeCents, waivedCents: tierFeeCents, processingCents, feeCents: processingCents, payoutCents: price - processingCents }
+  }
+  return { mode, tierBps: eff, tierFeeCents, waivedCents: 0, processingCents: 0, feeCents: tierFeeCents, payoutCents: price - tierFeeCents }
 }

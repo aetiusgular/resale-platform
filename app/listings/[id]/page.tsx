@@ -42,8 +42,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const title = `${data.title} — ${data.brand} — ${formatCents(data.price_cents)}`
   const description = metaDescription(data)
-  // Slots 0–4 only — index 5 is the POSSESSION proof photo, never public.
-  const images = schemaImages(data.images)
+  // Public photos only — the possession proof never reaches search or social surfaces.
+  const images = schemaImages(data.images, data.possession_photo_url)
   const ogImage = images[0] ?? null
   const path = `/listings/${id}`
 
@@ -91,13 +91,20 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
   const currentUsername = d.viewer.username
   const originalPriceCents = d.listing.original_price_cents
   const initialTally = d.lc
-  // Six positional slots; index 5 is the POSSESSION proof. The gallery is a client component, so
-  // only the seller / an admin is handed the full array — everyone else gets slots 0–4 (below).
-  const images: string[] = Array.isArray(listing.images) ? listing.images : []
+  // Public photos, in the seller's order. The possession proof is handed to the gallery separately,
+  // and only for the seller / an admin (below).
+  const images: string[] = d.listing.images
   const seller = (listing.profiles as unknown) as { username: string; role: string; id_verification_status?: string } | null
   const sellerHandle = d.seller.username
   const sellerInitials = d.seller.initials
   const shippingCents = d.listing.shipping_cents
+  // US sellers: automatic US shipping + any regions they priced. Sellers abroad: regions only.
+  const lanes = d.listing.shipping
+  const intlLine = lanes.regions.map((r) => `${r.label.toUpperCase()} ${r.cents ? formatCents(r.cents) : 'FREE'}`).join(' · ')
+  const shipHeadline = lanes.us_domestic ? `+ ${formatCents(shippingCents)} SHIPPING US` : `SHIPS FROM ${lanes.ships_from_name.toUpperCase()}`
+  const shipSpec = lanes.us_domestic
+    ? `${formatCents(shippingCents)} US${lanes.regions.length ? ` · +${lanes.regions.length} REGIONS` : ' ONLY'}`
+    : `FROM ${lanes.ships_from_name.toUpperCase()}`
   const crumbHref = d.listing.crumb.href
   const statusWord = d.listing.status_word
   const listedLine = d.listing.listed_line
@@ -164,6 +171,7 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
               price_cents: listing.price_cents,
               shipping_cents: listing.shipping_cents ?? null,
               images: listing.images,
+              possession_photo_url: listing.possession_photo_url ?? null,
               sellerUsername: seller?.username ?? null,
             })}
           />
@@ -208,9 +216,9 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
             {/* Save moved off the stage into the buy row (desktop) and the dock (≤960), with its
                 count. Measurements moved into the right rail (pinned to the photo's bottom line). */}
             <ListingGallery
-              images={(isSeller || isAdmin) && !asBuyer ? images : images.slice(0, 5)}
+              images={images}
               title={listing.title}
-              showPossession={(isSeller || isAdmin) && !asBuyer}
+              possession={(isSeller || isAdmin) && !asBuyer ? d.listing.possession_photo_url : null}
               legitSlot={<LegitJump count={initialTally.legit} />}
             />
           </div>
@@ -248,14 +256,15 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
                   )}
                   {formatCents(listing.price_cents)}
                 </span>
-                <span className="pdp__ship">+ {formatCents(shippingCents)} SHIPPING US</span>
+                <span className="pdp__ship">{shipHeadline}</span>
               </div>
+              {intlLine && <div className="pdp__ship-intl" data-testid="listing-intl-shipping">{lanes.us_domestic ? 'ALSO SHIPS TO ' : 'SHIPS TO '}{intlLine}</div>}
             </div>
             {/* Spec rows, ≤960px only: SIZE / COLOR / SHIPPING */}
             <div className="pdp-specs">
               {listing.size && <div className="pdp-specs__row"><span className="pdp-specs__k">SIZE</span><span className="pdp-specs__v">{listing.size.toUpperCase()}</span></div>}
               {listing.color && <div className="pdp-specs__row"><span className="pdp-specs__k">COLOR</span><span className="pdp-specs__v">{listing.color.toUpperCase()}</span></div>}
-              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{formatCents(shippingCents)} US ONLY</span></div>
+              <div className="pdp-specs__row"><span className="pdp-specs__k">SHIPPING</span><span className="pdp-specs__v">{shipSpec}</span></div>
             </div>
 
             {/* BUYER CTAs — hidden ≤960 (the dock takes over). Shown to buyers, and to the
@@ -350,7 +359,7 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
               title={listing.title}
               spec={spec}
               priceDisplay={formatCents(listing.price_cents)}
-              shipDisplay={formatCents(shippingCents)}
+              shipDisplay={shipHeadline}
               buyNode={readerBuy}
               offerNode={readerOffer}
               messageNode={readerMsg}

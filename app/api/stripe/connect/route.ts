@@ -25,6 +25,7 @@ export async function GET(_request: NextRequest) {
     refreshUrl: `${appBaseUrl()}/api/stripe/connect`,
     returnUrl: `${appBaseUrl()}/api/stripe/connect/return`,
   })
+  if (!link.ok && link.reason === 'country_unsupported') return NextResponse.redirect(new URL('/settings/payouts?error=country', appBaseUrl()))
   if (!link.ok) return NextResponse.redirect(new URL('/onboarding/verify?required=payout', appBaseUrl()))
   return NextResponse.redirect(link.url)
 }

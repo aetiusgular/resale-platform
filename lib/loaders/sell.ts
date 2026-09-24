@@ -9,12 +9,15 @@
  */
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { createServiceClientRaw } from '@/lib/supabase/service'
-import { formatCents, FEE_TIERS, WELCOME_SALES } from '@/lib/fees'
+import { formatCents, FEE_TIERS, FIXED_FEE_CENTS, WELCOME_SALES } from '@/lib/fees'
 import { resolveEffectiveBps } from '@/lib/tier-progress'
 import { fmtRate } from '@/lib/tier-dashboard'
 import { BOOSTED_POSTS_ENABLED, BUMP_ENABLED, VERIFICATION_ENABLED } from '@/lib/flags'
 import { sellerMustVerify } from '@/lib/idv/risk-resolver'
 import { normalizeMeasurements } from '@/lib/taxonomy'
+import { cleanIntlShipping, type IntlShipping } from '@/lib/shipping-regions'
+import { sellerOrigin } from '@/lib/listings/origin'
+import { publicImages } from '@/lib/listings/images'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any>
@@ -102,8 +105,8 @@ export async function loadSellCatalog(opts: { supabase: Client; user: User }): P
 
   const now = Date.now()
   const listings: SellerListing[] = all.map((r) => {
-    const images: string[] = Array.isArray(r.images) ? r.images.filter(Boolean) : []
-    const photoCount = images.length + (r.possession_photo_url && !images.includes(r.possession_photo_url) ? 1 : 0)
+    const images: string[] = publicImages(r.images, r.possession_photo_url)
+    const photoCount = images.length
     const payout = payoutMap.get(r.id)
     return {
       id: r.id,
@@ -114,7 +117,7 @@ export async function loadSellCatalog(opts: { supabase: Client; user: User }): P
       price_display: r.price_cents ? formatCents(r.price_cents) : '$ —',
       status: r.status,
       image: images[0] ?? null,
-      photo_count: Math.min(6, photoCount),
+      photo_count: photoCount,
       created_at: r.created_at,
       updated_at: r.updated_at,
       saves_count: r.saves_count ?? 0,
@@ -135,7 +138,7 @@ export async function loadSellCatalog(opts: { supabase: Client; user: User }): P
   const tierNumber = tierIdx >= 0 ? FEE_TIERS.length - tierIdx : 1
   const feeLine = welcomeLeft > 0
     ? `WELCOME RAMP — 0% FEE · ${welcomeLeft} OF ${WELCOME_SALES} FREE SALES LEFT`
-    : `TIER ${tierNumber} — ${fmtRate(sellerBps)} FEE`
+    : `TIER ${tierNumber} — ${fmtRate(sellerBps)} + ${formatCents(FIXED_FEE_CENTS)} FEE`
 
   return {
     viewer: { username, display_name: (profile?.display_name as string | null) ?? null },
@@ -164,6 +167,10 @@ export interface ListingInitial {
   images: string[]
   possession_photo_url: string | null
   measurements: Record<string, number>
+  /** Per-region seller rates, keyed for `ships_from`. */
+  intl_shipping: IntlShipping
+  /** Where this listing ships from (ISO). */
+  ships_from: string
 }
 
 export type SellNewGate = {
@@ -172,6 +179,8 @@ export type SellNewGate = {
   viewer: { username: string; display_name: string | null }
   seller_bps: number
   welcome_sales_remaining: number
+  /** The seller's ship-from country now (default address; US when none). Drafts follow it. */
+  ships_from: string
   mode: 'new' | 'edit'
   /** Prefill for `?edit=` / `?draft=`; null for a fresh listing. */
   initial: ListingInitial | null
@@ -200,17 +209,18 @@ export async function loadSellNew(opts: { supabase: Client; user: User; draft?: 
   const rowId = edit && UUID_RE.test(edit) ? edit : draft && UUID_RE.test(draft) ? draft : null
   const mode: 'new' | 'edit' = edit && UUID_RE.test(edit) ? 'edit' : 'new'
 
-  const [{ data: profile }, sellerBps, { data: row }] = await Promise.all([
+  const [{ data: profile }, sellerBps, { data: row }, origin] = await Promise.all([
     supabase.from('profiles').select('username, display_name, lifetime_sales_count').eq('id', user.id).single(),
     resolveEffectiveBps(createServiceClientRaw(), user.id, 'seller'),
     rowId
       ? supabase
         .from('listings')
-        .select('id, seller_id, status, title, brand, category, department, subcategory, size, color, description, condition_score, price_cents, images, possession_photo_url, measurements')
+        .select('id, seller_id, status, title, brand, category, department, subcategory, size, color, description, condition_score, price_cents, images, possession_photo_url, measurements, ships_from, intl_shipping')
         .eq('id', rowId)
         .eq('seller_id', user.id)
         .maybeSingle()
       : Promise.resolve({ data: null }),
+    sellerOrigin(createServiceClientRaw(), user.id),
   ])
   const username: string = (profile?.username as string) ?? ''
   const salesCount: number = (profile?.lifetime_sales_count as number) ?? 0
@@ -222,6 +232,8 @@ export async function loadSellNew(opts: { supabase: Client; user: User; draft?: 
     const okForMode = mode === 'edit' ? ['active', 'pending_review'].includes(row.status) : row.status === 'draft'
     if (!okForMode) rowMissing = true
     else {
+      // A live listing keeps the origin it was published with; a draft follows the seller.
+      const rowOrigin = mode === 'edit' ? ((row.ships_from as string | null) ?? 'US') : origin
       initial = {
         id: row.id,
         status: row.status,
@@ -235,9 +247,11 @@ export async function loadSellNew(opts: { supabase: Client; user: User; draft?: 
         description: row.description ?? null,
         condition_score: row.condition_score ?? null,
         price_cents: row.price_cents ?? null,
-        images: Array.isArray(row.images) ? row.images : [],
+        images: publicImages(row.images, row.possession_photo_url),
         possession_photo_url: row.possession_photo_url ?? null,
         measurements: normalizeMeasurements(row.measurements, row.category),
+        intl_shipping: cleanIntlShipping(row.intl_shipping, rowOrigin),
+        ships_from: rowOrigin,
       }
     }
   } else if (rowId) {
@@ -249,6 +263,7 @@ export async function loadSellNew(opts: { supabase: Client; user: User; draft?: 
     viewer: { username, display_name: (profile?.display_name as string | null) ?? null },
     seller_bps: sellerBps,
     welcome_sales_remaining: welcomeSalesRemaining,
+    ships_from: origin,
     mode,
     initial,
     row_missing: rowMissing,

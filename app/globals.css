@@ -803,6 +803,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .pdp__price { font: 400 20px var(--font-mono); display: flex; align-items: baseline; gap: 10px; }
 .pdp__old { font: 300 13px var(--font-mono); color: var(--faint); text-decoration: line-through; }
 .pdp__ship { font: 400 11px var(--font-mono); letter-spacing: 0.06em; color: var(--sub); white-space: nowrap; }
+.pdp__ship-intl { padding-top: 6px; font: 400 11px/1.6 var(--font-mono); letter-spacing: 0.06em; color: var(--faint); }
 .pdp__ctas { display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; }
 .pdp__ctas .btn-primary, .pdp__ctas .btn-ink { padding: 13px 0; font-size: 12px; letter-spacing: 0.18em; }
 .pdp__buyrow { display: flex; gap: 9px; }
@@ -1817,6 +1818,7 @@ a.btn-primary--inline { display: inline-flex; }
 .admin-item__body + .admin-item__body { border-top: 1px solid var(--line-row); }
 .admin-item__foot { padding: 12px 16px; border-top: 1px solid var(--line); }
 .admin-photos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.admin-photos + .admin-photos { margin-top: 12px; }
 .admin-photo { position: relative; aspect-ratio: 3 / 4; border: 1px solid var(--line); overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--tone-2); }
 .admin-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .admin-photo--dim img { opacity: 0.8; }
@@ -1885,4 +1887,134 @@ a.btn-primary--inline { display: inline-flex; }
   .lot-rail__track { scroll-behavior: auto; }
   /* Colour still changes (it carries no motion); it just stops easing. */
   .pdp-thumb__img, .pdp-arrow, .pdp__caption-save, .pdp__legit, .pdp__msg, .pdp-meas__q, .unit-toggle button, .pdp-stage__save .btn-square { transition: none; }
+}
+
+/* ─── Sell page redesign A (app/sell/sell-form.tsx) ───────────────────────────
+   Single scroll, 760px column: photos → details → measurements → price + shipping beside
+   the take-home breakdown, then a sticky YOU RECEIVE bar. Inputs take the hairline (--line)
+   border of the approved Paper design and go --ink on focus; shipping regions reuse the
+   platform .switch (Settings → Sizes). ≤720px stacks everything and the bar becomes
+   amount-over-buttons. */
+.sellx-page { display: flex; flex-direction: column; min-width: 0; }
+.sellx { width: 100%; max-width: 760px; margin: 0 auto; padding: 36px 0 72px; box-sizing: border-box; }
+.sellx__head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding-top: 6px; }
+.sellx__title { font: 300 44px/1 var(--font-sans); letter-spacing: -0.02em; margin: 0; }
+.sellx__state { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; padding-bottom: 4px; }
+.sellx__sec { display: flex; flex-direction: column; gap: 16px; padding-top: 64px; }
+.sellx__fields { gap: 20px; }
+.sellx__labelrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 32px; }
+.sellx__label { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--ink); text-transform: uppercase; }
+/* A section label with its IN / CM toggle (the listing page's .unit-toggle) beside it. */
+.sellx__labelgroup { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+.sellx__label--sub { color: var(--sub); }
+.sellx__meta { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; }
+.sellx__hint { margin: 0; font: 300 13px/1.5 var(--font-sans); color: var(--sub); }
+
+.sellx-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sellx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.sellx-input { width: 100%; box-sizing: border-box; min-height: 48px; margin: 0; padding: 0 14px; background: transparent; border: 1px solid var(--line); border-radius: 0; font: 300 15px var(--font-sans); color: var(--ink); outline: none; }
+.sellx-input::placeholder { color: var(--faint); }
+.sellx-input:hover { border-color: var(--line-mid); }
+.sellx-input:focus { border-color: var(--ink); }
+.sellx-input--mono { font-family: var(--font-mono); }
+.sellx-textarea { display: block; min-height: 120px; padding: 14px; resize: vertical; line-height: 1.6; }
+
+/* Photos: 5 cells, the seller's order, first is the cover; dashed "+" cells fill the rest. */
+.sellx-photos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.sellx-photos__cell { position: relative; aspect-ratio: 3 / 4; overflow: hidden; background: var(--tone-1); cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; outline: none; }
+.sellx-photos__cell:focus-visible { box-shadow: inset 0 0 0 2px var(--ink); }
+.sellx-photos__cell.is-dragging { opacity: 0.45; cursor: grabbing; }
+.sellx-photos__cell.is-over { box-shadow: inset 0 0 0 2px var(--ink); }
+.sellx-photos__cell img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.sellx-photos__cell--pending { display: flex; align-items: center; justify-content: center; cursor: default; }
+.sellx-photos__cover { position: absolute; left: 8px; top: 8px; padding: 2px 5px; background: var(--badge-bg); color: var(--badge-fg); font: 400 10px var(--font-mono); letter-spacing: 0.14em; }
+.sellx-photos__remove { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: var(--badge-bg); color: var(--badge-fg); cursor: pointer; opacity: 0; transition: opacity 0.15s ease; }
+.sellx-photos__cell:hover .sellx-photos__remove, .sellx-photos__cell:focus-within .sellx-photos__remove { opacity: 1; }
+@media (hover: none) { .sellx-photos__remove { opacity: 1; } }
+.sellx-photos__add { width: 100%; aspect-ratio: 3 / 4; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed var(--line-mid); color: var(--faint); cursor: pointer; }
+.sellx-photos__add:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+
+.sellx-meas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+/* TOPS / BOTTOMS: a 32px segment inside a 44px target (AAA 2.5.5, like .unit-toggle). */
+.sellx-seg { display: inline-flex; border: 1px solid var(--ink); }
+.sellx-seg__opt { position: relative; min-height: 32px; padding: 0 16px; background: transparent; border: none; font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--ink); cursor: pointer; }
+.sellx-seg__opt::before { content: ''; position: absolute; inset: -6px 0; }
+.sellx-seg__opt.is-on { background: var(--ink); color: var(--on-ink); }
+
+.sellx-combo { position: relative; }
+.sellx-combo__meta { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; }
+/* The field is the bordered box; the input and the pick's meta ("MENSWEAR / BOTTOMS", "TAILORING")
+   share it as flex siblings, so the meta never covers the value and nothing below shifts. */
+.sellx-combo__field { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 14px; box-sizing: border-box; border: 1px solid var(--line); }
+.sellx-combo__field:hover { border-color: var(--line-mid); }
+.sellx-combo__field:focus-within, .sellx-combo.is-open .sellx-combo__field { border-color: var(--ink); }
+.sellx-combo__input { flex: 1 1 60px; min-width: 0; min-height: 46px; margin: 0; padding: 0; background: transparent; border: none; border-radius: 0; outline: none; font: 300 15px var(--font-sans); color: var(--ink); }
+.sellx-combo__input::placeholder { color: var(--faint); }
+.sellx-combo__picked { flex: 0 1 auto; min-width: 0; max-width: 60%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.sellx-combo__field > .swatch { flex: 0 0 auto; }
+/* Overlays the fields below (never pushes them); the dropdown in the Paper mock pushes only because Paper can't float. */
+.sellx-combo__list { position: absolute; left: 0; right: 0; top: 48px; z-index: 30; margin: 0; padding: 0; list-style: none; background: var(--bg); border: 1px solid var(--ink); border-top: none; max-height: 320px; overflow-y: auto; }
+.sellx-combo__opt { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: var(--control-h); padding: 0 14px; border-top: 1px solid var(--line-row); font: 300 15px var(--font-sans); color: var(--ink); cursor: pointer; }
+.sellx-combo__opt:first-child { border-top: none; }
+.sellx-combo__opt > span:first-child { flex-shrink: 0; }
+.sellx-combo__label { display: inline-flex; align-items: center; gap: 10px; }
+.sellx-combo__opt > .sellx-combo__meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sellx-combo__opt.is-active { background: var(--hover); }
+/* SIZE: the MY SIZES modal's cells, inside the same overlay panel. */
+.sellx-combo__list--grid { display: grid; gap: 6px; padding: 12px 14px 14px; }
+.sellx-combo__list--grid .size-cell { padding: 9px 0; font-size: 11px; cursor: pointer; }
+
+.sellx-pricing { flex-direction: row; align-items: flex-start; gap: 40px; }
+.sellx-pricing__fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.sellx-money { display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 14px; box-sizing: border-box; border: 1px solid var(--line); font: 300 15px var(--font-mono); color: var(--sub); }
+.sellx-money:hover { border-color: var(--line-mid); }
+.sellx-money:focus-within { border-color: var(--ink); }
+.sellx-money input { flex: 1; min-width: 0; min-height: 46px; margin: 0; padding: 0; background: transparent; border: none; outline: none; font: 300 15px var(--font-mono); color: var(--ink); }
+
+.sellx-ship__trigger { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 14px; box-sizing: border-box; background: transparent; border: 1px solid var(--line); font: 300 15px var(--font-sans); color: var(--ink); text-align: left; cursor: pointer; }
+.sellx-ship__trigger:hover { border-color: var(--line-mid); }
+.sellx-ship__trigger.is-open, .sellx-ship__trigger:focus-visible { border-color: var(--ink); }
+.sellx-ship__caret { font-size: 12px; color: var(--faint); }
+.sellx-ship__menu { border: 1px solid var(--ink); border-top: none; }
+.sellx-ship__row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 0 14px; border-top: 1px solid var(--line-row); }
+.sellx-ship__row:first-child { border-top: none; }
+.sellx-ship__name { flex: 1; min-width: 0; font: 300 15px var(--font-sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sellx-ship__cost { display: flex; align-items: center; gap: 4px; width: 96px; min-height: 40px; padding: 0 10px; box-sizing: border-box; flex-shrink: 0; border: 1px solid var(--line); font: 300 14px var(--font-mono); color: var(--sub); }
+.sellx-ship__cost:focus-within { border-color: var(--ink); }
+.sellx-ship__cost input { width: 100%; min-width: 0; margin: 0; padding: 0; background: transparent; border: none; outline: none; font: inherit; color: var(--ink); }
+.sellx-ship__toggle { display: flex; align-items: center; gap: 10px; min-height: var(--control-h); flex-shrink: 0; padding: 0; background: transparent; border: none; cursor: pointer; }
+.sellx-ship__toggle .switch-row__state { width: 28px; text-align: right; font-size: 11px; }
+
+.sellx-fee { width: 360px; flex-shrink: 0; }
+.sellx-fee__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; border-bottom: 1px solid var(--line-row); font: 300 14px var(--font-mono); color: var(--ink); }
+.sellx-fee__row span:first-child { font: 400 11px var(--font-mono); letter-spacing: 0.14em; color: var(--sub); }
+.sellx-fee__row--total { min-height: 44px; margin-top: -1px; border-top: 1px solid var(--ink); border-bottom: none; font-size: 20px; font-weight: 400; }
+.sellx-fee__row--total span:first-child { font-size: 12px; color: var(--ink); }
+.sellx-fee__note { margin: 10px 0 0; font: 300 13px/1.5 var(--font-sans); color: var(--sub); }
+
+.sellx-bar { position: sticky; bottom: 0; z-index: 20; display: flex; justify-content: flex-end; align-items: center; gap: 24px; padding: 14px 24px; background: var(--bg); border-top: 1px solid var(--ink); }
+.sellx-bar__actions { display: flex; gap: 12px; flex-shrink: 0; }
+.sellx-bar__btn { min-height: 48px; padding: 0 28px; }
+.sellx-bar__short { display: none; }
+
+@media (max-width: 960px) {
+  .sellx { padding-left: 24px; padding-right: 24px; }
+  .sellx-pricing { flex-direction: column; gap: 28px; }
+  .sellx-pricing__fields, .sellx-fee { width: 100%; }
+}
+
+@media (max-width: 720px) {
+  .sellx { padding: 20px 16px 36px; }
+  .sellx__title { font-size: 32px; }
+  .sellx__sec { padding-top: 40px; }
+  .sellx-grid { grid-template-columns: 1fr; }
+  .sellx-grid--pair { grid-template-columns: 1fr 1fr; }
+  .sellx-photos { grid-template-columns: repeat(3, 1fr); }
+  .sellx-meas { grid-template-columns: 1fr 1fr; }
+  .sellx-bar { padding: 12px 16px; }
+  .sellx-bar__actions { display: grid; grid-template-columns: 1fr 3fr; flex: 1 1 100%; }
+  .sellx-bar__btn { width: 100%; padding: 0 12px; }
+  .sellx-bar__long { display: none; }
+  .sellx-bar__short { display: inline; }
 }
