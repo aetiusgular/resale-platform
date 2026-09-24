@@ -181,7 +181,7 @@ const LISTINGS = [
   { key: 'uc-tee', seller: 'mara', handles: ['undercover-tee'], n: 3, title: 'Undercover Logo Tee', brand: 'UNDERCOVER', category: 'Tops', subcategory: 'Short-sleeve tees', department: 'menswear', size: 'L', color: 'Black', price: 6000, views: 30, created: 60, status: 'sold', soldAt: 40, desc: 'Undercover black logo tee, size L.', meas: {} },
   { key: 'paf-logo-hoodie', seller: 'mara', handles: ['logo-hoodie-archive'], n: 3, title: 'Post Archive Faction Logo Hoodie (Archive)', brand: 'POST ARCHIVE FACTION', category: 'Tops', subcategory: 'Sweatshirts & hoodies', department: 'menswear', size: 'M', color: 'Black', price: 18000, views: 58, created: 9, status: 'sold', soldAt: 2, desc: 'PAF archive logo hoodie, black, size M. Minimal branding, heavy cotton.', meas: { 'PIT TO PIT': 23, LENGTH: 27, SHOULDER: 21, SLEEVE: 25 } },
   // — Kenji (Tokyo seller; non-US origin lanes) —
-  { key: 'kozaburo-trucker', seller: 'kenji', handles: ['kozaburo-honeycomb-sashiko-trucker-jacket'], n: 4, title: 'Kozaburo Honeycomb Sashiko Trucker Jacket', brand: 'KOZABURO', category: 'Outerwear', subcategory: 'Denim', department: 'menswear', size: '2', color: 'Black', price: 41000, views: 167, created: 16, shipsFrom: 'JP', intl: { north_america: 3500, united_kingdom: 4200, europe: 4200, asia: 1500, australia_nz: 4800, other: 6000 }, desc: 'Kozaburo honeycomb sashiko trucker, made in Japan, size 2. Artisan sashiko stitching all over, flared hem. Worn a few times, no fading yet. Ships from Tokyo with tracking.', meas: { 'PIT TO PIT': 21, LENGTH: 25, SHOULDER: 18, SLEEVE: 25 } },
+  { key: 'kozaburo-trucker', seller: 'kenji', handles: ['kozaburo-honeycomb-sashiko-trucker-jacket'], n: 4, title: 'Kozaburo Honeycomb Sashiko Trucker Jacket', brand: 'KOZABURO', category: 'Outerwear', subcategory: 'Denim', department: 'menswear', size: '2', color: 'Black', price: 41000, views: 167, created: 16, shipsFrom: 'JP', intl: { north_america: 3500, united_kingdom: 4200, europe: 4200, asia: 1500, australia_nz: 4800, other: 6000 }, desc: 'Kozaburo honeycomb sashiko trucker, made in Japan, size 2. Artisan sashiko stitching all over, flared hem. Worn a few times, no fading yet. Ships from Tokyo with tracking.', meas: {} /* none yet: the tester has REQUESTED them (measurement_requests) */ },
   { key: 'kozaburo-wide-jean', seller: 'kenji', handles: ['kozaburo-wide-leg-jean'], n: 3, title: 'Kozaburo Sashiko Wide Leg Jean', brand: 'KOZABURO', category: 'Bottoms', subcategory: 'Denim', department: 'menswear', size: '1', color: 'Black', price: 36000, views: 93, created: 13, shipsFrom: 'JP', intl: { north_america: 3000, united_kingdom: 3800, europe: 3800, asia: 1200, australia_nz: 4500 }, desc: 'Kozaburo wide leg jean with belt-line pleats, honeycomb sashiko cotton. Size 1.', meas: { WAIST: 15.5, INSEAM: 31, RISE: 12.5, 'LEG OPENING': 11 } },
   { key: 'kozaburo-dexter-grey', seller: 'kenji', handles: ['kozaburo-dexter-pants'], n: 3, title: 'Kozaburo Dexter Flared Raw Denim (Grey)', brand: 'KOZABURO', category: 'Bottoms', subcategory: 'Denim', department: 'menswear', size: '1', color: 'Grey', price: 42000, views: 71, created: 8, shipsFrom: 'JP', intl: { north_america: 3000, united_kingdom: 3800, europe: 3800, asia: 1200 }, desc: 'Kozaburo Dexter pants, grey raw denim made in Japan, flared with the hem opening. Size 1.', meas: { WAIST: 15, INSEAM: 32, RISE: 12, 'LEG OPENING': 10.5 } },
   { key: 'kozaburo-monk', seller: 'kenji', handles: ['kozaburo-monk-jacket'], n: 3, title: 'Kozaburo Monk Jacket', brand: 'KOZABURO', category: 'Outerwear', subcategory: 'Other outerwear', department: 'menswear', size: '2', color: 'Black', price: 42000, views: 120, created: 40, status: 'sold', soldAt: 27, shipsFrom: 'JP', intl: { north_america: 3500, asia: 1500 }, desc: 'Kozaburo monk jacket with the frog button closure, sashiko cotton. Size 2.', meas: {} },
@@ -213,18 +213,20 @@ const CONVERSATIONS = [
     ],
     offers: [{ key: 'o-paf-theo-1', from: 'theo', amount: 29000, state: 'open', at: [0, 3], expiresH: 24 }],
     read: { e2e: [2, 2], theo: [0, 3] } },
-  { key: 'c-kapital-lowell', listing: 'kapital-trucker', buyer: 'lowell', created: [1, 6],
+  // Kept inside the last 24h: a counter is an OPEN offer with a 24h clock, and the offers cron
+  // expires anything older, so this thread must always be "today".
+  { key: 'c-kapital-lowell', listing: 'kapital-trucker', buyer: 'lowell', created: [0, 6],
     msgs: [
-      ['lowell', 'Any stretch on the price? Been hunting this smiley trucker for a while.', 1, 6],
-      ['e2e', 'A little. What did you have in mind?', 1, 5],
-      ['lowell', 'Sent you an offer.', 1, 4],
-      ['e2e', 'That is too low for this one — countered.', 1, 3],
+      ['lowell', 'Any stretch on the price? Been hunting this smiley trucker for a while.', 0, 6],
+      ['e2e', 'A little. What did you have in mind?', 0, 5],
+      ['lowell', 'Sent you an offer.', 0, 4],
+      ['e2e', 'That is too low for this one — countered.', 0, 3],
     ],
     offers: [
-      { key: 'o-kapital-lowell-1', from: 'lowell', amount: 22000, state: 'countered', at: [1, 4], expiresH: 24 },
-      { key: 'o-kapital-e2e-counter', from: 'e2e', amount: 27000, state: 'open', at: [1, 3], expiresH: 24 },
+      { key: 'o-kapital-lowell-1', from: 'lowell', amount: 22000, state: 'countered', at: [0, 4], expiresH: 24 },
+      { key: 'o-kapital-e2e-counter', from: 'e2e', amount: 27000, state: 'open', at: [0, 3], expiresH: 24 },
     ],
-    read: { e2e: [1, 3], lowell: [1, 3.5] } },
+    read: { e2e: [0, 3], lowell: [0, 3.5] } },
   { key: 'c-helmut-ines', listing: 'helmut-bomber', buyer: 'ines', created: [1, 9],
     msgs: [
       ['ines', 'Hi! Would you ship to Toronto? I see Canada in the regions — is the $25 rate tracked?', 1, 9],
@@ -445,7 +447,7 @@ const NOTIFICATIONS = [
   { key: 'n-saved-search', user: 'e2e', type: 'saved_search', title: 'New match for your saved search', body: 'Kozaburo Dexter Flared Raw Denim (Grey) just listed for $420.00.', url: () => `/listings/${uid('listing:kozaburo-dexter-grey')}`, at: [8, 0], read: true },
   { key: 'n-approved-annd', user: 'e2e', type: 'listing_approved', title: 'Listing approved — now live', body: 'Ann Demeulemeester Patrick Denim Jacket passed review and is live on the archive.', url: () => `/listings/${uid('listing:ann-d-denim')}`, at: [9, 0], read: true },
   { key: 'n-offer-mara', user: 'mara', type: 'offer_received', title: 'New offer', body: '@e2e_buyer offered $580.00 on 11 by Boris Bidjan Saberi x Salomon Boot 2 GTX (Object Dyed Grey).', url: () => `/messages/${uid('conv:c-boot-mara')}`, at: [0, 1], read: false },
-  { key: 'n-counter-lowell', user: 'lowell', type: 'offer_countered', title: 'Counter received — $270.00', body: '@e2e_buyer countered on Kapital Camo Smiley Trucker Jacket. Accept, counter or decline from the thread.', url: () => `/messages/${uid('conv:c-kapital-lowell')}`, at: [1, 3], read: false },
+  { key: 'n-counter-lowell', user: 'lowell', type: 'offer_countered', title: 'Counter received — $270.00', body: '@e2e_buyer countered on Kapital Camo Smiley Trucker Jacket. Accept, counter or decline from the thread.', url: () => `/messages/${uid('conv:c-kapital-lowell')}`, at: [0, 3], read: false },
   { key: 'n-sale-kenji-cancel', user: 'kenji', type: 'sale', title: 'Your item sold', body: 'Kozaburo Sashiko Dexter Pants sold for $390.00. Confirm and ship to get paid.', url: () => `/orders/${uid('order:ord-sashiko-dexter')}`, at: [10, 0], read: true },
 ]
 

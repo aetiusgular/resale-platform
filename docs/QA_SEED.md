@@ -38,8 +38,8 @@ until someone completes `/settings/payouts` for that account. Kenji's listings 4
 
 ## What to look at, logged in as `@e2e_buyer`
 
-**Browse / listing pages** — 30 new real-photo listings on `/browse` (Ann Demeulemeester is
-boosted and pinned first; the tester's own items carry YOURS). Hero gallery: the PAF
+**Browse / listing pages** — 25 new real-photo listings on `/browse` next to the 29 `[SEED]`
+fixtures (Ann Demeulemeester is boosted and pinned first; the tester's own items carry YOURS). Hero gallery: the PAF
 Reversible Curved Jacket (7 photos, $420 → $380 → $340 price history, 4 saves, 212 views).
 `/listings/<id>` for the white Undercover PIL shirt shows an authenticated Legit Check
 thread (pinned moderator verdict, auto-auth pass, 4 legit votes); the Rick Owens Geth
@@ -71,14 +71,14 @@ which is what the tier-expiry notification and the expiring-volume warning key o
 2 drafts (one needs 1 more photo, one title-only), 14 sold with payouts, 1 removed with a
 rejection reason. Open offers show on the catalog cards.
 
-**Seller profile** — `/sellers/e2e_buyer`: 11 reviews (avg 4.8) when `REVIEWS_ENABLED`,
-followers when `FOLLOWS_ENABLED`.
+**Seller profile** — `/sellers/e2e_buyer`: 8 buyer reviews (avg 4.75) when `REVIEWS_ENABLED`
+(11 reviews exist in total, both directions), followers when `FOLLOWS_ENABLED`.
 
 ## Feature flags that decide what testers can see (Vercel env)
 
 | Flag | Seeded data it unlocks |
 | --- | --- |
-| `NOTIFICATIONS_ENABLED=true` | 14 notifications for the tester (offer, sale, delivered, dispute, price drop, measurement request, tier expiry…). Page shows "You're all caught up" while off. |
+| `NOTIFICATIONS_ENABLED=true` | 13 notifications for the tester, 7 unread (offer, sale, delivered, dispute, price drop, measurement request, tier expiry…). Page shows "You're all caught up" while off. |
 | `FOLLOWS_ENABLED=true` | Follow buttons, follower counts, the "sellers you follow" section on `/saved`. |
 | `REVIEWS_ENABLED=true` | Star ratings on seller profiles + the review form on released orders. |
 | `TIER_DASHBOARD_ENABLED=true` | The buyer-side tier pane and the 14-day expiring-volume warning under Settings → Buying & selling power. |
@@ -86,6 +86,23 @@ followers when `FOLLOWS_ENABLED`.
 | `BUMP_ENABLED=true` | BUMP buttons; the seeded listings are bump-anchored at creation. |
 
 Booleans are OFF by default in code; flip them in the Vercel project env and redeploy.
+
+## App issues seen while verifying the seed (not seed bugs)
+
+- Region rates never show on the web listing page: `app/listings/[id]/get-listing.ts` selects
+  the row for the PDP without `ships_from` / `intl_shipping` (PR #5 added them to
+  `LISTING_DETAIL_SELECT` in `lib/loaders/listing.ts`, which the API route uses, but not here),
+  so `shippingLanes()` treats every listing as a US-only origin. The Kozaburo trucker shipping
+  from Tokyo reads "+ $17 SHIPPING US" and the Helmut Lang bomber's five priced regions are
+  hidden. Fix: add `ships_from, intl_shipping,` to that select.
+- The CSP `connect-src` in `middleware.ts` allows `https://*.supabase.co` but not
+  `wss://*.supabase.co`, so the browser blocks the Supabase realtime websocket on every page
+  (console: "Connecting to 'wss://…/realtime/v1/websocket' violates…"). Live thread updates
+  will not arrive until `wss://*.supabase.co` is added.
+- React hydration error #418 (server/client text mismatch) fires in the console on order and
+  listing pages; timestamps rendered in server time vs the viewer's timezone are the usual
+  cause. Cosmetic in production, but it is in every tester's console.
+- "YOUR LISTING · PENDING_REVIEW" prints the raw status on the seller's own in-review listing.
 
 ## Known gaps
 
