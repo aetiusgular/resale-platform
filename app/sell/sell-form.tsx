@@ -23,7 +23,7 @@ import { useState, useRef, useCallback, useEffect, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import PrefetchLink from '@/app/components/prefetch-link'
 import { createBrowserClient } from '@supabase/ssr'
-import { sellerFeeBreakdown, FEE_TIERS, FIXED_FEE_CENTS, STRIPE_PCT_BPS, STRIPE_FIXED_CENTS, WELCOME_SALES } from '@/lib/fees'
+import { sellerFeeBreakdown, FEE_TIERS, STRIPE_PCT_BPS, STRIPE_FIXED_CENTS, WELCOME_SALES } from '@/lib/fees'
 import { fmtRate } from '@/lib/tier-dashboard'
 import {
   COLORS, measurementDisplayLabel, measurementKindFor, measurementKindIsChoice, measurementKindOf, measurementLabelsForKind,
@@ -84,8 +84,6 @@ function useFlash(): [boolean, () => void] {
 function money(cents: number): string {
   return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-
-const FIXED_LABEL = `${FIXED_FEE_CENTS}¢`
 
 export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0, shipsFrom = 'US', initial = null, mode = 'new' }: SellFormProps) {
   const router = useRouter()
@@ -311,10 +309,8 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
   const draftLabel = isEdit
     ? 'LIVE · CHANGES APPLY IMMEDIATELY'
     : draftState === 'saving' ? 'SAVING…' : draftState === 'saved' ? 'DRAFT SAVED' : draftState === 'error' ? 'DRAFT NOT SAVED' : 'DRAFT AUTO-SAVES'
-  const tierLabel = `TIER ${tierNumber} FEE · ${fmtRate(fees.tierBps)} + ${FIXED_LABEL}`
-  const barNote = inWelcome
-    ? `COMMISSION WAIVED · SALE ${saleNumber} OF ${WELCOME_SALES}`
-    : `TIER ${tierNumber} · ${fmtRate(fees.tierBps)} + ${FIXED_LABEL}`
+  // The row prints the tier rate only; the 30¢ fixed part is inside the amount (lib/fees).
+  const tierLabel = `TIER ${tierNumber} FEE · ${fmtRate(fees.tierBps)}`
 
   const onCategoryPick = (d: string, c: string, s: string) => {
     setDepartment(d || 'menswear'); setCategory(c); setSubcategory(s)
@@ -458,12 +454,12 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         {submitError && <div className="alert-line" role="alert" style={{ paddingTop: 20 }}>{submitError.toUpperCase()}</div>}
       </main>
 
-      {/* Sticky take-home + actions (desktop: one row; ≤720px: amount over two buttons). */}
+      {/* Sticky take-home + actions (desktop: one row; ≤720px: amount over two buttons). Just the
+          label and the amount — the breakdown lives in the fee box above. */}
       <div className="sellx-bar">
         <div className="sellx-bar__take">
           <span className="sellx__label sellx__label--sub">YOU RECEIVE</span>
           <span className="sellx-bar__amount">{money(fees.payoutCents)}</span>
-          <span className="sellx-bar__note">{barNote}</span>
         </div>
         <div className="sellx-bar__actions">
           {isEdit ? (
