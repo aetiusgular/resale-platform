@@ -1,9 +1,11 @@
 'use client'
 
 /**
- * Typeahead field shared by CATEGORY and SIZE on the listing form (sell page redesign A):
- * type, pick a row from the list that overlays the fields below, and the pick's meta
- * (department / category, scale) sits inside the field on the right. `search('')` decides
+ * Typeahead field shared by CATEGORY, SIZE and COLOR on the listing form (sell page redesign
+ * A): type, pick a row from the list that overlays the fields below, and the pick's meta
+ * (department / category, scale) sits inside the field on the right; a row's `swatch`
+ * (colours) draws the browse rail's dot before its label and, once picked, in the field
+ * (`valueSwatch`). `search('')` decides
  * what shows on focus before anything is typed (the whole size scale; nothing for
  * categories). On blur, a query that exactly matches one row is taken as that pick.
  * `layout: 'grid'` lays the rows out as size cells (the MY SIZES modal's .size-grid /
@@ -15,6 +17,8 @@ export interface ComboOption {
   key: string
   label: string
   meta?: string
+  /** CSS background for a colour dot before the label (list layout). */
+  swatch?: string
 }
 
 interface Props {
@@ -23,6 +27,8 @@ interface Props {
   value: string
   /** Shown inside the field, right-aligned, while idle. */
   valueMeta?: string
+  /** The pick's colour dot, shown inside the field on the right while idle. */
+  valueSwatch?: string
   placeholder: string
   listLabel: string
   search: (query: string) => ComboOption[]
@@ -33,7 +39,7 @@ interface Props {
   cols?: number
 }
 
-export default function SellCombo({ id, value, valueMeta = '', placeholder, listLabel, search, onPick, testId, layout = 'list', cols = 5 }: Props) {
+export default function SellCombo({ id, value, valueMeta = '', valueSwatch = '', placeholder, listLabel, search, onPick, testId, layout = 'list', cols = 5 }: Props) {
   const listId = useId()
   const [query, setQuery] = useState<string | null>(null) // null = idle, showing the current pick
   const [active, setActive] = useState(0)
@@ -97,6 +103,7 @@ export default function SellCombo({ id, value, valueMeta = '', placeholder, list
           data-testid={testId}
         />
         {idle && valueMeta && <span className="sellx-combo__meta sellx-combo__picked" aria-hidden="true">{valueMeta.toUpperCase()}</span>}
+        {idle && valueSwatch && <span className="swatch sellx-combo__picked" style={{ background: valueSwatch }} aria-hidden="true" />}
       </div>
       {open && layout === 'grid' && (
         <ul id={listId} className="sellx-combo__list sellx-combo__list--grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }} role="listbox" aria-label={listLabel}>
@@ -127,7 +134,10 @@ export default function SellCombo({ id, value, valueMeta = '', placeholder, list
               onMouseDown={(e) => { e.preventDefault(); pick(o) }}
               onMouseEnter={() => setActive(i)}
             >
-              <span>{o.label}</span>
+              <span className="sellx-combo__label">
+                {o.swatch && <span className="swatch" style={{ background: o.swatch }} aria-hidden="true" />}
+                {o.label}
+              </span>
               {o.meta && <span className="sellx-combo__meta">{o.meta.toUpperCase()}</span>}
             </li>
           ))}

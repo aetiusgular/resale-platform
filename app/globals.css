@@ -1915,8 +1915,6 @@ a.btn-primary--inline { display: inline-flex; }
 .sellx-input:hover { border-color: var(--line-mid); }
 .sellx-input:focus { border-color: var(--ink); }
 .sellx-input--mono { font-family: var(--font-mono); }
-.select-wrap select.sellx-select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
-.select-wrap select.sellx-select:invalid { color: var(--faint); }
 .sellx-textarea { display: block; min-height: 120px; padding: 14px; resize: vertical; line-height: 1.6; }
 
 /* Photos: 5 cells, the seller's order, first is the cover; dashed "+" cells fill the rest. */
@@ -1952,11 +1950,13 @@ a.btn-primary--inline { display: inline-flex; }
 .sellx-combo__input { flex: 1 1 60px; min-width: 0; min-height: 46px; margin: 0; padding: 0; background: transparent; border: none; border-radius: 0; outline: none; font: 300 15px var(--font-sans); color: var(--ink); }
 .sellx-combo__input::placeholder { color: var(--faint); }
 .sellx-combo__picked { flex: 0 1 auto; min-width: 0; max-width: 60%; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.sellx-combo__field > .swatch { flex: 0 0 auto; }
 /* Overlays the fields below (never pushes them); the dropdown in the Paper mock pushes only because Paper can't float. */
 .sellx-combo__list { position: absolute; left: 0; right: 0; top: 48px; z-index: 30; margin: 0; padding: 0; list-style: none; background: var(--bg); border: 1px solid var(--ink); border-top: none; max-height: 320px; overflow-y: auto; }
 .sellx-combo__opt { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: var(--control-h); padding: 0 14px; border-top: 1px solid var(--line-row); font: 300 15px var(--font-sans); color: var(--ink); cursor: pointer; }
 .sellx-combo__opt:first-child { border-top: none; }
 .sellx-combo__opt > span:first-child { flex-shrink: 0; }
+.sellx-combo__label { display: inline-flex; align-items: center; gap: 10px; }
 .sellx-combo__opt > .sellx-combo__meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sellx-combo__opt.is-active { background: var(--hover); }
 /* SIZE: the MY SIZES modal's cells, inside the same overlay panel. */
@@ -1991,9 +1991,7 @@ a.btn-primary--inline { display: inline-flex; }
 .sellx-fee__row--total span:first-child { font-size: 12px; color: var(--ink); }
 .sellx-fee__note { margin: 10px 0 0; font: 300 13px/1.5 var(--font-sans); color: var(--sub); }
 
-.sellx-bar { position: sticky; bottom: 0; z-index: 20; display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 14px 24px; background: var(--bg); border-top: 1px solid var(--ink); }
-.sellx-bar__take { display: flex; align-items: baseline; gap: 24px; min-width: 0; }
-.sellx-bar__amount { font: 400 26px var(--font-mono); color: var(--ink); white-space: nowrap; }
+.sellx-bar { position: sticky; bottom: 0; z-index: 20; display: flex; justify-content: flex-end; align-items: center; gap: 24px; padding: 14px 24px; background: var(--bg); border-top: 1px solid var(--ink); }
 .sellx-bar__actions { display: flex; gap: 12px; flex-shrink: 0; }
 .sellx-bar__btn { min-height: 48px; padding: 0 28px; }
 .sellx-bar__short { display: none; }
@@ -2012,10 +2010,8 @@ a.btn-primary--inline { display: inline-flex; }
   .sellx-grid--pair { grid-template-columns: 1fr 1fr; }
   .sellx-photos { grid-template-columns: repeat(3, 1fr); }
   .sellx-meas { grid-template-columns: 1fr 1fr; }
-  .sellx-bar { flex-direction: column; align-items: stretch; gap: 12px; padding: 12px 16px; }
-  .sellx-bar__take { justify-content: space-between; align-items: center; }
-  .sellx-bar__amount { font-size: 22px; }
-  .sellx-bar__actions { display: grid; grid-template-columns: 1fr 3fr; }
+  .sellx-bar { padding: 12px 16px; }
+  .sellx-bar__actions { display: grid; grid-template-columns: 1fr 3fr; flex: 1 1 100%; }
   .sellx-bar__btn { width: 100%; padding: 0 12px; }
   .sellx-bar__long { display: none; }
   .sellx-bar__short { display: inline; }

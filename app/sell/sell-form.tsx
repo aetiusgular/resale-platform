@@ -4,7 +4,7 @@
  * Create / edit a listing — sell page redesign A (single scroll, no step rail):
  * PHOTOS → TITLE / BRAND / CATEGORY / SIZE / COLOR / DESCRIPTION → MEASUREMENTS (TOPS /
  * BOTTOMS) → PRICE + SHIPPING beside the take-home breakdown → a sticky bar with
- * YOU RECEIVE and SAVE DRAFT / PUBLISH.
+ * SAVE DRAFT / PUBLISH. CATEGORY, SIZE and COLOR are typeaheads (./sell-combo).
  *
  * The draft auto-saves as the seller types (POST /api/listings/drafts once, then debounced
  * PATCH /api/listings/[id]); PUBLISH → posts the full listing to /api/listings (anti-slop,
@@ -26,12 +26,13 @@ import { createBrowserClient } from '@supabase/ssr'
 import { sellerFeeBreakdown, FEE_TIERS, STRIPE_PCT_BPS, STRIPE_FIXED_CENTS, WELCOME_SALES } from '@/lib/fees'
 import { fmtRate } from '@/lib/tier-dashboard'
 import {
-  COLORS, measurementDisplayLabel, measurementKindFor, measurementKindIsChoice, measurementKindOf, measurementLabelsForKind,
+  measurementDisplayLabel, measurementKindFor, measurementKindIsChoice, measurementKindOf, measurementLabelsForKind,
 } from '@/lib/taxonomy'
 import { REGION_LABELS, needsIntlRegion } from '@/lib/shipping-regions'
 import { countryName } from '@/lib/countries'
 import SellCategory from './sell-category'
 import SellSize from './sell-size'
+import SellColor from './sell-color'
 import SellPhotos from './sell-photos'
 import SellShipping, { regionDraftsFrom, intlFromDrafts, regionMissingPrice, type RegionDrafts } from './sell-shipping'
 
@@ -359,13 +360,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
             </div>
             <div className="sellx-field">
               <label className="sellx__label" htmlFor="sell-color">COLOR</label>
-              <span className="select-wrap">
-                <select id="sell-color" className="sellx-input sellx-select" value={color} onChange={(e) => setColor(e.target.value)}>
-                  <option value="">Select</option>
-                  {COLORS.map((c) => <option key={c.label} value={c.label}>{c.label}</option>)}
-                </select>
-                <span className="select-row__caret select-wrap__caret">▾</span>
-              </span>
+              <SellColor color={color} onPick={setColor} />
             </div>
           </div>
           <div className="sellx-field">
@@ -454,13 +449,9 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
         {submitError && <div className="alert-line" role="alert" style={{ paddingTop: 20 }}>{submitError.toUpperCase()}</div>}
       </main>
 
-      {/* Sticky take-home + actions (desktop: one row; ≤720px: amount over two buttons). Just the
-          label and the amount — the breakdown lives in the fee box above. */}
+      {/* Sticky actions (desktop: right-aligned; ≤720px: two full-width buttons). The take-home
+          lives in the fee box above. */}
       <div className="sellx-bar">
-        <div className="sellx-bar__take">
-          <span className="sellx__label sellx__label--sub">YOU RECEIVE</span>
-          <span className="sellx-bar__amount">{money(fees.payoutCents)}</span>
-        </div>
         <div className="sellx-bar__actions">
           {isEdit ? (
             <>
