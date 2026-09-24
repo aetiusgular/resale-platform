@@ -5,6 +5,7 @@
  */
 import { CATEGORIES, COLOR_LABELS, DEPARTMENTS, isValidSubcategory, normalizeMeasurements } from '@/lib/taxonomy'
 import { cleanIntlShipping, type IntlShipping } from '@/lib/shipping-regions'
+import { MAX_PHOTOS } from '@/lib/listings/images'
 
 export interface DraftFields {
   title?: string | null
@@ -59,7 +60,7 @@ export function cleanDraftFields(body: Record<string, unknown>, origin: string =
     const n = Number(body.price_cents)
     out.price_cents = Number.isInteger(n) && n > 0 && n <= 100_000_000 ? n : null
   }
-  if (Array.isArray(body.images)) out.images = body.images.filter((u): u is string => typeof u === 'string').slice(0, 6)
+  if (Array.isArray(body.images)) out.images = Array.from(new Set(body.images.filter((u): u is string => typeof u === 'string' && !!u.trim()).map((u) => u.trim()))).slice(0, MAX_PHOTOS)
   const poss = str(body.possession_photo_url, 500)
   if (poss !== undefined) out.possession_photo_url = poss || null
   if (body.measurements !== undefined) out.measurements = normalizeMeasurements(body.measurements, cat)

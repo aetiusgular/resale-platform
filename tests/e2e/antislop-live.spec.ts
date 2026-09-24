@@ -54,7 +54,8 @@ async function submitListing(
       condition_score: 8,
       price_cents: 10000,
       possession_photo_url: `https://picsum.photos/seed/${Date.now()}/400/600`,
-      images: [],
+      // At least three public photos are required to post (lib/listings/images MIN_PHOTOS).
+      images: [1, 2, 3].map((i) => `https://picsum.photos/seed/${Date.now()}-${i}/400/600`),
       ...overrides,
     }),
   })
@@ -95,7 +96,10 @@ test.describe('@live — duplicate detection', () => {
     const possUrl = 'https://picsum.photos/seed/b3dupetest/400/600'
 
     // First submission
-    const res1 = await submitListing(token, { possession_photo_url: possUrl })
+    const res1 = await submitListing(token, {
+      possession_photo_url: possUrl,
+      images: [1, 2, 3].map((i) => `https://picsum.photos/seed/b3dupetest-${i}/400/600`),
+    })
     expect(res1.status).toBe(201)
     const { id: listingId1 } = await res1.json()
     expect(listingId1).toBeTruthy()
@@ -104,8 +108,8 @@ test.describe('@live — duplicate detection', () => {
     const res2 = await submitListing(token, {
       // Different seller would be needed for possession dedup — here same seller
       // so we test full duplicate detection path via near-hash match instead.
-      // Same image URLs trigger near-duplicate detection across slots.
-      images: [possUrl, possUrl, possUrl, possUrl, possUrl],
+      // Re-using the first post's photos triggers near-duplicate detection (slot-agnostic).
+      images: [1, 2, 3].map((i) => `https://picsum.photos/seed/b3dupetest-${i}/400/600`),
       possession_photo_url: possUrl,
     })
     // Either 400 (possession dedup) or 201 (flagged as duplicate) both indicate detection worked

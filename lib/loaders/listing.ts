@@ -5,13 +5,14 @@
  * Visibility is unchanged: active + sold listings are public; any other status is visible to the
  * seller and admins only (`null` → the page 404s, the route answers 404). The seller trust line
  * uses the service client because orders are only readable by their parties under RLS; nothing
- * user-specific leaks (counts only). Slot 5 of `images` is the POSSESSION proof photo — the DTO
- * exposes it only to the seller/admin.
+ * user-specific leaks (counts only). `images` is the seller's ordered public photos (up to 15);
+ * the possession proof is a separate URL the DTO exposes only to the seller/admin.
  */
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { createServiceClientRaw } from '@/lib/supabase/service'
 import { formatCents } from '@/lib/fees'
 import { floorShippingCents } from '@/lib/shipping'
+import { publicImages } from '@/lib/listings/images'
 import { cleanIntlShipping, regionsForOrigin, REGION_LABELS, type IntlShipping } from '@/lib/shipping-regions'
 import { countryName } from '@/lib/countries'
 import { BOOSTED_POSTS_ENABLED, BUMP_ENABLED, AUTH_BADGE_ENABLED, FOLLOWS_ENABLED } from '@/lib/flags'
@@ -103,9 +104,9 @@ export type ListingDetail = {
     saves_count: number
     view_count: number
     is_price_dropped: boolean
-    /** Public photo slots (0–4). */
+    /** The seller's ordered public photos (up to 15; the first is the cover). */
     images: string[]
-    /** Slot 5 / possession proof — seller and admin only, otherwise null. */
+    /** Possession proof — seller and admin only, otherwise null. */
     possession_photo_url: string | null
     status: string
     status_word: string
@@ -215,7 +216,7 @@ export async function loadListingDetail(opts: {
     verdict: listing.authentication_status === 'authenticated' ? 'LEGIT' : listing.authentication_status === 'rejected' ? 'NOT LEGIT' : 'PENDING',
   }
 
-  const allImages: string[] = Array.isArray(listing.images) ? listing.images : []
+  const allImages: string[] = publicImages(listing.images, listing.possession_photo_url)
   const seller = listing.profiles
   const sellerHandle = seller?.username ?? '—'
   const sellerInitials = sellerHandle.slice(0, 2).toUpperCase()
@@ -265,8 +266,8 @@ export async function loadListingDetail(opts: {
       saves_count: listing.saves_count ?? 0,
       view_count: listing.view_count ?? 0,
       is_price_dropped: listing.is_price_dropped,
-      images: allImages.slice(0, 5),
-      possession_photo_url: privileged ? (listing.possession_photo_url ?? allImages[5] ?? null) : null,
+      images: allImages,
+      possession_photo_url: privileged ? (listing.possession_photo_url ?? null) : null,
       status: listing.status,
       status_word: statusWord,
       rejection_reason: isSeller ? (listing.rejection_reason ?? null) : null,

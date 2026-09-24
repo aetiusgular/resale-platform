@@ -1818,6 +1818,7 @@ a.btn-primary--inline { display: inline-flex; }
 .admin-item__body + .admin-item__body { border-top: 1px solid var(--line-row); }
 .admin-item__foot { padding: 12px 16px; border-top: 1px solid var(--line); }
 .admin-photos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.admin-photos + .admin-photos { margin-top: 12px; }
 .admin-photo { position: relative; aspect-ratio: 3 / 4; border: 1px solid var(--line); overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--tone-2); }
 .admin-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .admin-photo--dim img { opacity: 0.8; }

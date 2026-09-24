@@ -34,7 +34,7 @@ test.describe('API /api/listings — unauthenticated', () => {
         condition_score: 8,
         price_cents: 10000,
         possession_photo_url: 'https://example.com/photo.jpg',
-        images: [],
+        images: ['https://example.com/1.jpg', 'https://example.com/2.jpg', 'https://example.com/3.jpg'],
       },
     })
     expect(res.status()).toBe(401)

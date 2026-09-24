@@ -12,8 +12,8 @@
  * published listing: copy, price, measurements, taxonomy and shipping regions are editable,
  * photos are locked (hashed at publish time).
  *
- * Photos are free-ordered (./sell-photos): up to 5, the first is the cover. No condition
- * grade and no possession photo: the design dropped both.
+ * Photos are free-ordered (./sell-photos): up to MAX_PHOTOS, at least MIN_PHOTOS to publish,
+ * the first is the cover. No condition grade and no possession photo: the design dropped both.
  *
  * Fee math comes from lib/fees (sellerFeeBreakdown) — the same helpers checkout charges with.
  * US shipping is automatic (lib/shipping); international regions are the seller's
@@ -38,8 +38,7 @@ import SellShipping, { regionDraftsFrom, intlFromDrafts, regionMissingPrice, typ
 export type { ListingInitial } from '@/lib/loaders/sell'
 import type { ListingInitial } from '@/lib/loaders/sell'
 
-/** Public photo slots on a listing (images[0..4]; the first is the cover). */
-export const MAX_PHOTOS = 5
+import { MAX_PHOTOS, MIN_PHOTOS } from '@/lib/listings/images'
 
 interface SellFormProps {
   userId: string
@@ -233,7 +232,7 @@ export default function SellForm({ userId, sellerBps, welcomeSalesRemaining = 0,
 
   async function publish() {
     setSubmitError('')
-    if (photos.length === 0) { setSubmitError('Add at least one photo.'); return }
+    if (photos.length < MIN_PHOTOS) { setSubmitError(`Add at least ${MIN_PHOTOS} photos.`); return }
     if (!title.trim()) { setSubmitError('Title is required.'); return }
     if (!brand.trim()) { setSubmitError('Brand is required.'); return }
     if (!category) { setSubmitError('Category is required.'); return }

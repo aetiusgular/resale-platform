@@ -4,6 +4,7 @@
  * (tests/unit/seo-listing.test.ts).
  */
 import { formatCents } from '@/lib/fees'
+import { publicImages } from '@/lib/listings/images'
 import { absUrl, baseUrl, SITE_NAME } from '@/lib/seo'
 
 /**
@@ -26,15 +27,12 @@ export function schemaCondition(score: number | null | undefined): string {
 }
 
 /**
- * Public images for schema/OG: slots 0–4 (FRONT/BACK/TAG/DETAIL/FLAW), empty
- * slots dropped. Index 5 is the POSSESSION proof photo (lib/condition.ts
- * PHOTO_SLOTS) — never expose it to search or social surfaces.
+ * Public images for schema/OG: the seller's photos (lib/listings/images publicImages), never
+ * the possession proof — pass the listing's possession_photo_url so it is dropped even from a
+ * row the old six-slot form wrote.
  */
-export function schemaImages(images: unknown): string[] {
-  if (!Array.isArray(images)) return []
-  return images
-    .slice(0, 5)
-    .filter((u): u is string => typeof u === 'string' && u.length > 0)
+export function schemaImages(images: unknown, possessionUrl?: string | null): string[] {
+  return publicImages(images, possessionUrl)
 }
 
 /** '12345' cents → '123.45' (schema.org price string). */
@@ -70,6 +68,7 @@ type ProductListingInput = ListingMetaInput & {
   condition_score: number | null
   shipping_cents: number | null
   images: unknown
+  possession_photo_url?: string | null
   sellerUsername: string | null
 }
 
@@ -111,7 +110,7 @@ export function productJsonLd(l: ProductListingInput): object {
     '@type': 'Product',
     name: l.title,
     description: metaDescription(l),
-    image: schemaImages(l.images),
+    image: schemaImages(l.images, l.possession_photo_url),
     sku: l.id,
     brand: { '@type': 'Brand', name: l.brand },
     category: `${l.department} > ${l.category}`,

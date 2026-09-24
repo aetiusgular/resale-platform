@@ -5,7 +5,8 @@ Branch `feat/intl-shipping-sell-redesign`.
 ## What ships
 
 - **Sell page (redesign A).** One scroll, no step rail: photos, title, brand, category typeahead, size / color, description, measurements with a TOPS / BOTTOMS toggle, then PRICE + SHIPPING on the left with the take-home breakdown beside them, and a sticky YOU RECEIVE bar. Mobile stacks it all. `app/sell/sell-form.tsx`, `sell-photos.tsx`, `sell-category.tsx`, `sell-shipping.tsx`, `.sellx-*` in `app/globals.css`.
-  - **Photos:** up to 5 in the seller's order (drag to reorder; the first is the cover), at least one to publish. No fixed FRONT / BACK / TAG slots.
+  - **Photos:** up to 15 in the seller's order (drag to reorder; the first is the cover), at least 3 to publish (`MAX_PHOTOS` / `MIN_PHOTOS` in `lib/listings/images.ts`; `POST /api/listings` answers `400 too_few_photos` below the minimum). No fixed FRONT / BACK / TAG slots. `listings.images` is now only the public photos, in order; the possession proof lives only in `possession_photo_url`. Migration 000052 rewrites the old six-slot rows (blank slots dropped, the proof removed from the list). `image_hashes.slot` is `PHOTO_1` … `PHOTO_15` (+ `POSSESSION`); rows written by the old form keep their `FRONT` … `FLAW` names, and the near-duplicate scan is slot-agnostic, so both compare. Duplicate flags record `new_slot` next to `slot`, which the admin queue uses to mark the matching photo on each side.
+  - **Listing page gallery:** one slot per photo (the strip scrolls past ~8); alt text says cover / photo N / possession.
   - **Dropped:** the condition grade (1–10) and the possession proof photo. Both are optional in `POST /api/listings` and in the DB (`listings_published_complete_ck` in migration 000050); existing listings keep their values. The proof-photo dedup across sellers still runs when a possession photo is present, which the form never sends now. The near-duplicate scan compares every stored photo hash against every new one, since photos are no longer positional.
   - **Measurements:** garments are TOPS or BOTTOMS at the seller's choice (`lib/taxonomy` measurement kinds); footwear and accessories keep their own sets. Storage keys are unchanged (`PIT TO PIT`, `SHOULDER`); the UI prints CHEST and SHOULDERS.
 - **Fees** (`lib/fees.ts`):
@@ -33,7 +34,7 @@ Branch `feat/intl-shipping-sell-redesign`.
 
 ## Deploy order
 
-1. Apply `20240101000050_international_shipping.sql`, then `20240101000051_international_shipping_validate.sql`. The app reads the new columns, so the migrations go first.
+1. Apply `20240101000050_international_shipping.sql`, then `20240101000051_international_shipping_validate.sql`, then `20240101000052_images_without_possession.sql` (data fix: old six-slot photo rows become the plain photo list; the app's readers still tolerate the old shape until it runs). The app reads the new columns, so the migrations go first.
 2. Deploy the app.
 3. In the Stripe dashboard, enable cross-border payouts before non-US sellers onboard. Until then, Connect onboarding returns `country_unsupported` and Settings → Payouts explains why.
 

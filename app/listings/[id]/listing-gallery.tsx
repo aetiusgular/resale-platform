@@ -1,20 +1,17 @@
 'use client'
 
 /**
- * Listing gallery: a 3:4 stage flanked by boxed chevrons, an "n / N" counter, then a
- * hairline and an unlabeled thumb strip — one grid (`.pdp-gallery`), so the strip
- * shares the stage's width and both stay on the first screen. The current thumb
- * carries an ink underline. Slot names (FRONT / BACK / TAG / DETAIL / FLAW /
- * POSSESSION) live in alt text and aria-labels only.
+ * Listing gallery: a 3:4 stage with a thumb rail (`.pdp-gallery` grid), boxed chevrons
+ * and an "n / N" counter. The current thumb carries an ink underline. Photos are the
+ * seller's ordered public photos — the first is the cover — with no per-slot names;
+ * alt text and aria-labels say "cover" / "photo 2" / "possession".
  *
- * The carousel is ALWAYS shown: every slot renders (five public, six for the
- * seller/admin), and empty slots are tone placeholders — a sparse or seed listing
- * still gets the strip, the chevrons and the counter. The slot count grows past the
- * base set when a post carries more photos (up to 15); the thumb strip is fixed
- * pitch, so five fill the stage width and beyond five it scrolls left↔right inside
- * that same width (never exceeding the displayed image), keeping the active thumb in
- * view. page.tsx sends non-seller viewers only the public photos, so the
- * proof-of-possession photo never reaches a buyer here.
+ * Every photo renders as a slot (up to 15 public ones, plus the seller's possession proof
+ * for the seller/admin view). A listing with no photos at all (a seed row) still gets one
+ * tone placeholder so the stage, the counter and the chevrons render. The rail is fixed
+ * pitch and scrolls inside the stage height past ~8 thumbs, keeping the active thumb in
+ * view. page.tsx sends non-seller viewers only the public photos, so the proof-of-
+ * possession photo never reaches a buyer here.
  *
  * Pressing the displayed photo opens a full-screen viewer (`.pdp-lightbox`, a --bg
  * takeover with an X, edge chevrons and a counter) on both mobile and desktop.
@@ -22,37 +19,40 @@
  * field); in the viewer they page and Escape closes it.
  *
  * ≤960px the stage becomes one swipeable scroll-snap track with the counter top-left
- * and the save bookmark top-right (`saveSlot`); the chevrons and thumb strip hide
- * there and the dots on the stage become the position marker. >960px shows the strip.
+ * and the save bookmark top-right (`saveSlot`); the chevrons and thumb rail hide
+ * there and the dots on the stage become the position marker. >960px shows the rail.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from '@/app/components/icons'
+import { MAX_PHOTOS, photoLabel } from '@/lib/listings/images'
 
-const SLOT_LABELS = ['FRONT', 'BACK', 'TAG', 'DETAIL', 'FLAW', 'POSSESSION']
-/** A post may carry up to 15 public photos (+ the seller's possession slot). */
-const MAX_SLOTS = 16
+/** Up to MAX_PHOTOS public photos, plus the seller's possession proof. */
+const MAX_SLOTS = MAX_PHOTOS + 1
 
-export default function ListingGallery({ images, title, showPossession, saveSlot, legitSlot }: {
+export default function ListingGallery({ images, title, possession, saveSlot, legitSlot }: {
+  /** The seller's public photos in order; the first is the cover. */
   images: string[]
   title: string
-  showPossession: boolean
+  /** Proof-of-possession photo — only ever passed for the seller/admin view. */
+  possession?: string | null
   /** Mobile-only save control, placed top-right on the stage. */
   saveSlot?: ReactNode
   /** Legit-check badge, placed top-left on the stage (desktop). */
   legitSlot?: ReactNode
 }) {
-  // Always at least the base slots (empty ones are tone placeholders), grown to the
-  // photo count when a post carries more — never collapsed to the filled photos, so a
-  // sparse or seed listing keeps its full carousel.
-  const baseSlots = showPossession ? 6 : 5
-  const n = Math.min(MAX_SLOTS, Math.max(baseSlots, images.length))
-  const slots: Array<string | null> = Array.from({ length: n }, (_, i) => images[i] || null)
+  // One slot per photo; a listing with none still gets a single tone placeholder so the
+  // stage renders. The possession proof, when shown, is the last slot.
+  const photos = images.slice(0, MAX_PHOTOS)
+  const all: string[] = possession ? [...photos, possession] : photos
+  const n = Math.min(MAX_SLOTS, Math.max(1, all.length))
+  const slots: Array<string | null> = Array.from({ length: n }, (_, i) => all[i] || null)
+  const possessionAt = possession ? all.length - 1 : -1
   const [slot, setSlot] = useState(0)
   const [zoom, setZoom] = useState(false)
   const cur = Math.min(slot, n - 1)
   const tone = (i: number) => `var(--tone-${(i % 8) + 1})`
-  const labelFor = (i: number) => (i < SLOT_LABELS.length ? SLOT_LABELS[i].toLowerCase() : `photo ${i + 1}`)
+  const labelFor = (i: number) => (i === possessionAt ? 'possession' : photoLabel(i))
   const trackRef = useRef<HTMLDivElement | null>(null)
   const thumbsRef = useRef<HTMLDivElement | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)

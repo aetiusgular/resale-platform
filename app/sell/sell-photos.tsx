@@ -2,13 +2,19 @@
 
 /**
  * PHOTOS grid on the listing form (sell page redesign A): up to `max` photos in the
- * seller's own order, the first one is the cover, empty cells are dashed "+" targets.
+ * seller's own order, the first one is the cover, empty cells are dashed "+" targets. Only
+ * enough empty cells to complete the current row are shown (a full row when the row is
+ * complete), so a 15-photo cap never paints three rows of dashes on an empty form.
  * Drag a photo onto another cell to reorder (pointer events, so mouse and touch both
  * work; ← → on a focused photo does the same from the keyboard). Photos are locked once a
  * listing is live.
  */
 import { useRef, useState } from 'react'
 import { PlusIcon, XIcon } from '@/app/components/icons'
+import { useCompact } from '@/app/components/use-compact'
+
+/** Grid columns (globals.css .sellx-photos): 5 on desktop, 3 at ≤720px. */
+const COLS = { desktop: 5, compact: 3 }
 
 interface Props {
   photos: string[]
@@ -27,6 +33,7 @@ export default function SellPhotos({ photos, max, locked, onChange, upload }: Pr
   const [drag, setDrag] = useState<Drag | null>(null)
   const [pending, setPending] = useState(0)
   const [error, setError] = useState('')
+  const cols = useCompact() ? COLS.compact : COLS.desktop
 
   const move = (from: number, to: number) => {
     if (from === to || to < 0 || to >= photos.length) return
@@ -82,7 +89,10 @@ export default function SellPhotos({ photos, max, locked, onChange, upload }: Pr
     setDrag(null)
   }
 
-  const empty = Math.max(0, max - photos.length - pending)
+  // Dashed cells fill out the row; a complete row gets a whole new row of them.
+  const filled = photos.length + pending
+  const room = Math.max(0, max - filled)
+  const empty = Math.min(room, cols - (filled % cols))
 
   return (
     <>

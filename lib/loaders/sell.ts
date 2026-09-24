@@ -17,6 +17,7 @@ import { sellerMustVerify } from '@/lib/idv/risk-resolver'
 import { normalizeMeasurements } from '@/lib/taxonomy'
 import { cleanIntlShipping, type IntlShipping } from '@/lib/shipping-regions'
 import { sellerOrigin } from '@/lib/listings/origin'
+import { publicImages } from '@/lib/listings/images'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any>
@@ -104,7 +105,7 @@ export async function loadSellCatalog(opts: { supabase: Client; user: User }): P
 
   const now = Date.now()
   const listings: SellerListing[] = all.map((r) => {
-    const images: string[] = Array.isArray(r.images) ? r.images.filter(Boolean) : []
+    const images: string[] = publicImages(r.images, r.possession_photo_url)
     const photoCount = images.length
     const payout = payoutMap.get(r.id)
     return {
@@ -116,7 +117,7 @@ export async function loadSellCatalog(opts: { supabase: Client; user: User }): P
       price_display: r.price_cents ? formatCents(r.price_cents) : '$ —',
       status: r.status,
       image: images[0] ?? null,
-      photo_count: Math.min(5, photoCount),
+      photo_count: photoCount,
       created_at: r.created_at,
       updated_at: r.updated_at,
       saves_count: r.saves_count ?? 0,
@@ -246,7 +247,7 @@ export async function loadSellNew(opts: { supabase: Client; user: User; draft?: 
         description: row.description ?? null,
         condition_score: row.condition_score ?? null,
         price_cents: row.price_cents ?? null,
-        images: Array.isArray(row.images) ? row.images : [],
+        images: publicImages(row.images, row.possession_photo_url),
         possession_photo_url: row.possession_photo_url ?? null,
         measurements: normalizeMeasurements(row.measurements, row.category),
         intl_shipping: cleanIntlShipping(row.intl_shipping, rowOrigin),

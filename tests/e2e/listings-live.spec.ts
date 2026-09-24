@@ -95,7 +95,7 @@ test.describe('@live Listings flow', () => {
         condition_score: 8,
         condition_notes: { damage: [], notes: {} },
         price_cents: 10000,
-        images: ['https://example.com/f.jpg', '', '', '', '', 'https://example.com/p.jpg'],
+        images: ['https://example.com/1.jpg', 'https://example.com/2.jpg', 'https://example.com/3.jpg'],
         possession_photo_url: 'https://example.com/p.jpg',
       },
     })
@@ -192,7 +192,7 @@ test.describe('@live Listings flow', () => {
         condition_score: 5,
         condition_notes: {},
         price_cents: 5000,
-        images: ['https://example.com/f.jpg', '', '', '', '', 'https://example.com/p.jpg'],
+        images: ['https://example.com/1.jpg', 'https://example.com/2.jpg', 'https://example.com/3.jpg'],
         possession_photo_url: 'https://example.com/p.jpg',
       },
     })

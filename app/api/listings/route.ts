@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { lintListing } from '@/lib/antislop-lint'
 import { ANTISLOP } from '@/lib/antislop-config'
-import { hashAllSlots } from '@/lib/image-hash'
+import { hashAllSlots, POSSESSION_SLOT } from '@/lib/image-hash'
+import { MAX_PHOTOS, MIN_PHOTOS } from '@/lib/listings/images'
 import { hammingDistance } from '@/lib/phash'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { VERIFICATION_ENABLED, AUTH_BADGE_ENABLED } from '@/lib/flags'
@@ -92,14 +93,20 @@ export async function POST(request: NextRequest) {
   } = body
 
   // ── Basic validation ───────────────────────────────────────────────────────
-  // Photos: up to 5, in the seller's order (the first is the cover), at least one.
-  // Condition grade and the possession photo are optional (the listing form no longer
-  // asks for them); when a possession photo is sent it is still deduped across sellers.
+  // Photos: up to MAX_PHOTOS in the seller's order (the first is the cover), at least
+  // MIN_PHOTOS. Condition grade and the possession photo are optional (the listing form no
+  // longer asks for them); when a possession photo is sent it is still deduped across sellers.
+  const possessionClean: string | null = typeof possession_photo_url === 'string' && possession_photo_url.trim() ? possession_photo_url.trim() : null
+  // The proof is never a public photo, even when an old client repeats it inside `images`.
   const imageArr: string[] = Array.isArray(images)
-    ? images.filter((u): u is string => typeof u === 'string' && !!u.trim()).map((u) => u.trim()).slice(0, 5)
+    ? Array.from(new Set(
+        images
+          .filter((u): u is string => typeof u === 'string' && !!u.trim())
+          .map((u) => u.trim())
+          .filter((u) => u !== possessionClean),
+      )).slice(0, MAX_PHOTOS)
     : []
   const conditionClean: number | null = typeof condition_score === 'number' && Number.isInteger(condition_score) ? condition_score : null
-  const possessionClean: string | null = typeof possession_photo_url === 'string' && possession_photo_url.trim() ? possession_photo_url.trim() : null
   if (
     typeof title !== 'string' || !title.trim() ||
     typeof brand !== 'string' || !brand.trim() ||
@@ -112,8 +119,8 @@ export async function POST(request: NextRequest) {
   ) {
     return NextResponse.json({ error: 'Invalid listing data' }, { status: 400 })
   }
-  if (imageArr.length === 0) {
-    return NextResponse.json({ error: 'Add at least one photo.', code: 'no_photos' }, { status: 400 })
+  if (imageArr.length < MIN_PHOTOS) {
+    return NextResponse.json({ error: `Add at least ${MIN_PHOTOS} photos.`, code: 'too_few_photos' }, { status: 400 })
   }
 
   // ── Taxonomy (lib/taxonomy): department, category tree, colour, measurements ──
@@ -205,7 +212,7 @@ export async function POST(request: NextRequest) {
   const service = await createServiceClient()
 
   // ── Possession-photo dedup: reject if exact match from a DIFFERENT seller ─
-  const possessionHash = slotHashes['POSSESSION']
+  const possessionHash = slotHashes[POSSESSION_SLOT]
   if (possessionHash) {
     const { data: existingPoss } = await service
       .from('image_hashes')
@@ -213,7 +220,7 @@ export async function POST(request: NextRequest) {
         listing_id,
         listing:listing_id (seller_id, status)
       `)
-      .eq('slot', 'POSSESSION')
+      .eq('slot', POSSESSION_SLOT)
       .eq('hash', possessionHash)
       .limit(10)
 
@@ -361,22 +368,26 @@ export async function POST(request: NextRequest) {
       // only the one at the same position.
       const byListing = new Map<
         string,
-        { slot: string; distance: number }[]
+        { slot: string; new_slot: string; distance: number }[]
       >()
-      const newHashes = Object.values(slotHashes).filter((h): h is string => typeof h === 'string')
+      const newHashes = Object.entries(slotHashes)
 
       for (const row of existingHashes ?? []) {
         const r = row as { listing_id: string; slot: string; hash: string }
         let dist = Number.POSITIVE_INFINITY
-        for (const h of newHashes) dist = Math.min(dist, hammingDistance(h, r.hash))
+        let newSlot = ''
+        for (const [slot, h] of newHashes) {
+          const d = hammingDistance(h, r.hash)
+          if (d < dist) { dist = d; newSlot = slot }
+        }
         if (dist <= ANTISLOP.DUPLICATE_DISTANCE_THRESHOLD) {
           if (!byListing.has(r.listing_id)) byListing.set(r.listing_id, [])
-          byListing.get(r.listing_id)!.push({ slot: r.slot, distance: dist })
+          byListing.get(r.listing_id)!.push({ slot: r.slot, new_slot: newSlot, distance: dist })
         }
       }
 
       // Listings with >= MIN_SLOT_MATCHES close matches are duplicate suspects
-      const duplicates: { listing_id: string; matches: { slot: string; distance: number }[] }[] = []
+      const duplicates: { listing_id: string; matches: { slot: string; new_slot: string; distance: number }[] }[] = []
       for (const [lid, matches] of byListing) {
         if (matches.length >= ANTISLOP.DUPLICATE_MIN_SLOT_MATCHES) {
           duplicates.push({ listing_id: lid, matches })
@@ -392,7 +403,7 @@ export async function POST(request: NextRequest) {
             evidence: {
               matched_listing_ids: duplicates.map(d => d.listing_id),
               per_slot_distances: duplicates.flatMap(d =>
-                d.matches.map(m => ({ listing_id: d.listing_id, slot: m.slot, distance: m.distance }))
+                d.matches.map(m => ({ listing_id: d.listing_id, slot: m.slot, new_slot: m.new_slot, distance: m.distance }))
               ),
             },
           })
