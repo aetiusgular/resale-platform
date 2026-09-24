@@ -39,7 +39,19 @@ until someone completes `/settings/payouts` for that account. Kenji's listings 4
 ## What to look at, logged in as `@e2e_buyer`
 
 **Browse / listing pages** — 25 new real-photo listings on `/browse` next to the 29 `[SEED]`
-fixtures (Ann Demeulemeester is boosted and pinned first; the tester's own items carry YOURS). Hero gallery: the PAF
+fixtures (Ann Demeulemeester is boosted and pinned first; the tester's own items carry YOURS).
+
+**Long copy** — five listings carry long descriptions on purpose, to test the PDP clamp
+(8 lines desktop / 6 mobile) and the READ FULL DESCRIPTION → reading pane: the PAF
+Reversible Curved Jacket is a 549-word, 2,900-character seller wall in six paragraphs (far
+past the sell form's 1,000-character cap, which the DB does not enforce); the Rick Owens
+puffer is one unbroken 996-character paragraph, right at the cap; the Kozaburo trucker is
+the ~140-word "medium" case with two line breaks; the Helmut Lang bomber is list-style copy
+with 21 line breaks and an unbroken 70-character style code (wrap/overflow check); the sold
+TheSoloist bomber has 165 words on a SOLD page. The Ann Demeulemeester listing has a
+109-character title (form cap 120) for card, inbox-row and order-row truncation. Editing the
+PAF jacket through the sell form will truncate its description to 1,000 characters on save;
+that is the form's limit, not a bug in the seed. Hero gallery: the PAF
 Reversible Curved Jacket (7 photos, $420 → $380 → $340 price history, 4 saves, 212 views).
 `/listings/<id>` for the white Undercover PIL shirt shows an authenticated Legit Check
 thread (pinned moderator verdict, auto-auth pass, 4 legit votes); the Rick Owens Geth
