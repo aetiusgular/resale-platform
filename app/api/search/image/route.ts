@@ -142,14 +142,20 @@ export async function POST(req: NextRequest) {
 
     const merged = mergeVisualResults({ hashHits, engine, exactHamming: VISUAL_SEARCH_EXACT_HAMMING })
     const cards = await hydrate(service, [...merged.exact, ...merged.match, ...merged.close], user?.id ?? null)
+    const exact = attach(merged.exact, cards)
+    const match = attach(merged.match, cards)
+    const close = attach(merged.close, cards)
 
     return NextResponse.json({
-      listed: merged.listed,
+      // `listed` describes what the response carries: a hit that hydration dropped (pending
+      // review, sold since indexing, no public photo) must not leave the UI saying "listed"
+      // over an empty tier.
+      listed: exact.length + match.length > 0,
       category: merged.category,
       engine: merged.engine,
-      exact: attach(merged.exact, cards),
-      match: attach(merged.match, cards),
-      close: attach(merged.close, cards),
+      exact,
+      match,
+      close,
     })
   })
 }

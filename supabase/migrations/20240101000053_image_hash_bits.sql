@@ -15,6 +15,18 @@
 
 CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 
+-- pgvector < 0.7.0 has no bit type support (bit_hamming_ops), so the index below would fail
+-- with an opaque "operator class does not exist". Fail first, with the fix in the message.
+-- (Supabase: Database → Extensions → vector, or a Postgres image upgrade, then re-run.)
+DO $$
+DECLARE
+  v text := (SELECT extversion FROM pg_extension WHERE extname = 'vector');
+BEGIN
+  IF v ~ '^\d+\.\d+\.\d+$' AND string_to_array(v, '.')::int[] < ARRAY[0, 7, 0] THEN
+    RAISE EXCEPTION 'image_hash_bits needs pgvector >= 0.7.0 (installed: %). Upgrade the vector extension, then re-run this migration.', v;
+  END IF;
+END $$;
+
 -- ─── 1. Derived bit column (NULL when a legacy row is not a 64-hex blockhash) ───────────
 -- The cast accepts the 'x' hex prefix; the regex guard keeps a malformed legacy value from
 -- failing the whole migration. NULL rows are simply absent from the index and from results.
@@ -58,9 +70,18 @@ BEGIN
     RAISE EXCEPTION 'query_hex must be 64 lowercase hex characters' USING ERRCODE = '22023';
   END IF;
   q := ('x' || query_hex)::bit(256);
+  -- pgvector defines its hnsw.* settings when its library loads into the backend, which
+  -- happens on the first vector operator, not at CREATE EXTENSION. Load it now so the
+  -- settings exist (and the "hnsw" prefix is reserved) before they are read or written.
+  PERFORM q <~> q;
   -- Widen the HNSW candidate set: the join/status filter is applied AFTER the index scan.
   PERFORM set_config('hnsw.ef_search', '200', true);
-  PERFORM set_config('hnsw.iterative_scan', 'relaxed_order', true);
+  -- hnsw.iterative_scan exists from pgvector 0.8. On 0.7 the prefix is reserved and setting
+  -- an unknown name under it raises, so only set it when this backend knows the setting.
+  -- Without it 0.7 still works; the filter can just eat more of the ef_search candidates.
+  IF current_setting('hnsw.iterative_scan', true) IS NOT NULL THEN
+    PERFORM set_config('hnsw.iterative_scan', 'relaxed_order', true);
+  END IF;
   RETURN QUERY
     SELECT c.listing_id, c.slot, c.distance
     FROM (

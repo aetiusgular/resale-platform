@@ -6,8 +6,10 @@
  * The uploaded bytes are held in memory for one request: hashed here, forwarded to the
  * engine, then dropped. Nothing in this module writes to disk or storage.
  */
-import { blockhash16 } from '@/lib/phash'
 import type { AcceptedImageType } from './config'
+
+/** Decompression-bomb guard for query uploads: far above any phone photo, far below sharp's default. */
+const QUERY_MAX_PIXELS = 40_000_000
 
 /** Sniff the container from magic bytes (the client's Content-Type is a hint, not a fact). */
 export function sniffImageType(buf: Uint8Array): AcceptedImageType | null {
@@ -35,21 +37,12 @@ export function isBlockhashHex(value: string): boolean {
 }
 
 /**
- * 16x16 blockhash of an in-memory image: the same pipeline as `lib/image-hash.ts`, which hashes
- * listing photos by URL at publish time, so a re-uploaded listing photo lands at distance ~0.
- * Node runtime only (sharp is a native module). Null when the bytes do not decode.
+ * 16x16 blockhash of an in-memory query image through the SAME pipeline that hashed the
+ * listing photos at publish time (`lib/image-hash.ts`), so a re-uploaded listing photo lands
+ * at distance ~0. Node runtime only (sharp is a native module). Null when the bytes do not
+ * decode or declare more than QUERY_MAX_PIXELS.
  */
 export async function blockhashFromBuffer(buf: Buffer): Promise<string | null> {
-  try {
-    const sharp = (await import('sharp')).default
-    const { data } = await sharp(buf, { limitInputPixels: 40_000_000 })
-      .rotate() // honour EXIF orientation so a phone photo hashes the way it is displayed
-      .resize(16, 16, { fit: 'fill' })
-      .grayscale()
-      .raw()
-      .toBuffer({ resolveWithObject: true })
-    return blockhash16(new Uint8Array(data))
-  } catch {
-    return null
-  }
+  const { blockhashFromBuffer: hash } = await import('@/lib/image-hash')
+  return hash(buf, { limitInputPixels: QUERY_MAX_PIXELS })
 }

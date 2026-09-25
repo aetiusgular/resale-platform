@@ -17,6 +17,30 @@ function isSafeImageUrl(url: string): boolean {
 }
 
 /**
+ * 16x16 blockhash of in-memory image bytes. THE ONE pipeline: listing photos are hashed
+ * through it at publish time and visual-search queries at search time, so the same bytes
+ * always land at Hamming distance 0. `.rotate()` applies EXIF orientation first, so a photo
+ * hashes the way browsers display it (a no-op for the EXIF-free JPEGs the sell form emits).
+ * Returns null when the bytes do not decode. Node runtime only (sharp).
+ */
+export async function blockhashFromBuffer(
+  buffer: Buffer,
+  opts: { limitInputPixels?: number } = {},
+): Promise<string | null> {
+  try {
+    const { data } = await sharp(buffer, opts.limitInputPixels ? { limitInputPixels: opts.limitInputPixels } : {})
+      .rotate()
+      .resize(16, 16, { fit: 'fill' })
+      .grayscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    return blockhash16(new Uint8Array(data))
+  } catch {
+    return null
+  }
+}
+
+/**
  * Fetch a public Supabase Storage image URL and compute its 16x16 blockhash.
  * Returns null if the URL is empty, unsafe, unreachable, or processing fails.
  * Only accepts HTTPS URLs from the project's Supabase storage domain (SSRF guard).
@@ -37,15 +61,7 @@ export async function hashImageUrl(url: string): Promise<string | null> {
       console.warn('[image-hash] fetch failed:', res.status, url.slice(0, 80))
       return null
     }
-
-    const buffer = Buffer.from(await res.arrayBuffer())
-    const { data } = await sharp(buffer)
-      .resize(16, 16, { fit: 'fill' })
-      .grayscale()
-      .raw()
-      .toBuffer({ resolveWithObject: true })
-
-    return blockhash16(new Uint8Array(data))
+    return await blockhashFromBuffer(Buffer.from(await res.arrayBuffer()))
   } catch {
     return null
   }

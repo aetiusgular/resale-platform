@@ -1,5 +1,5 @@
 # HANDOFF.md
-## Current state: VS1 (visual search P1) BUILT on `feat/visual-search` · container verify green · db-guard + code-reviewer pending · M1a merged earlier
+## Current state: VS1 (visual search P1) BUILT on `feat/visual-search` · native `pnpm verify` + `pnpm build` green · db-guard + code-reviewer pending · M1a merged earlier
 
 **Last updated:** 2026-09-24
 **Next prompt:** merge `feat/mobile-api` after the founder's own review, apply migration 0046
@@ -21,7 +21,10 @@ STORED generated from `hash` (NULL for a legacy non-hex row) + HNSW `bit_hamming
 `similar_image_hashes(query_hex, max_distance, max_rows, exclude_listing, exclude_seller)` SECURITY DEFINER,
 `service_role` EXECUTE only, live listings (`active`, `pending_review`) only. Verified on a local Postgres 16
 with pgvector 0.8.1 (planner uses the index; anon denied). Needs **db-guard + `pnpm exec supabase db push`**
-(founder, native). Supabase's pgvector must be >= 0.7 for bit vectors (it ships 0.8.x).
+(founder, native). pgvector >= 0.7 is required (bit vectors); the migration raises a clear error below that.
+`hnsw.iterative_scan` exists from 0.8 only and the `hnsw` prefix is reserved, so the RPC loads pgvector into
+the backend first (`PERFORM q <~> q`; the GUCs do not exist until the library loads) and sets iterative scan
+only when `current_setting('hnsw.iterative_scan', true)` is not null. On 0.7 it runs with `ef_search` alone.
 
 **Route `POST /api/search/image`** (`app/api/search/image/route.ts`, Node runtime, `respond`/`ApiError`
 contract): raw JPEG/PNG/WebP body (<= 5 MB, magic-byte sniffed) → blockhash via sharp → `similar_image_hashes`
@@ -30,17 +33,24 @@ BrowseListing cards (active + public photo only) → `{ listed, category, engine
 JSON `{ listing_id, photo_index }` = "search with this listing's photo" (stored hash + indexed vector, no
 upload). Guests allowed (`VISUAL_SEARCH_GUESTS`, default true), `enforceRateLimit` 20/min by user id or IP,
 404 when `VISUAL_SEARCH_ENABLED` is off, fail-soft to the hash tier when the engine is unreachable
-(`engine: 'unavailable'`). The image bytes are never stored or logged.
+(`engine: 'unavailable'`). The image bytes are never stored or logged. `listed` is computed from the tiers
+the response carries (after hydration), so a hit on a pending-review or photo-less listing never yields
+"listed" over an empty tier.
 
 **Lib** `lib/visual-search/{config,image,client,merge}.ts` (merge + sniffing are pure and unit-tested).
+ONE blockhash pipeline: `lib/image-hash.ts#blockhashFromBuffer` (sharp: EXIF `.rotate()` → 16x16 → grayscale →
+blockhash) hashes listing photos at publish time and query uploads at search time
+(`tests/unit/image-hash.test.ts` pins the parity and the orientation handling). The engine applies EXIF
+orientation the same way on both its paths (`recs.embedding.preprocess._upright`).
 **Near-dup detection** in `app/api/listings/route.ts` now calls `similar_image_hashes` per new hash instead
 of scanning 5,000 `image_hashes` rows (same thresholds and `listing_flags` evidence; the antislop TODO is
 closed). **Contract:** `/api/search/image` + `VisualSearchHit`/`VisualSearchResponse` in `docs/api/openapi.yaml`.
 **Flags/env:** `VISUAL_SEARCH_ENABLED`, `NEXT_PUBLIC_VISUAL_SEARCH_ENABLED`, `VISUAL_SEARCH_GUESTS` in
 `lib/flags.ts` / `.env.example`; the engine URL + token reuse `RECS_FEED_URL` / `RECS_FEED_API_TOKEN`.
 
-**Gate (container copy of `main` 57ffd05 + this branch):** tsc clean · `eslint .` clean · vitest 52 files /
-541 tests (19 new). `pnpm build` not run here (founder, native, dev server stopped).
+**Gate:** native (founder's Mac) `pnpm verify` green and `pnpm build` green (59 pages, `/api/search/image` in the
+route table) at 541 tests; the hardening commit after that adds 4 tests (container: tsc clean · `eslint .`
+clean · vitest 53 files / 545 tests) and needs one more native `pnpm verify && pnpm build`.
 
 **Next:** db-guard + push 0053 · code-reviewer on the route (new public upload surface) and the RPC · merge
 after the founder review · VS2 (UI: camera control in the header search, `/search/image` results page,

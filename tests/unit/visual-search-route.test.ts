@@ -179,6 +179,23 @@ describe('POST /api/search/image', () => {
     const body = await (await POST(upload(JPEG))).json()
     expect(body.exact[0].listing.own).toBe(true)
     expect(body.match).toEqual([])
+    expect(body.listed).toBe(true)
+  })
+
+  it('reports listed from the hydrated tiers, not from hits hydration dropped', async () => {
+    // Engine + hash both say "exact", but the listing is pending review (RPC includes it for
+    // near-dup detection; search shows active only) → no card → the response must not say listed.
+    rpc.mockResolvedValueOnce({ data: [{ listing_id: A, slot: 'PHOTO_1', distance: 0 }], error: null })
+    engineByImage.mockResolvedValueOnce({
+      listed: true, query_category: null,
+      results: [{ listing_id: A, photo_index: 0, score: 0.99, tier: 'exact' }, { listing_id: B, photo_index: 0, score: 0.5, tier: 'close' }],
+      counts: { exact: 1, match: 0, close: 1 }, thresholds: { exact_cos: 0.93, match_cos: 0.8 },
+    })
+    listingRows([{ id: A, images: [IMG(A, 1)], status: 'pending_review' }, { id: B, images: [IMG(B, 1)] }])
+    const body = await (await POST(upload(JPEG))).json()
+    expect(body.listed).toBe(false)
+    expect(body.exact).toEqual([])
+    expect(body.close.map((h: { listing_id: string }) => h.listing_id)).toEqual([B])
   })
 
   it('listing-photo mode uses the stored hash and excludes the source listing', async () => {
