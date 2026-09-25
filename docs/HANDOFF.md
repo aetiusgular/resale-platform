@@ -1,12 +1,52 @@
 # HANDOFF.md
-## Current state: M1a (mobile API contract) BUILT on `feat/mobile-api` · native verify/build/verify:ui green · reviewer gates passed · PR to `main` pending
+## Current state: VS1 (visual search P1) BUILT on `feat/visual-search` · container verify green · db-guard + code-reviewer pending · M1a merged earlier
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-24
 **Next prompt:** merge `feat/mobile-api` after the founder's own review, apply migration 0046
 (`pnpm exec supabase db push` — db-guard PASS recorded below), then run
 `docs/prompts/M1_mobile_api_ios_foundation.md` **Part B** in the new repo `~/Projects/archive-ios`
 (`aetiusgular/archive-ios`). Part B needs Xcode 26 installed on the Mac for `xcodebuild`; the
 `Packages/ArchiveCore` package builds with Command Line Tools alone.
+
+---
+
+## VS1 — Visual search P1: hash index + `POST /api/search/image` (2026-09-24, branch `feat/visual-search`)
+
+Plan: `~/Documents/Claude/Projects/agora/VISUAL_SEARCH_ANALYSIS.md` (build-vs-buy), `VISUAL_SEARCH_ROADMAP.md`,
+`VISUAL_SEARCH_BUILD_PROMPTS.md` (V1 engine, P1 platform, P2 UI, P3a/P3b). Engine half is on recs-engine
+`feat/visual-search` (5 commits after `955e8e7`): `photos` collection, worker fan-out, `POST /v1/search/image`.
+
+**Migration 0053 `image_hash_bits`.** pgvector (`extensions` schema) + `image_hashes.hash_bits bit(256)`
+STORED generated from `hash` (NULL for a legacy non-hex row) + HNSW `bit_hamming_ops` index +
+`similar_image_hashes(query_hex, max_distance, max_rows, exclude_listing, exclude_seller)` SECURITY DEFINER,
+`service_role` EXECUTE only, live listings (`active`, `pending_review`) only. Verified on a local Postgres 16
+with pgvector 0.8.1 (planner uses the index; anon denied). Needs **db-guard + `pnpm exec supabase db push`**
+(founder, native). Supabase's pgvector must be >= 0.7 for bit vectors (it ships 0.8.x).
+
+**Route `POST /api/search/image`** (`app/api/search/image/route.ts`, Node runtime, `respond`/`ApiError`
+contract): raw JPEG/PNG/WebP body (<= 5 MB, magic-byte sniffed) → blockhash via sharp → `similar_image_hashes`
+(the "same photo" tier) + recs-engine `POST /v1/search/image` (embedding tiers) in parallel → merge → hydrate
+BrowseListing cards (active + public photo only) → `{ listed, category, engine, exact, match, close }`.
+JSON `{ listing_id, photo_index }` = "search with this listing's photo" (stored hash + indexed vector, no
+upload). Guests allowed (`VISUAL_SEARCH_GUESTS`, default true), `enforceRateLimit` 20/min by user id or IP,
+404 when `VISUAL_SEARCH_ENABLED` is off, fail-soft to the hash tier when the engine is unreachable
+(`engine: 'unavailable'`). The image bytes are never stored or logged.
+
+**Lib** `lib/visual-search/{config,image,client,merge}.ts` (merge + sniffing are pure and unit-tested).
+**Near-dup detection** in `app/api/listings/route.ts` now calls `similar_image_hashes` per new hash instead
+of scanning 5,000 `image_hashes` rows (same thresholds and `listing_flags` evidence; the antislop TODO is
+closed). **Contract:** `/api/search/image` + `VisualSearchHit`/`VisualSearchResponse` in `docs/api/openapi.yaml`.
+**Flags/env:** `VISUAL_SEARCH_ENABLED`, `NEXT_PUBLIC_VISUAL_SEARCH_ENABLED`, `VISUAL_SEARCH_GUESTS` in
+`lib/flags.ts` / `.env.example`; the engine URL + token reuse `RECS_FEED_URL` / `RECS_FEED_API_TOKEN`.
+
+**Gate (container copy of `main` 57ffd05 + this branch):** tsc clean · `eslint .` clean · vitest 52 files /
+541 tests (19 new). `pnpm build` not run here (founder, native, dev server stopped).
+
+**Next:** db-guard + push 0053 · code-reviewer on the route (new public upload surface) and the RPC · merge
+after the founder review · VS2 (UI: camera control in the header search, `/search/image` results page,
+mobile capture, "search with this photo" on the PDP gallery) per `VISUAL_SEARCH_BUILD_PROMPTS.md` P2 ·
+flags stay off until the recs VPS serves `/v1/search/image` and `scripts/calibrate_visual.py` has set
+`RECS_VISUAL__EXACT_COS` / `MATCH_COS`.
 
 ---
 

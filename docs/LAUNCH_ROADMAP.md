@@ -39,6 +39,7 @@ a blind megachange. Ordered by launch priority. Founder-only items at the bottom
 | G9 | Follows + seller reviews/ratings | `FOLLOWS_ENABLED`, `REVIEWS_ENABLED` | db-guard, code-reviewer | pending |
 | G10 | Moderator-gated Legit Check + moderator roles | — | db-guard, code-reviewer, ui-verifier | ✅ built + verified (feat/moderator-lc) |
 | G11 | Welcome ramp + category shipping margin + identity locks + Persona→Stripe | `IDENTITY_LOCKS_ENABLED`, `SHIPPING_LABELS_ENABLED`, `VERIFICATION_ENABLED` | db-guard, code-reviewer, ui-verifier | ✅ BUILT + native verify green (feat/fee-tier-checkpoints) |
+| VS1 | Visual search P1: hash index + `POST /api/search/image` (engine V1 on recs-engine `feat/visual-search`) | `VISUAL_SEARCH_ENABLED`, `NEXT_PUBLIC_VISUAL_SEARCH_ENABLED` | db-guard (0053), code-reviewer | ✅ built + verify green (feat/visual-search); UI = VS2 (agora/VISUAL_SEARCH_BUILD_PROMPTS.md P2) |
 
 ---
 
