@@ -13,7 +13,15 @@ const chain: {
   select: vi.fn(), in: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn(), rows: [],
   then(res, rej) { return Promise.resolve({ data: chain.rows }).then(res, rej) },
 }
-const from = vi.fn(() => chain)
+// The `saves` table gets its own thenable so saved_ids can be asserted separately.
+const savesChain: { select: ReturnType<typeof vi.fn>; eq: ReturnType<typeof vi.fn>; in: ReturnType<typeof vi.fn>; then: (res: Resolver, rej?: Resolver) => Promise<unknown>; rows: unknown[] } = {
+  select: vi.fn(), eq: vi.fn(), in: vi.fn(), rows: [],
+  then(res, rej) { return Promise.resolve({ data: savesChain.rows }).then(res, rej) },
+}
+savesChain.select.mockReturnValue(savesChain)
+savesChain.eq.mockReturnValue(savesChain)
+savesChain.in.mockReturnValue(savesChain)
+const from = vi.fn((table: string) => (table === 'saves' ? savesChain : chain))
 const getUser = vi.fn()
 const rateLimit = vi.fn()
 const engineByImage = vi.fn()
@@ -90,6 +98,10 @@ function listingRows(rows: Array<{ id: string; images: string[]; status?: string
 
 beforeEach(() => {
   vi.clearAllMocks()
+  savesChain.select.mockReturnValue(savesChain)
+  savesChain.eq.mockReturnValue(savesChain)
+  savesChain.in.mockReturnValue(savesChain)
+  savesChain.rows = []
   getUser.mockResolvedValue({ data: { user: null } })
   rateLimit.mockResolvedValue(OK_LIMIT)
   blockhash.mockResolvedValue('a'.repeat(64))
@@ -141,7 +153,7 @@ describe('POST /api/search/image', () => {
     expect(rpc).toHaveBeenCalledWith('similar_image_hashes', expect.objectContaining({
       query_hex: 'a'.repeat(64), max_distance: 64, max_rows: 60, exclude_listing: null, exclude_seller: null,
     }))
-    expect(engineByImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/jpeg', { categories: [], limit: 40 })
+    expect(engineByImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/jpeg', { categories: [], limit: 40, text: null, autoCategory: true })
   })
 
   it('merges engine tiers, hydrates active listings only, forwards categories', async () => {
@@ -162,7 +174,7 @@ describe('POST /api/search/image', () => {
     expect(body.category).toBe('outerwear')
     expect(body.match.map((h: { listing_id: string }) => h.listing_id)).toEqual([A])
     expect(body.close).toEqual([]) // B is sold → dropped at hydration
-    expect(engineByImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/jpeg', { categories: ['outerwear', 'tops'], limit: 40 })
+    expect(engineByImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/jpeg', { categories: ['outerwear', 'tops'], limit: 40, text: null, autoCategory: true })
   })
 
   it('marks the viewer\'s own listing and drops listings without a public photo', async () => {
@@ -180,6 +192,40 @@ describe('POST /api/search/image', () => {
     expect(body.exact[0].listing.own).toBe(true)
     expect(body.match).toEqual([])
     expect(body.listed).toBe(true)
+  })
+
+  it('forwards typed words and the ALL CATEGORIES switch to the engine, echoes them back', async () => {
+    engineByImage.mockResolvedValueOnce({
+      listed: false, query_category: 'Outerwear', category_source: 'guess', query_text: 'black leather',
+      results: [{ listing_id: B, photo_index: 0, score: 0.6, tier: 'close' }],
+      counts: { exact: 0, match: 0, close: 1 }, thresholds: { exact_cos: 0.93, match_cos: 0.8 },
+    })
+    listingRows([{ id: B, images: [IMG(B, 1)] }])
+    const res = await POST(upload(JPEG, 'image/jpeg', '?q=%20Black%20%20leather%20&auto_category=0'))
+    const body = await res.json()
+    expect(engineByImage).toHaveBeenCalledWith(expect.any(Buffer), 'image/jpeg', {
+      categories: [], limit: 40, text: 'Black leather', autoCategory: false,
+    })
+    expect(body).toMatchObject({ category: 'Outerwear', category_source: 'guess', text: 'black leather', listed: false })
+    expect(body.close[0].listing_id).toBe(B)
+    expect(body.saved_ids).toEqual([]) // guest
+  })
+
+  it('returns the viewer\'s saves among the results', async () => {
+    getUser.mockResolvedValueOnce({ data: { user: { id: 'user-7' } } })
+    engineByImage.mockResolvedValueOnce({
+      listed: true, query_category: null,
+      results: [{ listing_id: A, photo_index: 0, score: 0.95, tier: 'exact' }, { listing_id: B, photo_index: 0, score: 0.5, tier: 'close' }],
+      counts: { exact: 1, match: 0, close: 1 }, thresholds: { exact_cos: 0.93, match_cos: 0.8 },
+    })
+    listingRows([{ id: A, images: [IMG(A, 1)] }, { id: B, images: [IMG(B, 1)] }])
+    savesChain.rows = [{ listing_id: B }]
+    const body = await (await POST(upload(JPEG))).json()
+    expect(body.saved_ids).toEqual([B])
+    expect(savesChain.eq).toHaveBeenCalledWith('user_id', 'user-7')
+    expect(savesChain.in).toHaveBeenCalledWith('listing_id', [A, B])
+    expect(body.category_source).toBeNull()
+    expect(body.text).toBeNull()
   })
 
   it('reports listed from the hydrated tiers, not from hits hydration dropped', async () => {
@@ -213,7 +259,7 @@ describe('POST /api/search/image', () => {
     expect(body.close[0].listing_id).toBe(B)
     expect(chain.eq).toHaveBeenCalledWith('slot', 'PHOTO_2')
     expect(rpc).toHaveBeenCalledWith('similar_image_hashes', expect.objectContaining({ query_hex: 'b'.repeat(64), exclude_listing: A }))
-    expect(engineByListing).toHaveBeenCalledWith(A, 1, { categories: [], limit: 40 })
+    expect(engineByListing).toHaveBeenCalledWith(A, 1, { categories: [], limit: 40, text: null, autoCategory: true })
   })
 
   it('skips the hash tier when the source photo has no stored hash', async () => {

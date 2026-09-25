@@ -9,9 +9,14 @@
  *   - JSON `{ listing_id, photo_index }`: "search with this listing's photo". The engine reuses
  *     the indexed vector and the hash tier uses the stored hash. No upload.
  *
- * Response `{ listed, category, engine, exact, match, close }`: one entry per listing, in its
- * best tier, each carrying a BrowseListing card (active listings with a public photo only) and
- * `matched_photo`, the listing image that matched. FAIL-SOFT: engine down ⇒ hash tier only and
+ * Query params (both shapes): `q` = text typed next to the image (the engine fuses it into the
+ * close-tier query, ≤ 200 chars), `category` (repeatable) = explicit filter, `auto_category=0`
+ * = no zero-shot category guess (ALL CATEGORIES).
+ *
+ * Response `{ listed, category, category_source, text, engine, exact, match, close, saved_ids }`:
+ * one entry per listing, in its best tier, each carrying a BrowseListing card (active listings
+ * with a public photo only) and `matched_photo`, the listing image that matched; `saved_ids` are
+ * the viewer's saves among them. FAIL-SOFT: engine down ⇒ hash tier only and
  * `engine: 'unavailable'`. Gated by VISUAL_SEARCH_ENABLED (404 when off); guests allowed when
  * VISUAL_SEARCH_GUESTS, rate-limited by IP.
  */
@@ -37,6 +42,7 @@ import {
 import { engineSearchByImage, engineSearchByListingPhoto } from '@/lib/visual-search/client'
 import { blockhashFromBuffer, isBlockhashHex, sniffImageType } from '@/lib/visual-search/image'
 import { mergeVisualResults, type HashHit, type MergedHit } from '@/lib/visual-search/merge'
+import { normalizeQueryText, type VisualSearchHit } from '@/lib/visual-search/shared'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -62,7 +68,7 @@ type RawCard = {
   profiles: { username: string; id_verification_status: string } | null
 }
 
-export type VisualSearchHit = MergedHit & { matched_photo: string; listing: BrowseListing }
+export type { VisualSearchHit }
 
 function parseCategories(req: NextRequest): string[] {
   return req.nextUrl.searchParams
@@ -70,6 +76,11 @@ function parseCategories(req: NextRequest): string[] {
     .map((c) => c.trim())
     .filter((c) => c.length > 0 && c.length <= 64)
     .slice(0, 8)
+}
+
+function parseAutoCategory(req: NextRequest): boolean {
+  const v = (req.nextUrl.searchParams.get('auto_category') ?? '').trim().toLowerCase()
+  return !(v === '0' || v === 'false' || v === 'no')
 }
 
 function clientIp(req: NextRequest): string {
@@ -91,9 +102,11 @@ export async function POST(req: NextRequest) {
     )
 
     const categories = parseCategories(req)
+    const text = normalizeQueryText(req.nextUrl.searchParams.get('q'))
+    const autoCategory = parseAutoCategory(req)
     const contentType = (req.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
     const service = createServiceClientRaw()
-    const engineOpts = { categories, limit: VISUAL_SEARCH_MAX_RESULTS }
+    const engineOpts = { categories, limit: VISUAL_SEARCH_MAX_RESULTS, text: text || null, autoCategory }
 
     let hashHits: HashHit[] = []
     let engine = null
@@ -145,6 +158,7 @@ export async function POST(req: NextRequest) {
     const exact = attach(merged.exact, cards)
     const match = attach(merged.match, cards)
     const close = attach(merged.close, cards)
+    const savedIds = user ? await savedAmong(service, user.id, [...exact, ...match, ...close].map((h) => h.listing_id)) : []
 
     return NextResponse.json({
       // `listed` describes what the response carries: a hit that hydration dropped (pending
@@ -152,10 +166,13 @@ export async function POST(req: NextRequest) {
       // over an empty tier.
       listed: exact.length + match.length > 0,
       category: merged.category,
+      category_source: merged.category_source,
+      text: merged.text,
       engine: merged.engine,
       exact,
       match,
       close,
+      saved_ids: savedIds,
     })
   })
 }
@@ -210,6 +227,13 @@ async function hydrate(service: Service, hits: MergedHit[], viewerId: string | n
     })
   }
   return cards
+}
+
+/** The viewer's saves among the returned listings, so the cards render their bookmark state. */
+async function savedAmong(service: Service, userId: string, ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return []
+  const { data } = await service.from('saves').select('listing_id').eq('user_id', userId).in('listing_id', ids)
+  return ((data ?? []) as Array<{ listing_id: string }>).map((r) => r.listing_id)
 }
 
 function attach(hits: MergedHit[], cards: Map<string, BrowseListing>): VisualSearchHit[] {

@@ -1,5 +1,5 @@
 # HANDOFF.md
-## Current state: VS1 (visual search P1) BUILT on `feat/visual-search` · native `pnpm verify` + `pnpm build` green · db-guard + code-reviewer pending · M1a merged earlier
+## Current state: VS2 (search-by-image UI + text+image) BUILT on `feat/visual-search` on top of VS1 · container gate green (tsc, eslint, vitest 562, build, Playwright 8/8 mocked engine) · native `pnpm verify && pnpm build && pnpm verify:ui` + db-guard + code-reviewer pending · M1a merged earlier
 
 **Last updated:** 2026-09-24
 **Next prompt:** merge `feat/mobile-api` after the founder's own review, apply migration 0046
@@ -7,6 +7,70 @@
 `docs/prompts/M1_mobile_api_ios_foundation.md` **Part B** in the new repo `~/Projects/archive-ios`
 (`aetiusgular/archive-ios`). Part B needs Xcode 26 installed on the Mac for `xcodebuild`; the
 `Packages/ArchiveCore` package builds with Command Line Tools alone.
+
+---
+
+## VS2 — Search by image UI + text+image (2026-09-25, branch `feat/visual-search`, on top of VS1)
+
+Design: Paper "ARCHIVE — Wireframes" page 21 (boards S0–S4 header states, R1/R2 desktop results, M0–M2
+mobile, the Notes board = behaviour spec). Decisions taken with the founder: text+image fuses in the
+engine (CLIP space), the results-page chip thumb is 16×21 so the field stays 31px, S1 hint and S3
+drag-over cue ship as drawn.
+
+**Header (`app/components/header-search.tsx`)** — one field, five states + the results state: S0
+scan glyph (Phosphor scan light, 15px, 44px hit area, tooltip); S1 focus → ink underline + `PASTE
+IMAGE ⌘V` (CTRL+V off-Mac) until the first keystroke; S2 image mode (glyph replaces the magnifier,
+"Paste an image (⌘V) or drop it here", CHOOSE FILE, ×/ESC back to text, focus kept); S3 drag-over
+(document-level dragover/drop on every page; hover fill + ink underline in the field only); S4
+pasted → 16×21 thumb chip + SEARCHING… (× cancels via AbortController) → `/search/image`; R1 the
+field mirrors the query (chip + IMAGE · CATEGORY) and the input takes words: Enter re-runs the same
+image with `q=` (text + image). Entry points: paste in the field, paste anywhere on `/`, `/browse`,
+`/search/image` when nothing editable has focus, drop anywhere, the glyph, the picker. Text typed
+before the image goes with it. ≤720px the glyph opens the M1 sheet (`image-search-sheet.tsx`, a
+portal over the dock): Take a photo (`capture=environment`), Choose from photos, Paste from
+clipboard (`navigator.clipboard.read`). `resizeToJpeg` moved to `app/components/resize-image.ts`
+(shared with the sell form): ≤768px JPEG before upload.
+
+**Client state (`lib/visual-search/store.ts`)** — module store (useSyncExternalStore): the Blob +
+object URL, the query `{ category, autoCategory, text }`, the response. Never storage, never the
+URL; a reload lands on the empty state that asks for a paste. The ONE place the browser calls
+`POST /api/search/image` and fires the recs `search` event (`mode: image|image+text`, hashed text,
+category, category_source) + PostHog `visual_search_performed` (docs/ANALYTICS.md).
+
+**Results (`app/search/image/`)** — server shell (404 while `NEXT_PUBLIC_VISUAL_SEARCH_ENABLED` is
+off) + `visual-results.tsx`: R1 head (72×96 thumb, "2 matches · 6 close in Outerwear", category
+chip = the engine's zero-shot guess or the pick, ALL CATEGORIES = `auto_category=0`, NEW SEARCH),
+R2 "Not listed." + disabled GET AN ALERT WHEN IT'S LISTED (P3b), MATCHES then CLOSE on the browse
+card grid (`ListingCard`), saves with the guest gate, M2 stacked head at ≤720px. recs hooks:
+`observeImpressions` per result set, `trackClick(id, 'visual_search')` (new `ClickDetail.source`,
+engine schema updated), save/unsave. `middleware.ts`: `/search` is a PUBLIC path (guest image
+search, like `/browse`; the route still 401s when `VISUAL_SEARCH_GUESTS=false`).
+
+**Route** `POST /api/search/image` gains `q` (≤200 chars → engine `text`), `auto_category`
+(`0|false` → engine), returns `category_source`, `text`, `saved_ids` (contract in
+`docs/api/openapi.yaml`). `lib/visual-search/shared.ts` = pure helpers (pickImageFile, headline copy,
+paste key) unit-tested; `client.ts` forwards text/autoCategory; `merge.ts` passes the new fields.
+
+**Engine (recs-engine `feat/visual-search`, after `82e09f0`)** — `recs.embedding.text`:
+`OnnxTextEncoder` (Hub `tokenizer.json` via `tokenizers`, `onnx/text_model_int8.onnx`) + stub;
+`recs.search.categories`: zero-shot guess over `configs/categories.yaml` (labels = the platform's
+`listings.category`, no "Other"; top-2 margin gate `RECS_VISUAL__CATEGORY_MIN_MARGIN`).
+`VisualSearchService`: exact/match ALWAYS from the image alone, unfiltered; the close tier from a
+second query steered by `normalize(img + RECS_VISUAL__TEXT_WEIGHT·txt)` and the category (explicit
+or guess). `POST /v1/search/image?text=&auto_category=`; the listing endpoint takes `text` too.
+Without the text files the feed logs `visual_search_text_tower_missing`, ignores text and guesses
+nothing (the UI shows WORDS NOT APPLIED). New core dep `tokenizers` (`pip install -e ".[dev]"`).
+
+**Gate (container):** tsc clean · `eslint .` clean · vitest 55 files / 562 tests (17 new) ·
+`next build` green (`/search/image` 5 kB) · `tests/e2e/visual-search.spec.ts` 8/8 in Chromium
+against the production build with `/api/search/image` mocked (desktop S1–S4, R1, R2, paste, drop,
+reload; mobile M0/M1/M2). Engine: ruff · mypy (87 modules) · 317 passed / 1 skipped · 88% cov.
+Native still owed: `pnpm verify && pnpm build && pnpm verify:ui` (set
+`NEXT_PUBLIC_VISUAL_SEARCH_ENABLED=true` in `.env.local` or the spec skips itself).
+
+**Not in VS2:** "search with this photo" on the PDP gallery (route JSON mode exists, not designed on
+page 21), pasting an image LINK (needs a server fetch = SSRF surface; later, allowlisted), visual
+saved search (P3b; the alert control is disabled), detector crops (P3a, data-gated).
 
 ---
 

@@ -2018,3 +2018,108 @@ a.btn-primary--inline { display: inline-flex; }
   .sellx-bar__long { display: none; }
   .sellx-bar__short { display: inline; }
 }
+
+/* ---- search by image (design page 21: S0–S4 field states, R1/R2 results, M0–M2 mobile) ---- */
+/* S1: focus → underline to ink. No ring, no panel. */
+.search:focus-within { border-bottom-color: var(--ink); }
+/* width:0 + min-width:0: the field can shrink below the input's intrinsic width, so the query
+   chip and the × fit the 343px mobile row (M2) instead of pushing the form past the viewport. */
+.search { min-width: 0; }
+.search__input { flex: 1 1 0; width: 0; min-width: 0; }
+.search__input.is-hidden { flex: 0 0 0; width: 0; opacity: 0; pointer-events: none; }
+/* S2 / S3: the scan glyph stands in for the magnifier (ink). */
+.search__glyph { display: inline-flex; line-height: 0; color: var(--sub); flex-shrink: 0; }
+.search__glyph--scan { color: var(--ink); }
+/* S0: camera glyph at the right end, 24×16 box inflated to a 44px hit area. */
+.search__scan { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 16px; margin-right: -2px; color: var(--sub); flex-shrink: 0; line-height: 0; }
+.search__scan::before { content: ''; position: absolute; inset: -14px -10px; }
+.search__scan:hover, .search.is-image .search__glyph { color: var(--ink); }
+/* S1: the paste microlabel, hidden on the first keystroke (component logic). */
+.search__hint { font: 400 10px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; flex-shrink: 0; }
+/* S2: CHOOSE FILE (underlined mono) + × at the right, gap 14. */
+.search__tools { display: inline-flex; align-items: center; gap: 14px; flex-shrink: 0; margin-right: -2px; }
+.search__choose { font: 400 10px var(--font-mono); letter-spacing: 0.12em; color: var(--sub); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; white-space: nowrap; }
+.search__choose:hover { color: var(--ink); }
+.search__clear { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 16px; color: var(--sub); line-height: 0; flex-shrink: 0; margin-right: -2px; }
+.search__clear::before { content: ''; position: absolute; inset: -14px -10px; }
+.search__clear:hover { color: var(--ink); }
+.search__file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
+/* S3: drag-over — hover fill, ink underline, the cue in the field only. */
+.search.is-dragover { background: var(--hover); border-bottom-color: var(--ink); padding-left: 8px; padding-right: 8px; }
+.search__drop { flex: 1; font: 300 14px var(--font-sans); line-height: 16px; color: var(--ink); }
+.search.is-image .search__input::placeholder, .search.has-query .search__input::placeholder { color: var(--faint); opacity: 1; }
+/* S4 / R1: the query chip. The thumb is 16×21 and overlaps the field padding so the row
+   stays 31px tall everywhere (open question 3: shrink the thumb, keep the height). */
+.search__chip { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
+.search__thumb { width: 16px; height: 21px; margin: -3px 0; object-fit: cover; background: var(--tone-2); border: 1px solid var(--line); display: block; }
+.search__label { font: 400 10px var(--font-mono); letter-spacing: 0.14em; color: var(--ink); white-space: nowrap; }
+.search__label--searching { color: var(--sub); }
+.search__label-sub { font-weight: 300; color: var(--faint); }
+.search.has-query .search__input { font-size: 13px; }
+
+/* M1: the bottom sheet rows (uses .scrim--sheet / .sheet / .sheet__head from the sort sheet). */
+.vs-sheet .sheet__head { padding-bottom: 8px; }
+.vs-sheet__row { display: flex; align-items: center; gap: 12px; width: 100%; height: 52px; border-bottom: 1px solid var(--hover); text-align: left; }
+.vs-sheet__icon { display: inline-flex; justify-content: center; width: 20px; color: var(--sub); line-height: 0; flex-shrink: 0; }
+.vs-sheet__text { flex: 1; min-width: 0; font: 300 14px var(--font-sans); line-height: 18px; color: var(--ink); }
+.vs-sheet__tag { font: 300 9px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; flex-shrink: 0; }
+.vs-sheet__note { padding-top: 14px; font: 300 9px var(--font-mono); letter-spacing: 0.12em; line-height: 13px; color: var(--faint); }
+
+/* R1 / R2: the results page. */
+.vs-main { padding: var(--page-top) var(--gutter-page) var(--page-bottom); }
+.vs-main--empty { min-height: 48vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 12px; }
+.vs-empty__title { font: 400 19px var(--font-sans); color: var(--ink); }
+.vs-empty__sub { font: 300 10px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); line-height: 14px; }
+.vs-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 20px; }
+.vs-head__lead { display: flex; align-items: flex-end; gap: 20px; min-width: 0; }
+.vs-head__text { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.vs-thumb { width: 72px; height: 96px; object-fit: cover; background: var(--tone-2); border: 1px solid var(--line); flex-shrink: 0; }
+.vs-line { display: flex; align-items: baseline; gap: 9px; white-space: nowrap; }
+.vs-lead { font: 400 19px var(--font-sans); line-height: 19px; color: var(--ink); }
+.vs-meta { font: 300 12px var(--font-sans); line-height: 16px; color: var(--sub); }
+.vs-cats { position: relative; display: flex; align-items: center; gap: 12px; }
+.vs-chip { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line-mid); padding: 7px 11px; font: 400 10px var(--font-mono); letter-spacing: 0.12em; line-height: 12px; color: var(--ink); white-space: nowrap; }
+.vs-chip:hover { border-color: var(--ink); }
+.vs-chip svg { color: var(--sub); }
+.vs-all { font: 400 10px var(--font-mono); letter-spacing: 0.12em; line-height: 12px; color: var(--sub); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; white-space: nowrap; }
+.vs-all:hover { color: var(--ink); }
+.vs-all__short { display: none; }
+.vs-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 176px; background: var(--bg); border: 1px solid var(--line-mid); padding: 6px 0; list-style: none; margin: 0; }
+.vs-menu__item { display: block; width: 100%; text-align: left; padding: 9px 12px; font: 400 10px var(--font-mono); letter-spacing: 0.12em; color: var(--sub); }
+.vs-menu__item:hover, .vs-menu__item.is-on { color: var(--ink); background: var(--hover); }
+.vs-note { font: 300 9px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); }
+.vs-head__actions { display: flex; align-items: center; gap: 20px; padding-bottom: 4px; flex-shrink: 0; }
+.vs-alert { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.vs-alert__btn { border-color: var(--line); color: var(--faint); font-size: 9px; letter-spacing: 0.14em; line-height: 11px; padding: 10px 14px; }
+.vs-alert__btn:disabled { border-color: var(--line); cursor: not-allowed; }
+.vs-alert__note { font: 300 8px var(--font-mono); letter-spacing: 0.14em; line-height: 10px; color: var(--faint); white-space: nowrap; }
+.vs-section { padding-top: 30px; }
+.vs-section + .vs-section { padding-top: 48px; }
+.vs-section__head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); font: 400 10px var(--font-mono); letter-spacing: 0.14em; line-height: 14px; color: var(--ink); }
+.vs-section__count { font-weight: 300; color: var(--faint); }
+.vs-grid { padding-top: 30px; }
+.vs-none { padding-top: 24px; font: 300 10px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); }
+
+@media (max-width: 720px) {
+  /* M0 / M2: the search row carries the glyph and the chip; the head stacks (thumb 56×75). */
+  .vs-main { padding: 14px 16px 24px; }
+  .vs-head { flex-direction: column; align-items: stretch; gap: 14px; padding-bottom: 4px; }
+  .vs-head__lead { gap: 14px; }
+  .vs-head__text { gap: 10px; }
+  .vs-thumb { width: 56px; height: 75px; }
+  .vs-line { flex-direction: column; align-items: flex-start; gap: 5px; white-space: normal; }
+  .vs-lead { font: 300 20px var(--font-sans); line-height: 20px; }
+  .vs-meta { font-size: 11px; line-height: 14px; }
+  .vs-all__long { display: none; }
+  .vs-all__short { display: inline; }
+  /* M2 has no NEW SEARCH control: the × in the search row is the exit. The alert block stays. */
+  .vs-head__actions { justify-content: space-between; padding: 6px 0 8px; }
+  .vs-new { display: none; }
+  .vs-head__actions:not(:has(.vs-alert)) { display: none; }
+  .vs-alert { align-items: flex-start; }
+  .vs-section { padding-top: 22px; }
+  .vs-section + .vs-section { padding-top: 26px; }
+  .vs-section__head { padding-bottom: 8px; }
+  .vs-grid { padding-top: 20px; }
+  .search__hint { display: none; }
+}

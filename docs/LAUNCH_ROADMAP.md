@@ -40,6 +40,7 @@ a blind megachange. Ordered by launch priority. Founder-only items at the bottom
 | G10 | Moderator-gated Legit Check + moderator roles | — | db-guard, code-reviewer, ui-verifier | ✅ built + verified (feat/moderator-lc) |
 | G11 | Welcome ramp + category shipping margin + identity locks + Persona→Stripe | `IDENTITY_LOCKS_ENABLED`, `SHIPPING_LABELS_ENABLED`, `VERIFICATION_ENABLED` | db-guard, code-reviewer, ui-verifier | ✅ BUILT + native verify green (feat/fee-tier-checkpoints) |
 | VS1 | Visual search P1: hash index + `POST /api/search/image` (engine V1 on recs-engine `feat/visual-search`) | `VISUAL_SEARCH_ENABLED`, `NEXT_PUBLIC_VISUAL_SEARCH_ENABLED` | db-guard (0053), code-reviewer | ✅ built + verify green (feat/visual-search); UI = VS2 (agora/VISUAL_SEARCH_BUILD_PROMPTS.md P2) |
+| VS2 | Search by image UI (design page 21 S0–S4, R1/R2, M0–M2): header paste / drop / camera / picker, text + image (engine text tower), `/search/image`, mobile sheet, recs hooks (`search`, impressions, `click_detail.source=visual_search`) | same flags; VPS needs `onnx/text_model_int8.onnx` + `tokenizer.json` | code-reviewer (route, middleware public path), `pnpm verify:ui` native | ✅ built; unit + Playwright green in the container on a mocked engine |
 
 ---
 

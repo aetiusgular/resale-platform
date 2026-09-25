@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Routes accessible without a session. Guests can now browse: the root, the browse feed,
 // listing detail, and seller profiles are all public read (RLS still exposes only active
 // listings + public profile columns to anon, and every write API still requires a session).
-const PUBLIC_PATHS = ['/enter', '/onboarding/account', '/styleguide', '/', '/browse', '/listings', '/sellers', '/terms', '/privacy', '/fees', '/reset-password', '/about', '/help', '/trust']
+const PUBLIC_PATHS = ['/enter', '/onboarding/account', '/styleguide', '/', '/browse', '/search', '/listings', '/sellers', '/terms', '/privacy', '/fees', '/reset-password', '/about', '/help', '/trust']
 
 // Routes only accessible without a session (redirect to / if logged in)
 const AUTH_ONLY_PATHS = ['/enter']

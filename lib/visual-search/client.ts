@@ -32,12 +32,18 @@ async function parse(res: Response | null): Promise<EngineVisualResponse | null>
 export interface EngineSearchOptions {
   categories?: string[]
   limit?: number
+  /** Text typed next to the image: the engine fuses it into the close-tier query. */
+  text?: string | null
+  /** false ⇒ no zero-shot category guess (ALL CATEGORIES); the engine defaults to true. */
+  autoCategory?: boolean
 }
 
 function query(opts: EngineSearchOptions): string {
   const qs = new URLSearchParams()
   for (const c of opts.categories ?? []) qs.append('category', c)
   if (opts.limit) qs.set('limit', String(opts.limit))
+  if (opts.text) qs.set('text', opts.text)
+  if (opts.autoCategory === false) qs.set('auto_category', 'false')
   const s = qs.toString()
   return s ? `?${s}` : ''
 }
@@ -78,6 +84,8 @@ export async function engineSearchByListingPhoto(
       photo_index: photoIndex,
       categories: opts.categories ?? [],
       limit: opts.limit ?? null,
+      text: opts.text || null,
+      auto_category: opts.autoCategory ?? false,
     }),
   })
   return parse(res)

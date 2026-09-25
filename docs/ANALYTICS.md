@@ -11,6 +11,7 @@ listing IDs, filter names, and boolean/numeric values.
 | `product_clicked` | Listing card tapped in browse feed | `listing_id`, `position` (int), `source` (browse/search/saved) |
 | `filter_applied` | User applies a browse filter | `filter_type` (dept/cat/size/brand/min_price/max_price/cond/dropped/verified), `filter_value` |
 | `search_performed` | User submits a search query | `query_length` (int, not raw query text) |
+| `visual_search_performed` | Search by image completed (paste / drop / camera / picker, optional text) | `mode` (image \| image+text), `has_text`, `category`, `category_source` (explicit \| guess), `listed`, `exact`/`match`/`close` counts, `engine` (ok \| unavailable). Never the image or the text. |
 | `listing_saved` | User saves (hearts) a listing | `listing_id` |
 | `checkout_started` | POST /api/checkout called successfully (clientSecret returned) | `listing_id`, `total_cents`, `is_offer_based` (bool) |
 | `checkout_completed` | Stripe `payment_intent.succeeded` webhook fires | `listing_id`, `total_cents`, `offer_id` (if applicable) |

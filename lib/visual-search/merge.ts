@@ -33,6 +33,10 @@ export interface EngineResult {
 export interface EngineVisualResponse {
   listed: boolean
   query_category: string | null
+  /** 'explicit' when the caller filtered, 'guess' when the engine's zero-shot guess did. */
+  category_source?: 'explicit' | 'guess' | null
+  /** The typed text the engine fused into the close-tier query; null when it ignored it. */
+  query_text?: string | null
   results: EngineResult[]
   counts: Record<VisualTier, number>
   thresholds: { exact_cos: number; match_cos: number }
@@ -54,6 +58,8 @@ export interface MergedHit {
 export interface MergedVisualResults {
   listed: boolean
   category: string | null
+  category_source: 'explicit' | 'guess' | null
+  text: string | null
   exact: MergedHit[]
   match: MergedHit[]
   close: MergedHit[]
@@ -141,6 +147,8 @@ export function mergeVisualResults(input: {
   return {
     listed: buckets.exact.length + buckets.match.length > 0,
     category: input.engine?.query_category ?? null,
+    category_source: input.engine?.query_category ? (input.engine.category_source ?? null) : null,
+    text: input.engine?.query_text ?? null,
     exact: buckets.exact,
     match: buckets.match,
     close: buckets.close,

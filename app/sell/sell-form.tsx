@@ -40,6 +40,7 @@ export type { ListingInitial } from '@/lib/loaders/sell'
 import type { ListingInitial } from '@/lib/loaders/sell'
 
 import { MAX_PHOTOS, MIN_PHOTOS } from '@/lib/listings/images'
+import { resizeToJpeg } from '@/app/components/resize-image'
 
 interface SellFormProps {
   userId: string
@@ -52,29 +53,6 @@ interface SellFormProps {
   mode?: 'new' | 'edit'
 }
 
-async function resizeToJpeg(file: File, maxPx = 2000): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas')
-      canvas.width  = Math.round(img.width  * scale)
-      canvas.height = Math.round(img.height * scale)
-      const ctx = canvas.getContext('2d')
-      if (!ctx) { reject(new Error('no canvas context')); return }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error('canvas blob failed'))),
-        'image/jpeg',
-        0.92,
-      )
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')) }
-    img.src = url
-  })
-}
 
 function useFlash(): [boolean, () => void] {
   const [on, setOn] = useState(false)

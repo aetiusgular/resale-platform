@@ -54,7 +54,7 @@ export interface ScrollDepth extends EventEnvelope {
 export interface ClickDetail extends EventEnvelope {
   type: 'click_detail'
   item_id: string
-  source: 'feed' | 'search' | 'profile' | 'external'
+  source: 'feed' | 'search' | 'visual_search' | 'profile' | 'external'
 }
 export interface Like extends EventEnvelope { type: 'like'; item_id: string }
 export interface Unlike extends EventEnvelope { type: 'unlike'; item_id: string }

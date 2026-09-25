@@ -760,11 +760,14 @@ components:
         listing: { $ref: '#/components/schemas/BrowseListing' }
     VisualSearchResponse:
       type: object
-      required: [listed, category, engine, exact, match, close]
+      required: [listed, category, category_source, text, engine, exact, match, close, saved_ids]
       properties:
         listed: { type: boolean, description: True when at least one listing landed in exact or match. The empty state is the common case at launch. }
-        category: { type: [string, 'null'], description: Category the engine predicted for the query (P3a); null until then. }
+        category: { type: [string, 'null'], description: The category the close tier ran under - the explicit `category` param, or the engine's zero-shot guess (P3a); null when neither. }
+        category_source: { type: [string, 'null'], enum: [explicit, guess, null], description: Where `category` came from. }
+        text: { type: [string, 'null'], description: The `q` words the engine applied (normalised); null when no words were sent or the engine has no text tower. }
         engine: { type: string, enum: [ok, unavailable], description: unavailable = hash tier only (recs-engine unreachable). }
+        saved_ids: { type: array, items: { type: string, format: uuid }, description: The signed-in viewer's saves among the returned listings (empty for guests). }
         exact: { type: array, items: { $ref: '#/components/schemas/VisualSearchHit' }, description: The same photo, or a near-identical shot. }
         match: { type: array, items: { $ref: '#/components/schemas/VisualSearchHit' }, description: Probably the same item, a different photo. }
         close: { type: array, items: { $ref: '#/components/schemas/VisualSearchHit' }, description: Similar pieces, ranked. }
@@ -863,7 +866,9 @@ paths:
         response carries the hash tier only and `engine: unavailable`.
       security: [{ bearer: [] }, {}]
       parameters:
-        - { name: category, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true, description: 'Restrict the embedding tiers to these categories (repeatable, max 8).' }
+        - { name: category, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true, description: 'Filter the CLOSE tier to these categories (repeatable, max 8). Exact and match are never filtered: a listed item is the same item whatever its category.' }
+        - { name: q, in: query, schema: { type: string, maxLength: 200 }, description: 'Words sent with the image (text + image search). The engine fuses them into the close-tier query in CLIP space; exact and match come from the image alone. Echoed back as `text` when applied.' }
+        - { name: auto_category, in: query, schema: { type: boolean, default: true }, description: 'false (or 0) turns the zero-shot category guess off (ALL CATEGORIES). With it on and no explicit category, a confident guess filters the close tier and is reported as category_source=guess.' }
       requestBody:
         required: true
         content:

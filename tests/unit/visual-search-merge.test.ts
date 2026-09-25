@@ -140,3 +140,17 @@ describe('image helpers', () => {
     expect(isBlockhashHex('a'.repeat(63))).toBe(false)
   })
 })
+
+describe('category_source and text passthrough', () => {
+  it('carries the engine\'s category source and applied text, null without an engine', () => {
+    const out = mergeVisualResults({
+      hashHits: [], exactHamming: 12,
+      engine: { listed: false, query_category: 'Tops', category_source: 'guess', query_text: 'striped', results: [], counts: { exact: 0, match: 0, close: 0 }, thresholds: { exact_cos: 0.93, match_cos: 0.8 } },
+    })
+    expect(out.category).toBe('Tops')
+    expect(out.category_source).toBe('guess')
+    expect(out.text).toBe('striped')
+    const down = mergeVisualResults({ hashHits: [], engine: null, exactHamming: 12 })
+    expect(down).toMatchObject({ category: null, category_source: null, text: null, engine: 'unavailable' })
+  })
+})
