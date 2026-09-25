@@ -4,31 +4,18 @@
  * Search by image — mobile bottom sheet (design page 21, M1). Opened by the scan glyph in
  * the ≤720px search row. Three rows: Take a photo (camera capture), Choose from photos
  * (library), Paste from clipboard (navigator.clipboard.read; iOS shows its own paste
- * prompt). The photo goes straight to the search; nothing is stored.
+ * prompt). The photo is staged in the search row (thumb chip); the keyboard's Search key
+ * runs the query, with any words typed next to it. Nothing is stored.
  */
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CameraIcon, ClipboardIcon, PhotosIcon, XIcon } from './icons'
-import { QUERY_IMAGE_TYPES, isAcceptedImage } from '@/lib/visual-search/shared'
+import { readClipboardImage } from '@/lib/visual-search/clipboard'
+import { QUERY_IMAGE_TYPES } from '@/lib/visual-search/shared'
 
 type Props = {
   onClose: () => void
   onImage: (file: Blob) => void
-}
-
-/** The first image blob on the async clipboard, or null (denied, empty, unsupported). */
-export async function readClipboardImage(): Promise<Blob | null> {
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.read) return null
-  try {
-    const items = await navigator.clipboard.read()
-    for (const item of items) {
-      const type = item.types.find((t) => isAcceptedImage(t))
-      if (type) return await item.getType(type)
-    }
-  } catch {
-    /* permission denied or nothing usable */
-  }
-  return null
 }
 
 export default function ImageSearchSheet({ onClose, onImage }: Props) {
@@ -86,7 +73,7 @@ export default function ImageSearchSheet({ onClose, onImage }: Props) {
           <span className="vs-sheet__icon"><ClipboardIcon /></span>
           <span className="vs-sheet__text">Paste from clipboard</span>
         </button>
-        <div className="vs-sheet__note" data-testid="sheet-note">{note ?? 'Your photo is searched, not stored.'}</div>
+        <div className="vs-sheet__note" data-testid="sheet-note">{note ?? 'Your photo is searched, not stored. Add words, then search.'}</div>
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="search__file" tabIndex={-1} aria-hidden="true" onChange={pick} data-testid="sheet-camera-input" />
         <input ref={libraryRef} type="file" accept={QUERY_IMAGE_TYPES.join(',')} className="search__file" tabIndex={-1} aria-hidden="true" onChange={pick} data-testid="sheet-library-input" />
       </div>

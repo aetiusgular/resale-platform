@@ -25,7 +25,7 @@ import {
 } from '@/lib/recs/telemetry'
 import { CATEGORIES } from '@/lib/taxonomy'
 import { countTiers, resultsHeadline, type VisualSearchHit } from '@/lib/visual-search/shared'
-import { clearVisualSearch, requeryVisualSearch, useVisualSearch } from '@/lib/visual-search/store'
+import { clearVisualSearch, runVisualSearch, useVisualSearch } from '@/lib/visual-search/store'
 
 type Props = {
   username: string
@@ -110,15 +110,25 @@ export default function VisualResults({ username, userId, authBadgeEnabled, recs
   const pickCategory = (category: string | null) => {
     setCatOpen(false)
     // an explicit pick filters; ALL CATEGORIES drops both the pick and the engine's guess
-    void requeryVisualSearch({ category, autoCategory: category !== null })
+    void runVisualSearch({ category, autoCategory: category !== null })
   }
 
-  // ── empty state (reload, or NEW SEARCH): the header field is in image mode ───────────
-  if (!visual.image || (visual.status !== 'ready' && visual.status !== 'searching' && visual.status !== 'error')) {
+  // ── empty state (reload, NEW SEARCH) and the staged state (image attached, not sent) ──
+  if (!visual.image || visual.status === 'idle') {
     return (
       <main className="vs-main vs-main--empty" data-testid="vs-empty">
         <div className="vs-empty__title">Search by image.</div>
-        <div className="vs-empty__sub">PASTE A PHOTO IN THE SEARCH FIELD, DROP ONE ANYWHERE, OR USE THE CAMERA</div>
+        <div className="vs-empty__sub">ADD A PHOTO WITH THE ICON IN THE SEARCH FIELD, PASTE ONE (⌘V OR ⌘K), OR DROP IT ANYWHERE</div>
+      </main>
+    )
+  }
+  if (visual.status === 'staged') {
+    return (
+      <main className="vs-main vs-main--empty" data-testid="vs-staged">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="vs-thumb" src={visual.image.url} alt="Attached image" />
+        <div className="vs-empty__title">Image attached.</div>
+        <div className="vs-empty__sub">ADD WORDS IN THE SEARCH FIELD IF YOU WANT, THEN PRESS ENTER</div>
       </main>
     )
   }

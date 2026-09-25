@@ -17,25 +17,29 @@ mobile, the Notes board = behaviour spec). Decisions taken with the founder: tex
 engine (CLIP space), the results-page chip thumb is 16×21 so the field stays 31px, S1 hint and S3
 drag-over cue ship as drawn.
 
-**Header (`app/components/header-search.tsx`)** — one field, five states + the results state: S0
-scan glyph (Phosphor scan light, 15px, 44px hit area, tooltip); S1 focus → ink underline + `PASTE
-IMAGE ⌘V` (CTRL+V off-Mac) until the first keystroke; S2 image mode (glyph replaces the magnifier,
-"Paste an image (⌘V) or drop it here", CHOOSE FILE, ×/ESC back to text, focus kept); S3 drag-over
-(document-level dragover/drop on every page; hover fill + ink underline in the field only); S4
-pasted → 16×21 thumb chip + SEARCHING… (× cancels via AbortController) → `/search/image`; R1 the
-field mirrors the query (chip + IMAGE · CATEGORY) and the input takes words: Enter re-runs the same
-image with `q=` (text + image). Entry points: paste in the field, paste anywhere on `/`, `/browse`,
-`/search/image` when nothing editable has focus, drop anywhere, the glyph, the picker. Text typed
-before the image goes with it. ≤720px the glyph opens the M1 sheet (`image-search-sheet.tsx`, a
-portal over the dock): Take a photo (`capture=environment`), Choose from photos, Paste from
-clipboard (`navigator.clipboard.read`). `resizeToJpeg` moved to `app/components/resize-image.ts`
-(shared with the sell form): ≤768px JPEG before upload.
+**Header (`app/components/header-search.tsx`)** — founder decision 2026-09-25 supersedes the
+page-21 boards S1 (focus hint) and S2 (image mode): the scan glyph (Phosphor scan light, 15px, 44px
+hit area) opens the native file picker directly, and its hover tooltip reads `PRESS TO ADD A LOCAL
+IMAGE · ⌘K TO PASTE AN IMAGE` (CTRL+K off-Mac). Attaching an image only STAGES it: a 16×21 thumb chip
++ `IMAGE` in the field, the input focused with "Add words to narrow it", nothing sent. Enter runs ONE
+`POST /api/search/image` with the image and the words (an image query followed by a text refinement
+would be two engine queries). Entry points that stage: the glyph/picker, ⌘V in the field or anywhere
+on `/`, `/browse`, `/search/image` when nothing editable has focus, ⌘K / Ctrl+K (async clipboard
+read, "NO IMAGE ON THE CLIPBOARD" note when empty), drop anywhere (S3 cue in the field: "Drop to add
+the image"), and the ≤720px M1 sheet (camera capture / library / clipboard, a portal over the dock;
+the keyboard's Search key submits). S4 SEARCHING… chip while the request runs (× cancels via
+AbortController), then `/search/image`, where the chip mirrors the query (IMAGE · CATEGORY) and the
+words stay editable: Enter re-runs the same image. × removes the image (on the results page it also
+returns to browse). `resizeToJpeg` moved to `app/components/resize-image.ts` (shared with the sell
+form): ≤768px JPEG before upload.
 
-**Client state (`lib/visual-search/store.ts`)** — module store (useSyncExternalStore): the Blob +
-object URL, the query `{ category, autoCategory, text }`, the response. Never storage, never the
-URL; a reload lands on the empty state that asks for a paste. The ONE place the browser calls
-`POST /api/search/image` and fires the recs `search` event (`mode: image|image+text`, hashed text,
-category, category_source) + PostHog `visual_search_performed` (docs/ANALYTICS.md).
+**Client state (`lib/visual-search/store.ts`)** — module store (useSyncExternalStore): status
+`idle → staged → searching → ready | error`, the Blob + object URL, the query
+`{ category, autoCategory, text }`, the response. `stageVisualImage` attaches, `runVisualSearch`
+sends (also the results-page re-query: words, category pick, ALL CATEGORIES). Never storage, never
+the URL; a reload lands on the empty state. The ONE place the browser calls `POST /api/search/image`
+and fires the recs `search` event (`mode: image|image+text`, hashed text, category, category_source)
++ PostHog `visual_search_performed` (docs/ANALYTICS.md): exactly one per Enter.
 
 **Results (`app/search/image/`)** — server shell (404 while `NEXT_PUBLIC_VISUAL_SEARCH_ENABLED` is
 off) + `visual-results.tsx`: R1 head (72×96 thumb, "2 matches · 6 close in Outerwear", category
@@ -63,8 +67,8 @@ nothing (the UI shows WORDS NOT APPLIED). New core dep `tokenizers` (`pip instal
 
 **Gate (container):** tsc clean · `eslint .` clean · vitest 55 files / 562 tests (17 new) ·
 `next build` green (`/search/image` 5 kB) · `tests/e2e/visual-search.spec.ts` 8/8 in Chromium
-against the production build with `/api/search/image` mocked (desktop S1–S4, R1, R2, paste, drop,
-reload; mobile M0/M1/M2). Engine: ruff · mypy (87 modules) · 317 passed / 1 skipped · 88% cov.
+against the production build with `/api/search/image` mocked (desktop: picker → staged → Enter =
+one request, tooltip, ⌘K with a mocked clipboard, R2, paste + drop stage, reload; mobile M0/M1/M2). Engine: ruff · mypy (87 modules) · 317 passed / 1 skipped · 88% cov.
 Native still owed: `pnpm verify && pnpm build && pnpm verify:ui` (set
 `NEXT_PUBLIC_VISUAL_SEARCH_ENABLED=true` in `.env.local` or the spec skips itself).
 

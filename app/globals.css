@@ -2019,8 +2019,10 @@ a.btn-primary--inline { display: inline-flex; }
   .sellx-bar__short { display: inline; }
 }
 
-/* ---- search by image (design page 21: S0–S4 field states, R1/R2 results, M0–M2 mobile) ---- */
-/* S1: focus → underline to ink. No ring, no panel. */
+/* ---- search by image (design page 21 S0 / S3 / S4 / R1 / M0–M2; S1 + S2 dropped 2026-09-25:
+   the glyph opens the picker, an attached image is staged in the field and Enter runs ONE query) ---- */
+/* focus → underline to ink. No ring, no panel. */
+.search { position: relative; }
 .search:focus-within { border-bottom-color: var(--ink); }
 /* width:0 + min-width:0: the field can shrink below the input's intrinsic width, so the query
    chip and the × fit the 343px mobile row (M2) instead of pushing the form past the viewport. */
@@ -2030,16 +2032,17 @@ a.btn-primary--inline { display: inline-flex; }
 /* S2 / S3: the scan glyph stands in for the magnifier (ink). */
 .search__glyph { display: inline-flex; line-height: 0; color: var(--sub); flex-shrink: 0; }
 .search__glyph--scan { color: var(--ink); }
-/* S0: camera glyph at the right end, 24×16 box inflated to a 44px hit area. */
-.search__scan { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 16px; margin-right: -2px; color: var(--sub); flex-shrink: 0; line-height: 0; }
+/* S0: scan glyph at the right end, 24×16 box inflated to a 44px hit area; click = file picker. */
+.search__scan-wrap { position: relative; display: inline-flex; flex-shrink: 0; margin-right: -2px; }
+.search__scan { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 16px; color: var(--sub); flex-shrink: 0; line-height: 0; }
 .search__scan::before { content: ''; position: absolute; inset: -14px -10px; }
-.search__scan:hover, .search.is-image .search__glyph { color: var(--ink); }
-/* S1: the paste microlabel, hidden on the first keystroke (component logic). */
-.search__hint { font: 400 10px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; flex-shrink: 0; }
-/* S2: CHOOSE FILE (underlined mono) + × at the right, gap 14. */
-.search__tools { display: inline-flex; align-items: center; gap: 14px; flex-shrink: 0; margin-right: -2px; }
-.search__choose { font: 400 10px var(--font-mono); letter-spacing: 0.12em; color: var(--sub); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; white-space: nowrap; }
-.search__choose:hover { color: var(--ink); }
+.search__scan:hover, .search__scan:focus-visible { color: var(--ink); }
+/* Hover tooltip under the glyph (hover / keyboard focus only; touch devices get the sheet). */
+.search__tip { position: absolute; top: calc(100% + 15px); right: -6px; z-index: 45; padding: 7px 10px; background: var(--ink); color: var(--on-ink); font: 400 9px var(--font-mono); letter-spacing: 0.14em; line-height: 11px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.12s ease 0.25s; }
+@media (hover: hover) { .search__scan:hover + .search__tip { opacity: 1; } }
+.search__scan:focus-visible + .search__tip { opacity: 1; transition-delay: 0s; }
+/* Transient microlabel: clipboard empty, wrong file type. */
+.search__note { font: 400 10px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; flex-shrink: 0; }
 .search__clear { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 16px; color: var(--sub); line-height: 0; flex-shrink: 0; margin-right: -2px; }
 .search__clear::before { content: ''; position: absolute; inset: -14px -10px; }
 .search__clear:hover { color: var(--ink); }
@@ -2047,7 +2050,7 @@ a.btn-primary--inline { display: inline-flex; }
 /* S3: drag-over — hover fill, ink underline, the cue in the field only. */
 .search.is-dragover { background: var(--hover); border-bottom-color: var(--ink); padding-left: 8px; padding-right: 8px; }
 .search__drop { flex: 1; font: 300 14px var(--font-sans); line-height: 16px; color: var(--ink); }
-.search.is-image .search__input::placeholder, .search.has-query .search__input::placeholder { color: var(--faint); opacity: 1; }
+.search.has-query .search__input::placeholder { color: var(--faint); opacity: 1; }
 /* S4 / R1: the query chip. The thumb is 16×21 and overlaps the field padding so the row
    stays 31px tall everywhere (open question 3: shrink the thumb, keep the height). */
 .search__chip { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
@@ -2068,6 +2071,7 @@ a.btn-primary--inline { display: inline-flex; }
 /* R1 / R2: the results page. */
 .vs-main { padding: var(--page-top) var(--gutter-page) var(--page-bottom); }
 .vs-main--empty { min-height: 48vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 12px; }
+.vs-main--empty .vs-thumb { margin-bottom: 8px; }
 .vs-empty__title { font: 400 19px var(--font-sans); color: var(--ink); }
 .vs-empty__sub { font: 300 10px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); line-height: 14px; }
 .vs-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 20px; }
@@ -2121,5 +2125,5 @@ a.btn-primary--inline { display: inline-flex; }
   .vs-section + .vs-section { padding-top: 26px; }
   .vs-section__head { padding-bottom: 8px; }
   .vs-grid { padding-top: 20px; }
-  .search__hint { display: none; }
+  .search__tip { display: none; }
 }

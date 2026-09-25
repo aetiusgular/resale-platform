@@ -4,8 +4,13 @@
  * Search-by-image client state — one module-level store (useSyncExternalStore) shared by the
  * header field and /search/image. The query image lives here as a Blob + object URL for the
  * life of the tab: never written to storage, never in the URL, gone on reload (the page then
- * asks for a paste again). `search()` is the ONE place the browser calls
- * POST /api/search/image, and the ONE place the recs `search` event fires for image queries.
+ * asks for an image again).
+ *
+ * Two steps, by founder decision (2026-09-25): attaching an image (picker, paste, ⌘K, drop,
+ * the mobile sheet) only STAGES it in the field; the search runs when the user submits
+ * (Enter), so the words and the image go up as ONE request instead of an image query
+ * followed by a text refinement. `run()` is the ONE place the browser calls
+ * POST /api/search/image and the ONE place the recs `search` event fires for image queries.
  */
 import { useSyncExternalStore } from 'react'
 import { resizeToJpeg } from '@/app/components/resize-image'
@@ -16,7 +21,8 @@ import {
   type VisualQuery, type VisualSearchApiResponse,
 } from './shared'
 
-export type VisualStatus = 'idle' | 'searching' | 'ready' | 'error'
+/** idle → staged (image attached, nothing sent) → searching → ready | error. */
+export type VisualStatus = 'idle' | 'staged' | 'searching' | 'ready' | 'error'
 
 export interface VisualState {
   status: VisualStatus
@@ -28,11 +34,14 @@ export interface VisualState {
   error: string | null
   /** Bumps on every completed search, so pages can react to a new result set. */
   seq: number
+  /** Bumps on every staged image, so the field can focus its input for the words. */
+  stagedSeq: number
 }
 
 const EMPTY_QUERY: VisualQuery = { category: null, autoCategory: true, text: '' }
+const INITIAL: VisualState = { status: 'idle', image: null, query: EMPTY_QUERY, response: null, error: null, seq: 0, stagedSeq: 0 }
 
-let state: VisualState = { status: 'idle', image: null, query: EMPTY_QUERY, response: null, error: null, seq: 0 }
+let state: VisualState = INITIAL
 const listeners = new Set<() => void>()
 let inflight: AbortController | null = null
 
@@ -46,8 +55,7 @@ function subscribe(cb: () => void) {
   return () => { listeners.delete(cb) }
 }
 const getSnapshot = () => state
-const SERVER_STATE: VisualState = { status: 'idle', image: null, query: EMPTY_QUERY, response: null, error: null, seq: 0 }
-const getServerSnapshot = () => SERVER_STATE
+const getServerSnapshot = () => INITIAL
 
 export function useVisualSearch(): VisualState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
@@ -57,7 +65,7 @@ export function visualSearchState(): VisualState {
   return state
 }
 
-/** Drop the query image and results (the × in the field, NEW SEARCH, leaving the flow). */
+/** Drop the query image and results (the × in the field, NEW SEARCH). */
 export function clearVisualSearch(): void {
   inflight?.abort()
   inflight = null
@@ -90,23 +98,35 @@ async function prepare(file: Blob): Promise<Blob> {
 }
 
 /**
- * Run a search with a new image (paste / drop / camera / picker). Resolves true on success,
- * false on failure or cancel; the state carries the details either way.
+ * Attach an image to the field (picker / paste / ⌘K / drop / mobile sheet). Nothing is sent:
+ * the user adds words if they want and submits. Resolves true when the image was accepted.
  */
-export async function searchWithImage(file: Blob, query: Partial<VisualQuery> = {}): Promise<boolean> {
+export async function stageVisualImage(file: Blob): Promise<boolean> {
   if (file.type && !isAcceptedImage(file.type)) {
-    emit({ status: 'error', error: 'JPEG, PNG OR WEBP ONLY' })
+    emit({ status: state.image ? state.status : 'idle', error: 'JPEG, PNG OR WEBP ONLY' })
     return false
   }
-  if (state.image) URL.revokeObjectURL(state.image.url)
+  inflight?.abort()
+  inflight = null
   const blob = await prepare(file)
-  const image = { blob, url: URL.createObjectURL(blob) }
-  const next: VisualQuery = { ...EMPTY_QUERY, ...query, text: normalizeQueryText(query.text) }
-  return run(image, next)
+  if (state.image) URL.revokeObjectURL(state.image.url)
+  emit({
+    status: 'staged',
+    image: { blob, url: URL.createObjectURL(blob) },
+    query: EMPTY_QUERY,
+    response: null,
+    error: null,
+    stagedSeq: state.stagedSeq + 1,
+  })
+  return true
 }
 
-/** Re-run the current image with a changed query (category chip, ALL CATEGORIES, typed text). */
-export async function requeryVisualSearch(patch: Partial<VisualQuery>): Promise<boolean> {
+/**
+ * Run the search with the attached image and the given words (Enter in the field). Also
+ * the re-query on the results page: new words, a category pick, ALL CATEGORIES. Resolves
+ * true on success, false on failure or cancel; the state carries the details either way.
+ */
+export async function runVisualSearch(patch: Partial<VisualQuery> = {}): Promise<boolean> {
   if (!state.image) return false
   const next: VisualQuery = { ...state.query, ...patch }
   next.text = normalizeQueryText(next.text)
