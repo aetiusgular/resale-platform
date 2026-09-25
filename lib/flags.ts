@@ -84,3 +84,12 @@ export const TIER_DASHBOARD_ENABLED =
 // before: production .vercel.app is NOT auto-noindexed by Vercel.
 export const SEO_INDEXING_ENABLED =
   process.env.SEO_INDEXING_ENABLED === 'true'
+
+// ── Visual search (search by photo; VISUAL_SEARCH_ANALYSIS.md / VISUAL_SEARCH_ROADMAP.md) ──
+// Server gate for POST /api/search/image. The engine side is the recs feed service
+// (POST /v1/search/image on the same host + token), so this flag can be on while
+// RECS_ENABLED is off. NEXT_PUBLIC_ gates the camera control in the UI.
+export const VISUAL_SEARCH_ENABLED =
+  process.env.VISUAL_SEARCH_ENABLED === 'true'
+export const VISUAL_SEARCH_PUBLIC_ENABLED =
+  process.env.NEXT_PUBLIC_VISUAL_SEARCH_ENABLED === 'true'
