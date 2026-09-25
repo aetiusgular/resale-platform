@@ -42,8 +42,8 @@ export const ANTISLOP = {
   ],
 }
 
-// TODO(B8/PA): Reverse-image stock-photo detection via external API.
-// External reverse-image search (Google Vision API / TinEye) would be called
-// during listing submission to reject stock photos without a real item photo.
-// Not in scope for B3 — external APIs cost money; deferred to B8/PA.
-// Stub: export async function detectStockPhoto(imageUrl: string): Promise<boolean>
+// Near-duplicate detection runs on the DB-side Hamming index (`similar_image_hashes`,
+// migration 0053) since visual search P1; the old JS scan + its 5,000-row cap are gone.
+// Stock-photo detection against the open web stays out of scope (no external reverse-image
+// API in the listing path: cost, and photos would leave the platform). In-catalogue reuse of
+// another seller's photos is what the hash index catches.

@@ -4,7 +4,6 @@ import { lintListing } from '@/lib/antislop-lint'
 import { ANTISLOP } from '@/lib/antislop-config'
 import { hashAllSlots, POSSESSION_SLOT } from '@/lib/image-hash'
 import { MAX_PHOTOS, MIN_PHOTOS } from '@/lib/listings/images'
-import { hammingDistance } from '@/lib/phash'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { VERIFICATION_ENABLED, AUTH_BADGE_ENABLED } from '@/lib/flags'
 import { sellerMustVerify } from '@/lib/idv/risk-resolver'
@@ -340,76 +339,63 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Near-duplicate detection (service role) ───────────────────────────────
-  // Only run if we have hashes to compare.
+  // One indexed Hamming lookup per new photo hash (`similar_image_hashes`, migration 0053:
+  // pgvector HNSW over image_hashes.hash_bits) replaces the old 5,000-row JS scan, so this
+  // stays complete at any catalogue size. Same semantics as before: other sellers' active /
+  // pending listings only, a stored photo counts once with its NEAREST new photo (sellers
+  // reorder photos), and a listing is a suspect at >= DUPLICATE_MIN_SLOT_MATCHES close photos.
   const warnings = violations.filter(v => v.severity === 'warn')
   if (Object.keys(slotHashes).length > 0) {
-    // Get candidate listing IDs: other sellers' active/pending listings
-    const { data: candidates } = await service
-      .from('listings')
-      .select('id')
-      .in('status', ['active', 'pending_review'])
-      .neq('seller_id', user.id)
-      .neq('id', listingId)
-
-    const candidateIds = (candidates ?? []).map((c: { id: string }) => c.id)
-
-    if (candidateIds.length > 0) {
-      // Safety valve: cap at 5000 rows. At >~833 active listings this scan
-      // becomes incomplete — replace with a DB-side nearest-neighbour function
-      // before beta (see TODO in antislop-config.ts).
-      const { data: existingHashes } = await service
-        .from('image_hashes')
-        .select('listing_id, slot, hash')
-        .in('listing_id', candidateIds)
-        .limit(5000)
-
-      // Group by listing_id: photos are in the seller's own order (drag to reorder), so a
-      // stored photo counts as a match when it is close to ANY of the new photos, not
-      // only the one at the same position.
-      const byListing = new Map<
-        string,
-        { slot: string; new_slot: string; distance: number }[]
-      >()
-      const newHashes = Object.entries(slotHashes)
-
-      for (const row of existingHashes ?? []) {
-        const r = row as { listing_id: string; slot: string; hash: string }
-        let dist = Number.POSITIVE_INFINITY
-        let newSlot = ''
-        for (const [slot, h] of newHashes) {
-          const d = hammingDistance(h, r.hash)
-          if (d < dist) { dist = d; newSlot = slot }
-        }
-        if (dist <= ANTISLOP.DUPLICATE_DISTANCE_THRESHOLD) {
-          if (!byListing.has(r.listing_id)) byListing.set(r.listing_id, [])
-          byListing.get(r.listing_id)!.push({ slot: r.slot, new_slot: newSlot, distance: dist })
-        }
+    const byListing = new Map<
+      string,
+      Map<string, { slot: string; new_slot: string; distance: number }>
+    >()
+    for (const [newSlot, h] of Object.entries(slotHashes)) {
+      const { data: rows, error: rpcErr } = await service.rpc('similar_image_hashes', {
+        query_hex: h,
+        max_distance: ANTISLOP.DUPLICATE_DISTANCE_THRESHOLD,
+        max_rows: 50,
+        exclude_listing: listingId,
+        exclude_seller: user.id,
+      })
+      if (rpcErr) {
+        console.warn('[api/listings] similar_image_hashes warning:', rpcErr.message)
+        continue
       }
-
-      // Listings with >= MIN_SLOT_MATCHES close matches are duplicate suspects
-      const duplicates: { listing_id: string; matches: { slot: string; new_slot: string; distance: number }[] }[] = []
-      for (const [lid, matches] of byListing) {
-        if (matches.length >= ANTISLOP.DUPLICATE_MIN_SLOT_MATCHES) {
-          duplicates.push({ listing_id: lid, matches })
+      for (const row of (rows ?? []) as Array<{ listing_id: string; slot: string; distance: number }>) {
+        const slots = byListing.get(row.listing_id) ?? new Map()
+        const prev = slots.get(row.slot)
+        if (!prev || row.distance < prev.distance) {
+          slots.set(row.slot, { slot: row.slot, new_slot: newSlot, distance: row.distance })
         }
+        byListing.set(row.listing_id, slots)
       }
+    }
 
-      if (duplicates.length > 0) {
-        const { error: flagErr } = await service
-          .from('listing_flags')
-          .insert({
-            listing_id: listingId,
-            type: 'duplicate',
-            evidence: {
-              matched_listing_ids: duplicates.map(d => d.listing_id),
-              per_slot_distances: duplicates.flatMap(d =>
-                d.matches.map(m => ({ listing_id: d.listing_id, slot: m.slot, new_slot: m.new_slot, distance: m.distance }))
-              ),
-            },
-          })
-        if (flagErr) {
-          console.warn('[api/listings] duplicate flag insert warning:', flagErr.message)
-        }
+    // Listings with >= MIN_SLOT_MATCHES close matches are duplicate suspects
+    const duplicates: { listing_id: string; matches: { slot: string; new_slot: string; distance: number }[] }[] = []
+    for (const [lid, slots] of byListing) {
+      const matches = [...slots.values()]
+      if (matches.length >= ANTISLOP.DUPLICATE_MIN_SLOT_MATCHES) {
+        duplicates.push({ listing_id: lid, matches })
+      }
+    }
+
+    if (duplicates.length > 0) {
+      const { error: flagErr } = await service
+        .from('listing_flags')
+        .insert({
+          listing_id: listingId,
+          type: 'duplicate',
+          evidence: {
+            matched_listing_ids: duplicates.map(d => d.listing_id),
+            per_slot_distances: duplicates.flatMap(d =>
+              d.matches.map(m => ({ listing_id: d.listing_id, slot: m.slot, new_slot: m.new_slot, distance: m.distance }))
+            ),
+          },
+        })
+      if (flagErr) {
+        console.warn('[api/listings] duplicate flag insert warning:', flagErr.message)
       }
     }
   }
