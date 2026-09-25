@@ -745,6 +745,30 @@ components:
             shipping: { type: object, properties: { margin_cents: { type: integer }, categories: { type: array, items: { type: object, properties: { category: { type: string }, from_cents: { type: integer } } } } } }
             boosts: { type: object, properties: { max_promoted_per_page: { type: integer }, packages: { type: array, items: { type: object, properties: { key: { type: string }, label: { type: string }, duration_days: { type: integer }, amount_cents: { type: integer } } } } } }
 
+    VisualSearchHit:
+      type: object
+      description: One listing that matched the query photo, in its best tier. `listing` is a BrowseListing card; `matched_photo` is the listing image that matched.
+      required: [listing_id, tier, score, hamming, photo_index, source, matched_photo, listing]
+      properties:
+        listing_id: { type: string, format: uuid }
+        tier: { type: string, enum: [exact, match, close] }
+        score: { type: [number, 'null'], description: Cosine in the fashion-CLIP space (null when only the hash tier saw the listing). }
+        hamming: { type: [integer, 'null'], description: Hamming distance of the 256-bit blockhash (null when only the engine saw the listing). }
+        photo_index: { type: integer, description: Index into listing.images of the matched photo. }
+        source: { type: string, enum: [hash, engine, both] }
+        matched_photo: { type: string, format: uri }
+        listing: { $ref: '#/components/schemas/BrowseListing' }
+    VisualSearchResponse:
+      type: object
+      required: [listed, category, engine, exact, match, close]
+      properties:
+        listed: { type: boolean, description: True when at least one listing landed in exact or match. The empty state is the common case at launch. }
+        category: { type: [string, 'null'], description: Category the engine predicted for the query (P3a); null until then. }
+        engine: { type: string, enum: [ok, unavailable], description: unavailable = hash tier only (recs-engine unreachable). }
+        exact: { type: array, items: { $ref: '#/components/schemas/VisualSearchHit' }, description: The same photo, or a near-identical shot. }
+        match: { type: array, items: { $ref: '#/components/schemas/VisualSearchHit' }, description: Probably the same item, a different photo. }
+        close: { type: array, items: { $ref: '#/components/schemas/VisualSearchHit' }, description: Similar pieces, ranked. }
+
 security: []
 
 paths:
@@ -826,6 +850,35 @@ paths:
       security: [{ bearer: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses: { '200': { description: OK }, '401': { $ref: '#/components/responses/Unauthorized' } }
+
+  /api/search/image:
+    post:
+      tags: [browse]
+      summary: Search by photo (visual search P1). Gated by VISUAL_SEARCH_ENABLED (404 when off); guests allowed unless VISUAL_SEARCH_GUESTS=false; 20 searches/min per user or IP.
+      description: |
+        Two input shapes. (1) A raw image body (`Content-Type: image/jpeg|png|webp`, <= 5 MB; resize
+        to <= 768 px client-side first): hashed for the "same photo" tier and forwarded to recs-engine
+        for the embedding tiers; the bytes are never stored. (2) JSON `{ listing_id, photo_index }`:
+        search with one of a listing's own photos, no upload. Fail-soft: when the engine is down the
+        response carries the hash tier only and `engine: unavailable`.
+      security: [{ bearer: [] }, {}]
+      parameters:
+        - { name: category, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true, description: 'Restrict the embedding tiers to these categories (repeatable, max 8).' }
+      requestBody:
+        required: true
+        content:
+          image/jpeg: { schema: { type: string, format: binary } }
+          image/png: { schema: { type: string, format: binary } }
+          image/webp: { schema: { type: string, format: binary } }
+          application/json: { schema: { type: object, required: [listing_id], properties: { listing_id: { type: string, format: uuid }, photo_index: { type: integer, minimum: 0, maximum: 14, default: 0 } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VisualSearchResponse' } } } }
+        '400': { description: Malformed JSON, bad listing ref, or empty body. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Feature off. }
+        '413': { description: Image over 5 MB. }
+        '415': { description: Not a JPEG, PNG or WebP. }
+        '429': { description: Rate limited (Retry-After header). }
 
   # ── listings ─────────────────────────────────────────────────────────────────
   /api/listings/{id}:
