@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   countTiers, isAcceptedImage, isEditableTarget, normalizeQueryText, pasteKeyLabel, pickImageFile,
-  queryChipLabel, resultsHeadline, tierOrder, QUERY_MAX_TEXT_CHARS,
+  resultsHeadline, tierOrder, QUERY_MAX_TEXT_CHARS,
 } from '@/lib/visual-search/shared'
 
 function file(type: string, name = 'x'): File {
@@ -71,9 +71,7 @@ describe('results copy (R1 / R2 / M2)', () => {
       lead: 'Not listed.', meta: 'These are the closest pieces · 6 close in Outerwear',
     })
   })
-  it('chip label and tier order', () => {
-    expect(queryChipLabel('Outerwear')).toEqual({ label: 'IMAGE', suffix: '· OUTERWEAR' })
-    expect(queryChipLabel(null)).toEqual({ label: 'IMAGE', suffix: null })
+  it('tier order', () => {
     expect(tierOrder()).toEqual(['exact', 'match', 'close'])
   })
 })

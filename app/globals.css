@@ -174,8 +174,11 @@ img { display: block; max-width: 100%; }
 
 ::selection { background: var(--ink); color: var(--on-ink); }
 :focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
-/* borderless inputs: keep a visible keyboard focus ring (their outline:none suppresses the global one) */
-.search input:focus-visible, .help-search input:focus-visible, .offer-compose__field input:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
+/* borderless inputs: keep a visible keyboard focus ring (their outline:none suppresses the global one).
+   The header search is the exception: its focus state is the underline going to ink (.search:focus-within),
+   no ring, because the input's inflated hit-area padding would draw the ring past the underline. */
+.help-search input:focus-visible, .offer-compose__field input:focus-visible { outline: 1px solid var(--ink); outline-offset: 2px; }
+.search input:focus-visible { outline: none; }
 hr { border: none; border-top: 1px solid var(--line); margin: 0; }
 
 /* Hide the number-input spinners: prices are mono text fields */
@@ -2055,9 +2058,8 @@ a.btn-primary--inline { display: inline-flex; }
    stays 31px tall everywhere (open question 3: shrink the thumb, keep the height). */
 .search__chip { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
 .search__thumb { width: 16px; height: 21px; margin: -3px 0; object-fit: cover; background: var(--tone-2); border: 1px solid var(--line); display: block; }
-.search__label { font: 400 10px var(--font-mono); letter-spacing: 0.14em; color: var(--ink); white-space: nowrap; }
-.search__label--searching { color: var(--sub); }
-.search__label-sub { font-weight: 300; color: var(--faint); }
+.search__label { font: 300 10px var(--font-mono); letter-spacing: 0.14em; color: var(--faint); white-space: nowrap; }
+.search__label--searching { font-weight: 400; color: var(--sub); }
 .search.has-query .search__input { font-size: 13px; }
 
 /* M1: the bottom sheet rows (uses .scrim--sheet / .sheet / .sheet__head from the sort sheet). */

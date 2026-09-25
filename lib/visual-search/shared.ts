@@ -100,11 +100,6 @@ export function resultsHeadline(counts: ResultCounts, category: string | null): 
   return { lead: 'Not listed.', meta: `These are the closest pieces · ${closePart}` }
 }
 
-/** The header chip text on the results page: "IMAGE" + "· OUTERWEAR" (R1 field). */
-export function queryChipLabel(category: string | null): { label: string; suffix: string | null } {
-  return { label: 'IMAGE', suffix: category ? `· ${category.toUpperCase()}` : null }
-}
-
 /** Order of tiers on the page: matches (exact then match) first, then close. */
 export function tierOrder(): VisualTier[] {
   return ['exact', 'match', 'close']

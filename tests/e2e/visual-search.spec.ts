@@ -66,7 +66,8 @@ test.describe('Search by image — desktop header', () => {
     const seen: string[] = []
     await interceptSearch(page, LISTED, seen)
     await attachViaPicker(page)
-    await expect(page.getByTestId('search-chip')).toContainText('IMAGE')
+    await expect(page.getByTestId('search-chip').locator('img')).toBeVisible()
+    await expect(page.getByTestId('search-chip')).toHaveText('') // thumbnail only, no label
     await expect(field(page)).toHaveAttribute('placeholder', 'Add words to narrow it')
     await expect(field(page)).toBeFocused()
     expect(seen).toHaveLength(0) // nothing sent yet
@@ -82,7 +83,7 @@ test.describe('Search by image — desktop header', () => {
     await expect(page.getByTestId('vs-matches').locator('[data-testid="listing-card"]')).toHaveCount(2)
     await expect(page.getByTestId('vs-close').locator('[data-testid="listing-card"]')).toHaveCount(1)
     await expect(page.getByTestId('search-chip')).toHaveAttribute('data-state', 'query')
-    await expect(page.getByTestId('search-chip')).toContainText('OUTERWEAR')
+    await expect(page.getByTestId('search-chip-category')).toHaveText('OUTERWEAR')
     await expect(field(page)).toHaveValue('black leather')
 
     // new words re-run the same image
@@ -117,6 +118,8 @@ test.describe('Search by image — desktop header', () => {
     await page.getByTestId('search-scan-btn').hover()
     await expect(tip).toHaveCSS('opacity', '1', { timeout: 3000 })
     await field(page).click()
+    await expect(field(page)).toBeFocused()
+    await expect(field(page)).toHaveCSS('outline-style', 'none') // the ink underline is the focus state, no ring
     await expect(page.locator('.search__hint')).toHaveCount(0)
     await expect(page.getByTestId('search-choose-file')).toHaveCount(0)
     await expect(field(page)).toHaveAttribute('placeholder', 'Search designers, items, sellers')
@@ -228,7 +231,7 @@ test.describe('Search by image — mobile (M0 / M1 / M2)', () => {
     await expect(page).toHaveURL(/\/search\/image$/)
     expect(seen).toHaveLength(1)
     await expect(page.getByTestId('vs-headline')).toContainText('2')
-    await expect(page.getByTestId('search-chip')).toContainText('IMAGE')
+    await expect(page.getByTestId('search-chip-category')).toHaveText('OUTERWEAR')
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)
     expect(overflow).toBe(false)
   })

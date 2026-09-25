@@ -14,9 +14,9 @@
  *   S0 default      magnifier · input · scan glyph (44px hit area, hover tooltip)
  *   S3 drag-over    hover fill + ink underline, "Drop to add the image" (the whole page
  *                   accepts the drop; the cue lives in the field only)
- *   staged          magnifier · thumb chip IMAGE · input "Add words to narrow it" · ×
+ *   staged          magnifier · thumb chip · input "Add words to narrow it" · ×
  *   S4 searching    thumb chip + SEARCHING… (× cancels), then /search/image
- *   R1 results      chip + IMAGE · CATEGORY · the words; Enter re-runs the same image with
+ *   R1 results      thumb chip · CATEGORY · the words; Enter re-runs the same image with
  *                   new words; × clears and returns to browse
  *   M0 / M1         ≤720px the glyph opens the bottom sheet (camera / library / clipboard),
  *                   which stages the photo the same way (the keyboard's Search key submits)
@@ -35,7 +35,7 @@ import { VISUAL_SEARCH_PUBLIC_ENABLED } from '@/lib/flags'
 import { trackSearch } from '@/lib/recs/telemetry'
 import { readClipboardImage } from '@/lib/visual-search/clipboard'
 import {
-  isEditableTarget, normalizeQueryText, pasteKeyLabel, pickImageFile, queryChipLabel, QUERY_IMAGE_TYPES,
+  isEditableTarget, normalizeQueryText, pasteKeyLabel, pickImageFile, QUERY_IMAGE_TYPES,
 } from '@/lib/visual-search/shared'
 import {
   cancelVisualSearch, clearVisualSearch, runVisualSearch, stageVisualImage, useVisualSearch,
@@ -230,7 +230,8 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
     submitText()
   }
 
-  const chip = queryChipLabel(showingQuery ? (visual.response?.category ?? visual.query.category) : null)
+  // The chip is the thumbnail alone while staged; on the results page the category joins it.
+  const chipCategory = showingQuery ? (visual.response?.category ?? visual.query.category) : null
   const inputPlaceholder = staged || showingQuery
     ? 'Add words to narrow it'
     : compact ? 'Search' : 'Search designers, items, sellers'
@@ -256,12 +257,9 @@ export default function HeaderSearch({ defaultValue = '' }: { defaultValue?: str
                 <img className="search__thumb" src={visual.image.url} alt="Attached image" />
                 {searching ? (
                   <span className="search__label search__label--searching">SEARCHING…</span>
-                ) : (
-                  <span className="search__label">
-                    {chip.label}
-                    {chip.suffix && <span className="search__label-sub"> {chip.suffix}</span>}
-                  </span>
-                )}
+                ) : chipCategory ? (
+                  <span className="search__label" data-testid="search-chip-category">{chipCategory.toUpperCase()}</span>
+                ) : null}
               </span>
             )}
             {/* Always mounted (focus survives the search); hidden while searching. */}
